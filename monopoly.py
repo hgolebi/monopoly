@@ -3,6 +3,7 @@ from pygame.locals import *
 import random
 import queue
 
+
 class Property:
     def __init__(self, position, price, value, tax):
         self.position = position
@@ -36,6 +37,10 @@ class Player:
         self.position = 0
         self.cash = 2000
         self.inventory = set()
+        self.jailed = False
+
+    def getPosition(self):
+        return self.position
 
     def setPosition(self, pos):
         self.position = pos
@@ -79,6 +84,30 @@ class Game:
         self.current_player = player
         self.queue.put(player)
 
+    def movePlayer(self):
+        amount = random.randint(1,6)
+        curr_pos = self.current_player.getPosition()
+        next_pos = (curr_pos + amount) % len(self.properties)
+        self.current_player.setPosition(next_pos)
+        if curr_pos + amount >= len(self.properties):
+            self.current_player.addCash(200)
+
+    def handleNewPosition(self):
+        pos = self.current_player.getPosition()
+        if pos == 3:
+            self.current_player.jailed = True
+
+    def handleEvents(self):
+        pass
+
+
     def start(self):
         while(True):
+
             self.nextPlayer()
+            self.movePlayer()
+            self.handleNewPosition()
+            if not self.current_player.jailed:
+                playing = True
+            while(playing):
+                self.handleEvents()
