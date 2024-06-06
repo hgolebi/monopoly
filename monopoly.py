@@ -5,6 +5,9 @@ import queue
 import keyboard
 
 
+def cash(amount):
+    return str(amount) + '$'
+
 class Field:
     def __init__(self, name):
         self.name = name
@@ -55,14 +58,19 @@ class GoToJailField(Field):
     def __init__(self):
         super().__init__( "go to jail field")
 
-    def action(self, player):
-        player.setJailed(True)
 
 class Jail(Field):
     def __init__(self, bail):
         super().__init__( "jail")
         self.bail = bail
 
+class Start(Field):
+    def __init__(self):
+        super().__init__( "start field")
+
+class CarPark(Field):
+    def __init__(self):
+        super().__init__( "car park")
 
 class Player:
     def __init__(self, ID):
@@ -116,7 +124,7 @@ class Game:
 
     def initFields(self):
         self.fields = (
-            Field('start'),
+            Start(),
             Property('brown 1', 60, 30, 2),
             Property('brown 2', 60, 30, 4),
             TaxField(200),
@@ -132,7 +140,7 @@ class Game:
             Property('orange 1', 180, 90, 14),
             Property('orange 2', 180, 90, 14),
             Property('orange 3', 200, 100, 16),
-            Field('parking'),
+            CarPark(),
             Property('red 1', 220, 110, 18),
             Property('red 2', 220, 110, 18),
             Property('red 3', 240, 120, 20),
@@ -151,68 +159,105 @@ class Game:
         )
 
     def rollDice(self):
-        return random.randint(1,6), random.randint(1,6)
+        die1, die2 = random.randint(1,6), random.randint(1,6)
+        print('You rolled ', die1, ' and ', die2)
+        return die1, die2
 
     def nextPlayer(self):
         player = self.queue.get()
         self.current_player = player
         self.queue.put(player)
+        print("")
+        print('Now playing: player ', self.current_player.id)
 
     def movePlayer(self):
         if self.current_player.isJailed():
+            print("You're jailed!")
             return
-        amount = random.randint(1,6)
+        print("Press SPACEBAR to roll dice!")
+        keyboard.wait('space')
+        die1, die2 = self.rollDice()
+
+        amount = die1 + die2
         curr_pos = self.current_player.getPosition()
         next_pos = (curr_pos + amount) % len(self.fields)
         self.current_player.setPosition(next_pos)
+        print('You moved to ', self.fields[next_pos].name)
         if curr_pos + amount >= len(self.fields):
+            print("You get free 200$ for crossing the Start!")
             self.current_player.addCash(200)
 
     def handleJailField(self, field):
         if not self.current_player.isJailed():
+            print("You're just visiting.")
             return
 
+        print("To get out of the jail you have to pay 50$ or roll the double.")
+        print("Press 1 to roll dice")
+        print("Press 2 to pay 50$")
         while True:
             if keyboard.is_pressed('1'):
                 die1, die2 = self.rollDice()
                 if die1 == die2:
+                    print("You're no longer jailed!")
                     self.current_player.setJailed(False)
+                else:
+                    print("You failed to get out of jail!")
                 break
             if keyboard.is_pressed('2'):
                 if self.current_player.canAfford(field.bail):
                     self.current_player.charge(field.bail)
                     self.current_player.setJailed(False)
+                    print("You're no longer jailed!")
                     break
-
+                print('You cannot afford it!')
 
 
     def handlePropertyField(self, field):
         owner = field.getOwner()
         if not owner:
+            print('Do you want to buy this property for', cash(field.price) + '? (Y/n)')
             while True:
                 if keyboard.is_pressed('y'):
-                    field.buy()
+                    if field.buy(self.current_player):
+                        print("Property bought")
+                    else:
+                        print("You cannot afford it!")
                     break
                 if keyboard.is_pressed('n'):
                     break
         elif owner != self.current_player:
+            print('This property is owned by player', owner.id )
+            print("You have to pay him", cash(field.tax))
             field.charge(self.current_player)
+        else:
+            print("You are the owner!")
 
 
     def handleFieldAction(self):
         field = self.fields[self.current_player.getPosition()]
         if isinstance(field, GoToJailField):
+            print("Unfortunately you got jailed..")
             self.current_player.setJailed(True)
+            self.current_player.setPosition(8)
         elif isinstance(field, Jail):
             self.handleJailField(field)
         elif isinstance(field, TaxField):
-            self.current_player.charge(field.getTax)
+            print("Unfortunately you have to pay", cash(field.getTax()), 'tax')
+            self.current_player.charge(field.getTax())
         elif isinstance(field, Property):
             self.handlePropertyField(field)
-
+        elif isinstance(field, CarPark):
+            print("You can park here for free!")
 
     def start(self):
+        print("Welcome to Monopoly!")
         while(True):
             self.nextPlayer()
             self.movePlayer()
             self.handleFieldAction()
+
+
+if __name__ == "__main__":
+    game = Game()
+    game.start()
