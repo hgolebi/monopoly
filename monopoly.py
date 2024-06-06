@@ -90,13 +90,7 @@ class Player:
         self.cash += amount
 
     def charge(self, amount):
-        if amount > self.cash:
-            subtracted = self.cash
-            self.cash = 0
-            return subtracted
-
         self.cash -= amount
-        return amount
 
     def addToInventory(self, pos):
         self.inventory.add(pos)
