@@ -73,10 +73,10 @@ class CarPark(Field):
         super().__init__( "car park")
 
 class Player:
-    def __init__(self, ID):
+    def __init__(self, ID, cash):
         self.id = ID
         self.position = 0
-        self.cash = 2000
+        self.cash = cash
         self.inventory = set()
         self.jailed = False
 
@@ -115,10 +115,9 @@ class Player:
 
 class Game:
     def __init__(self):
+        self.current_player = Player(0, 2000)
         self.queue = queue.Queue()
-        self.queue.put(Player(0))
-        self.queue.put(Player(1))
-        self.current_player = None
+        self.queue.put(Player(1, 2000))
         self.fields = {}
         self.initFields()
 
@@ -164,11 +163,15 @@ class Game:
         return die1, die2
 
     def nextPlayer(self):
+        if self.current_player.cash >= 0:
+            self.queue.put(self.current_player)
+        else:
+            print("Player", self.current_player.id), 'has bankrupted..'
         player = self.queue.get()
         self.current_player = player
-        self.queue.put(player)
         print("")
         print('Now playing: player ', self.current_player.id)
+        print('Available cash: ', cash(self.current_player.cash))
 
     def movePlayer(self):
         if self.current_player.isJailed():
@@ -254,8 +257,12 @@ class Game:
         print("Welcome to Monopoly!")
         while(True):
             self.nextPlayer()
+            if self.queue.empty():
+                print("Player", self.current_player.id, 'wins the game! Congratulations!')
             self.movePlayer()
             self.handleFieldAction()
+
+
 
 
 if __name__ == "__main__":
