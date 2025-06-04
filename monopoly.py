@@ -90,7 +90,9 @@ class Player:
         self.cash += amount
 
     def charge(self, amount):
+        paid = min(self.cash, amount)
         self.cash -= amount
+        return paid
 
     def addToInventory(self, pos):
         self.inventory.add(pos)
@@ -109,46 +111,46 @@ class Player:
 
 class Game:
     def __init__(self):
-        self.current_player = Player(0, 2000)
+        self.current_player = Player(0, 1000)
         self.queue = queue.Queue()
-        self.queue.put(Player(1, 2000))
+        self.queue.put(Player(1, 1000))
         self.fields = {}
         self.initFields()
 
     def initFields(self):
         self.fields = (
             Start(),
-            Property('brown 1', 60, 30, 2),
-            Property('brown 2', 60, 30, 4),
+            Property('brown 1', 60, 30, 20),
+            Property('brown 2', 60, 30, 40),
             TaxField(200),
-            Property('railway 1', 200, 100, 25),
-            Property('light blue 1', 100, 50, 6),
-            Property('light blue 2', 100, 50, 6),
-            Property('light blue 3', 120, 60, 8),
+            Property('railway 1', 200, 100, 250),
+            Property('light blue 1', 100, 50, 60),
+            Property('light blue 2', 100, 50, 60),
+            Property('light blue 3', 120, 60, 80),
             Jail(50),
-            Property('pink 1', 140, 70, 10),
-            Property('pink 2', 140, 70, 10),
-            Property('pink 3', 160, 80, 12),
-            Property("railway 2", 200, 100, 25),
-            Property('orange 1', 180, 90, 14),
-            Property('orange 2', 180, 90, 14),
-            Property('orange 3', 200, 100, 16),
+            Property('pink 1', 140, 70, 100),
+            Property('pink 2', 140, 70, 100),
+            Property('pink 3', 160, 80, 120),
+            Property("railway 2", 200, 100, 250),
+            Property('orange 1', 180, 90, 140),
+            Property('orange 2', 180, 90, 140),
+            Property('orange 3', 200, 100, 160),
             CarPark(),
-            Property('red 1', 220, 110, 18),
-            Property('red 2', 220, 110, 18),
-            Property('red 3', 240, 120, 20),
-            Property('railway 3', 200, 100, 25),
-            Property('yellow 1', 260, 130, 22),
-            Property('yellow 2', 260, 130, 22),
-            Property('yellow 3', 280, 140, 24),
+            Property('red 1', 220, 110, 180),
+            Property('red 2', 220, 110, 180),
+            Property('red 3', 240, 120, 200),
+            Property('railway 3', 200, 100, 250),
+            Property('yellow 1', 260, 130, 220),
+            Property('yellow 2', 260, 130, 220),
+            Property('yellow 3', 280, 140, 240),
             GoToJailField(),
-            Property('green 1', 300, 150, 26),
-            Property('green 2', 300, 150, 26),
-            Property('green 3', 320, 260, 28),
-            Property('railway', 200, 100, 25),
-            Property('dark blue 1', 350, 175, 35),
+            Property('green 1', 300, 150, 260),
+            Property('green 2', 300, 150, 260),
+            Property('green 3', 320, 260, 280),
+            Property('railway', 200, 100, 250),
+            Property('dark blue 1', 350, 175, 350),
             TaxField(100),
-            Property('dark blue 2', 400, 200, 50),
+            Property('dark blue 2', 400, 200, 500),
         )
 
     def rollDice(self):
@@ -160,7 +162,7 @@ class Game:
         if self.current_player.cash >= 0:
             self.queue.put(self.current_player)
         else:
-            print("Player", self.current_player.id), 'has bankrupted..'
+            print("Player", self.current_player.id, 'has bankrupted..')
         player = self.queue.get()
         self.current_player = player
         print("")
@@ -248,11 +250,13 @@ class Game:
             print("You can park here for free!")
 
     def start(self):
+        print("\n\n\n")
         print("Welcome to Monopoly!")
         while(True):
             self.nextPlayer()
             if self.queue.empty():
                 print("Player", self.current_player.id, 'wins the game! Congratulations!')
+                return
             self.movePlayer()
             self.handleFieldAction()
 
