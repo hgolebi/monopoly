@@ -9,7 +9,7 @@ type Property struct {
 	price int
 	value int
 	tax   int
-	owner string
+	owner *Player
 }
 
 func (p *Property) Action(game *Game) {
