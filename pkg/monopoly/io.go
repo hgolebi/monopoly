@@ -6,7 +6,13 @@ const (
 	JAIL_ROLL_DICE Action = iota
 	JAIL_BAIL
 	JAIL_CARD
+	NOACTION
 	MORTGAGE
+	BUYOUT
+	SELLOFFER
+	BUYOFFER
+	BUYHOUSE
+	SELLHOUSE
 )
 
 type FullActionList struct {

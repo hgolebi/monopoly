@@ -1,6 +1,7 @@
 package monopoly
 
 import (
+	"fmt"
 	"math/rand"
 )
 
@@ -9,11 +10,14 @@ type GameSettings struct {
 	START_PASS_MONEY int
 	JAIL_POSITION    int
 	JAIL_BAIL        int
+	MAX_HOUSES       int
 }
 
 type Game struct {
 	players          []*Player
 	fields           []Field
+	properties       []*Property
+	sets             map[string][]int
 	currentPlayerIdx int
 	round            int
 	settings         GameSettings
@@ -127,10 +131,6 @@ func (g *Game) rollDice() (dice1 int, dice2 int) {
 	return rand.Intn(6) + 1, rand.Intn(6) + 1
 }
 
-func (g *Game) doForProperty(property *Property) {
-
-}
-
 func (g *Game) handleJail() {
 	player := g.players[g.currentPlayerIdx]
 	g.standardActions()
@@ -156,7 +156,7 @@ func (g *Game) handleJail() {
 		g.jailCard()
 		return
 	default:
-		panic("unknown action: " + string(action_details.Action))
+		panic("unknown action: " + fmt.Sprint(action_details.Action))
 	}
 
 }
@@ -173,6 +173,148 @@ func (g *Game) jailRollDice() {
 	}
 }
 
+func (g *Game) jailBail() {
+	player := g.players[g.currentPlayerIdx]
+	player.Charge(g.settings.JAIL_BAIL)
+	if player.IsBankrupt {
+		return
+	}
+	player.IsJailed = false
+	player.roundsInJail = 0
+	g.makeMove(1, 0, 0)
+}
+
+func (g *Game) jailCard() {
+	player := g.players[g.currentPlayerIdx]
+	if player.JailCards <= 0 {
+		panic("no jail cards left")
+	}
+	player.JailCards--
+	player.IsJailed = false
+	player.roundsInJail = 0
+	g.makeMove(1, 0, 0)
+}
+
 func (g *Game) standardActions() {
-	panic("unimplemented")
+	action_list := FullActionList{}
+
+	action_list.MortgageList = g.getMortgageList()
+	action_list.BuyOutList = g.getBuyOutList()
+	action_list.SellPropertyList = g.getSellPropertyList()
+	action_list.BuyPropertyList = g.getBuyPropertyList()
+	action_list.BuyHouseList = g.getBuyHouseList()
+	action_list.SellHouseList = g.getSellHouseList()
+
+	action_list.Actions = []Action{NOACTION}
+	if len(action_list.MortgageList) > 0 {
+		action_list.Actions = append(action_list.Actions, MORTGAGE)
+	}
+	if len(action_list.BuyOutList) > 0 {
+		action_list.Actions = append(action_list.Actions, BUYOUT)
+	}
+	if len(action_list.SellPropertyList) > 0 {
+		action_list.Actions = append(action_list.Actions, SELLOFFER)
+	}
+	if len(action_list.BuyPropertyList) > 0 {
+		action_list.Actions = append(action_list.Actions, BUYOFFER)
+	}
+	if len(action_list.BuyHouseList) > 0 {
+		action_list.Actions = append(action_list.Actions, BUYHOUSE)
+	}
+	if len(action_list.SellHouseList) > 0 {
+		action_list.Actions = append(action_list.Actions, SELLHOUSE)
+	}
+	action_details := g.io.GetAction(action_list, g.getState())
+	if action_details.Action == NOACTION {
+		return
+	}
+	g.resolveStandardAction(action_details)
+	g.standardActions()
+}
+
+func (g *Game) getMortgageList() []int {
+	mortgage_list := []int{}
+	properties := g.players[g.currentPlayerIdx].Properties
+	for _, property := range properties {
+		if !property.IsMortgaged && !g.checkHouses(property) {
+			mortgage_list = append(mortgage_list, property.Index)
+		}
+	}
+	return mortgage_list
+}
+
+func (g *Game) getBuyOutList() []int {
+	buyout_list := []int{}
+	properties := g.players[g.currentPlayerIdx].Properties
+	for _, property := range properties {
+		if property.IsMortgaged {
+			buyout_list = append(buyout_list, property.Index)
+		}
+	}
+	return buyout_list
+}
+
+func (g *Game) getSellPropertyList() []int {
+	sell_list := []int{}
+	properties := g.players[g.currentPlayerIdx].Properties
+	for _, property := range properties {
+		if !g.checkHouses(property) {
+			sell_list = append(sell_list, property.Index)
+		}
+	}
+	return sell_list
+}
+
+func (g *Game) getBuyPropertyList() []int {
+	buy_list := []int{}
+	for _, property := range g.properties {
+		if property.Owner >= 0 && property.Owner != g.currentPlayerIdx && !g.checkHouses(property) {
+			buy_list = append(buy_list, property.Index)
+		}
+	}
+	return buy_list
+}
+
+func (g *Game) getBuyHouseList() []int {
+	buy_list := []int{}
+	temp_list := []int{}
+	for _, set := range g.players[g.currentPlayerIdx].Sets {
+		foundMortgaged := false
+		for _, propertyIdx := range g.sets[set] {
+			if g.properties[propertyIdx].IsMortgaged {
+				foundMortgaged = true
+				break
+			}
+		}
+		if !foundMortgaged {
+			temp_list = append(temp_list, g.sets[set]...)
+		}
+	}
+	for _, propertyIdx := range temp_list {
+		if g.properties[propertyIdx].Houses < g.settings.MAX_HOUSES {
+			buy_list = append(buy_list, propertyIdx)
+		}
+	}
+	return buy_list
+}
+
+func (g *Game) getSellHouseList() []int {
+	sell_list := []int{}
+	properties := g.players[g.currentPlayerIdx].Properties
+	for _, property := range properties {
+		if property.Houses > 0 {
+			sell_list = append(sell_list, property.Index)
+		}
+	}
+	return sell_list
+}
+
+func (g *Game) checkHouses(property *Property) bool {
+	set := g.sets[property.Set]
+	for _, propertyIdx := range set {
+		if g.properties[propertyIdx].Houses > 0 {
+			return true
+		}
+	}
+	return false
 }
