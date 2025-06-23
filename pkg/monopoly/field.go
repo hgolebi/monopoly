@@ -5,11 +5,11 @@ type Field interface {
 }
 
 type Property struct {
-	name  string
-	price int
-	value int
-	tax   int
-	owner *Player
+	Name  string
+	Price int
+	Value int
+	Tax   int
+	Owner *Player
 }
 
 func (p *Property) Action(game *Game) {

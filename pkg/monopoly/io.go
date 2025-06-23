@@ -26,7 +26,14 @@ type ActionDetails struct {
 	PlayerId   int
 }
 
+type GameState struct {
+	Players          []*Player
+	Fields           []Field
+	Round            int
+	CurrentPlayerIdx int
+}
+
 type IMonopoly_IO interface {
 	SendState(state GameState)
-	GetAction(availableActions FullActionList) ActionDetails
+	GetAction(availableActions FullActionList, state GameState) ActionDetails
 }

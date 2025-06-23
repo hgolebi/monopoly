@@ -1,14 +1,14 @@
 package monopoly
 
 type Player struct {
-	name           string
-	money          int
-	properties     []*Property
-	currenPosition int
-	isBankrupt     bool
-	isJailed       bool
-	jailCards      int
-	roundsInJail   int
+	Name            string
+	Money           int
+	Properties      []*Property
+	CurrentPosition int
+	IsBankrupt      bool
+	IsJailed        bool
+	JailCards       int
+	roundsInJail    int
 }
 
 func (p *Player) AddMoney(count int) {
@@ -16,5 +16,5 @@ func (p *Player) AddMoney(count int) {
 }
 
 func (p *Player) SetPosition(pos int) {
-	p.currenPosition = pos
+	p.CurrentPosition = pos
 }

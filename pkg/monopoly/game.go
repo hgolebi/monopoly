@@ -14,7 +14,6 @@ type GameSettings struct {
 type Game struct {
 	players          []*Player
 	fields           []Field
-	alivePlayers     []int
 	currentPlayerIdx int
 	round            int
 	settings         GameSettings
@@ -25,20 +24,29 @@ func (g *Game) initGame() {
 	//TODO
 }
 
+func (g *Game) getState() GameState {
+	return GameState{
+		Players:          g.players,
+		Fields:           g.fields,
+		Round:            g.round,
+		CurrentPlayerIdx: g.currentPlayerIdx,
+	}
+}
+
 func (g *Game) Start() {
 	g.initGame()
 	for {
 		for idx, player := range g.players {
 			g.currentPlayerIdx = idx
 			g.checkForWinner()
-			if player.isBankrupt {
+			if player.IsBankrupt {
 				continue
 			}
-			if player.isJailed {
+			if player.IsJailed {
 				g.handleJail()
 				continue
 			}
-			g.makeMove(1)
+			g.makeMove(1, 0, 0)
 		}
 		g.round++
 	}
@@ -47,7 +55,7 @@ func (g *Game) Start() {
 func (g *Game) checkForWinner() {
 	players_alive := 0
 	for _, player := range g.players {
-		if !player.isBankrupt {
+		if !player.IsBankrupt {
 			players_alive++
 		}
 	}
@@ -72,8 +80,13 @@ func (g *Game) endDraw() {
 	panic("unimplemented")
 }
 
-func (g *Game) makeMove(moves_in_a_row int) {
-	d1, d2 := g.rollDice()
+func (g *Game) makeMove(moves_in_a_row int, d1 int, d2 int) {
+	if d1 == 0 {
+		if d2 != 0 {
+			panic("d2 should be 0 if d1 is 0")
+		}
+		d1, d2 = g.rollDice()
+	}
 	if moves_in_a_row >= 3 && d1 == d2 {
 		g.jailPlayer()
 		return
@@ -81,11 +94,11 @@ func (g *Game) makeMove(moves_in_a_row int) {
 	g.movePlayer(d1 + d2)
 	g.takeAction()
 	player := g.players[g.currentPlayerIdx]
-	if player.isJailed {
+	if player.IsJailed {
 		return
 	}
 	if d1 == d2 {
-		g.makeMove(moves_in_a_row + 1)
+		g.makeMove(moves_in_a_row+1, 0, 0)
 	}
 }
 
@@ -95,13 +108,13 @@ func (g *Game) takeAction() {
 
 func (g *Game) jailPlayer() {
 	player := g.players[g.currentPlayerIdx]
-	player.isJailed = true
-	player.currenPosition = g.settings.JAIL_POSITION
+	player.IsJailed = true
+	player.CurrentPosition = g.settings.JAIL_POSITION
 }
 
 func (g *Game) movePlayer(count int) {
 	player := g.players[g.currentPlayerIdx]
-	curr_pos := player.currenPosition
+	curr_pos := player.CurrentPosition
 	new_pos := curr_pos + count
 	for new_pos > len(g.fields)-1 {
 		player.AddMoney(g.settings.START_PASS_MONEY)
@@ -125,13 +138,39 @@ func (g *Game) handleJail() {
 		Actions: []Action{},
 	}
 	action_list.Actions = append(action_list.Actions, JAIL_BAIL)
-	if player.jailCards > 0 {
+	if player.JailCards > 0 {
 		action_list.Actions = append(action_list.Actions, JAIL_CARD)
 	}
 	if player.roundsInJail < 3 {
 		action_list.Actions = append(action_list.Actions, JAIL_ROLL_DICE)
 	}
+	action_details := g.io.GetAction(action_list, g.getState())
+	switch action_details.Action {
+	case JAIL_ROLL_DICE:
+		g.jailRollDice()
+		return
+	case JAIL_BAIL:
+		g.jailBail()
+		return
+	case JAIL_CARD:
+		g.jailCard()
+		return
+	default:
+		panic("unknown action: " + string(action_details.Action))
+	}
 
+}
+
+func (g *Game) jailRollDice() {
+	player := g.players[g.currentPlayerIdx]
+	d1, d2 := g.rollDice()
+	if d1 == d2 {
+		player.IsJailed = false
+		player.roundsInJail = 0
+		g.makeMove(1, d1, d2)
+	} else {
+		player.roundsInJail++
+	}
 }
 
 func (g *Game) standardActions() {
