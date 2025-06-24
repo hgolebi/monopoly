@@ -13,6 +13,7 @@ const (
 	BUYOFFER
 	BUYHOUSE
 	SELLHOUSE
+	BUY
 )
 
 type FullActionList struct {

@@ -37,6 +37,10 @@ func (g *Game) getState() GameState {
 	}
 }
 
+func (g *Game) currPlayer() *Player {
+	return g.players[g.currentPlayerIdx]
+}
+
 func (g *Game) Start() {
 	g.initGame()
 	for {
@@ -97,7 +101,7 @@ func (g *Game) makeMove(moves_in_a_row int, d1 int, d2 int) {
 	}
 	g.movePlayer(d1 + d2)
 	g.takeAction()
-	player := g.players[g.currentPlayerIdx]
+	player := g.currPlayer()
 	if player.IsJailed {
 		return
 	}
@@ -111,13 +115,13 @@ func (g *Game) takeAction() {
 }
 
 func (g *Game) jailPlayer() {
-	player := g.players[g.currentPlayerIdx]
+	player := g.currPlayer()
 	player.IsJailed = true
 	player.CurrentPosition = g.settings.JAIL_POSITION
 }
 
 func (g *Game) movePlayer(count int) {
-	player := g.players[g.currentPlayerIdx]
+	player := g.currPlayer()
 	curr_pos := player.CurrentPosition
 	new_pos := curr_pos + count
 	for new_pos > len(g.fields)-1 {
@@ -132,7 +136,7 @@ func (g *Game) rollDice() (dice1 int, dice2 int) {
 }
 
 func (g *Game) handleJail() {
-	player := g.players[g.currentPlayerIdx]
+	player := g.currPlayer()
 	g.standardActions()
 	var action_list = FullActionList{
 		Actions: []Action{},
@@ -162,7 +166,7 @@ func (g *Game) handleJail() {
 }
 
 func (g *Game) jailRollDice() {
-	player := g.players[g.currentPlayerIdx]
+	player := g.currPlayer()
 	d1, d2 := g.rollDice()
 	if d1 == d2 {
 		player.IsJailed = false
@@ -174,8 +178,8 @@ func (g *Game) jailRollDice() {
 }
 
 func (g *Game) jailBail() {
-	player := g.players[g.currentPlayerIdx]
-	player.Charge(g.settings.JAIL_BAIL)
+	player := g.currPlayer()
+	g.chargePlayer(player, g.settings.JAIL_BAIL, nil)
 	if player.IsBankrupt {
 		return
 	}
@@ -185,7 +189,7 @@ func (g *Game) jailBail() {
 }
 
 func (g *Game) jailCard() {
-	player := g.players[g.currentPlayerIdx]
+	player := g.currPlayer()
 	if player.JailCards <= 0 {
 		panic("no jail cards left")
 	}
@@ -237,7 +241,7 @@ func (g *Game) getMortgageList() []int {
 	properties := g.players[g.currentPlayerIdx].Properties
 	for _, property := range properties {
 		if !property.IsMortgaged && !g.checkHouses(property) {
-			mortgage_list = append(mortgage_list, property.Index)
+			mortgage_list = append(mortgage_list, property.PropertyIndex)
 		}
 	}
 	return mortgage_list
@@ -248,7 +252,7 @@ func (g *Game) getBuyOutList() []int {
 	properties := g.players[g.currentPlayerIdx].Properties
 	for _, property := range properties {
 		if property.IsMortgaged {
-			buyout_list = append(buyout_list, property.Index)
+			buyout_list = append(buyout_list, property.PropertyIndex)
 		}
 	}
 	return buyout_list
@@ -259,7 +263,7 @@ func (g *Game) getSellPropertyList() []int {
 	properties := g.players[g.currentPlayerIdx].Properties
 	for _, property := range properties {
 		if !g.checkHouses(property) {
-			sell_list = append(sell_list, property.Index)
+			sell_list = append(sell_list, property.PropertyIndex)
 		}
 	}
 	return sell_list
@@ -267,9 +271,10 @@ func (g *Game) getSellPropertyList() []int {
 
 func (g *Game) getBuyPropertyList() []int {
 	buy_list := []int{}
+	player := g.currPlayer()
 	for _, property := range g.properties {
-		if property.Owner >= 0 && property.Owner != g.currentPlayerIdx && !g.checkHouses(property) {
-			buy_list = append(buy_list, property.Index)
+		if property.Owner != nil && property.Owner != player && !g.checkHouses(property) {
+			buy_list = append(buy_list, property.PropertyIndex)
 		}
 	}
 	return buy_list
@@ -279,14 +284,15 @@ func (g *Game) getBuyHouseList() []int {
 	buy_list := []int{}
 	temp_list := []int{}
 	for _, set := range g.players[g.currentPlayerIdx].Sets {
-		foundMortgaged := false
+		can_build_houses := true
 		for _, propertyIdx := range g.sets[set] {
-			if g.properties[propertyIdx].IsMortgaged {
-				foundMortgaged = true
+			property := g.properties[propertyIdx]
+			if property.IsMortgaged || !property.CanBuildHouse {
+				can_build_houses = false
 				break
 			}
 		}
-		if !foundMortgaged {
+		if can_build_houses {
 			temp_list = append(temp_list, g.sets[set]...)
 		}
 	}
@@ -303,13 +309,16 @@ func (g *Game) getSellHouseList() []int {
 	properties := g.players[g.currentPlayerIdx].Properties
 	for _, property := range properties {
 		if property.Houses > 0 {
-			sell_list = append(sell_list, property.Index)
+			sell_list = append(sell_list, property.PropertyIndex)
 		}
 	}
 	return sell_list
 }
 
 func (g *Game) checkHouses(property *Property) bool {
+	if !property.CanBuildHouse {
+		return false
+	}
 	set := g.sets[property.Set]
 	for _, propertyIdx := range set {
 		if g.properties[propertyIdx].Houses > 0 {
@@ -317,4 +326,81 @@ func (g *Game) checkHouses(property *Property) bool {
 		}
 	}
 	return false
+}
+
+func (g *Game) chargePlayer(player *Player, amount int, target *Player) {
+	if player.Money >= amount {
+		player.Charge(amount, target)
+		return
+	}
+
+	net_worth := g.calculateNetWorth(player)
+	if net_worth < amount {
+		player.Charge(amount, target)
+		return
+	}
+	for player.Money < amount {
+		action_list := FullActionList{}
+		action_list.MortgageList = g.getMortgageList()
+		action_list.SellHouseList = g.getSellHouseList()
+		if len(action_list.MortgageList) > 0 {
+			action_list.Actions = append(action_list.Actions, MORTGAGE)
+		}
+		if len(action_list.SellHouseList) > 0 {
+			action_list.Actions = append(action_list.Actions, SELLHOUSE)
+		}
+		action_details := g.io.GetAction(action_list, g.getState())
+		g.resolveStandardAction(action_details)
+	}
+	player.Charge(amount, target)
+}
+
+func (g *Game) doForNoActionField() {
+	return
+}
+
+func (g *Game) doForTaxField(f *TaxField) {
+	player := g.currPlayer()
+	g.chargePlayer(player, f.Tax, nil)
+	g.standardActions()
+}
+
+func (g *Game) doForGoToJailField() {
+	g.jailPlayer()
+}
+
+func (g *Game) doForProperty(p *Property) {
+	g.propertyAction(p)
+	g.standardActions()
+}
+
+func (g *Game) propertyAction(p *Property) {
+	player := g.currPlayer()
+	if p.Owner == player {
+		return
+	}
+
+	if p.Owner != nil {
+		amount := g.checkCharge(p)
+		player.Charge(amount, p.Owner)
+		return
+	}
+
+	if player.Money < p.Price {
+		g.auction(p, g.currentPlayerIdx)
+		return
+	}
+
+	actions := FullActionList{
+		Actions: []Action{BUY, NOACTION},
+	}
+	action_details := g.io.GetAction(actions, g.getState())
+	if action_details.Action == BUY {
+		player.Charge(p.Price, nil)
+		player.AddProperty(p)
+		return
+	}
+
+	g.auction(p, g.currentPlayerIdx)
+	return
 }
