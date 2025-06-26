@@ -3,7 +3,8 @@ package monopoly
 type Action int
 
 const (
-	JAIL_ROLL_DICE Action = iota
+	QUIT Action = iota
+	JAIL_ROLL_DICE
 	JAIL_BAIL
 	JAIL_CARD
 	NOACTION
@@ -15,6 +16,20 @@ const (
 	SELLHOUSE
 	BUY
 )
+
+var actionNames = map[Action]string{
+	JAIL_ROLL_DICE: "JAIL_ROLL_DICE",
+	JAIL_BAIL:      "JAIL_BAIL",
+	JAIL_CARD:      "JAIL_CARD",
+	NOACTION:       "NOACTION",
+	MORTGAGE:       "MORTGAGE",
+	BUYOUT:         "BUYOUT",
+	SELLOFFER:      "SELLOFFER",
+	BUYOFFER:       "BUYOFFER",
+	BUYHOUSE:       "BUYHOUSE",
+	SELLHOUSE:      "SELLHOUSE",
+	BUY:            "BUY",
+}
 
 type FullActionList struct {
 	Actions          []Action

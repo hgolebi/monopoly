@@ -17,6 +17,7 @@ type Game struct {
 	players          []*Player
 	fields           []Field
 	properties       []*Property
+	charge_map       map[int][]int
 	sets             map[string][]int
 	currentPlayerIdx int
 	round            int
@@ -352,6 +353,18 @@ func (g *Game) checkHouses(property *Property) bool {
 	return false
 }
 
+func (g *Game) calculateNetWorth(player *Player) int {
+	net_worth := player.Money
+	for _, property := range player.Properties {
+		if property.IsMortgaged {
+			continue
+		}
+		net_worth += property.Price / 2
+		net_worth += property.Houses * (property.HousePrice / 2)
+	}
+	return net_worth
+}
+
 func (g *Game) chargePlayer(player *Player, amount int, target *Player) {
 	if player.Money >= amount {
 		player.Charge(amount, target)
@@ -466,4 +479,23 @@ func (g *Game) propertyAction(p *Property) {
 
 	g.auction(p, g.currentPlayerIdx)
 	return
+}
+
+func (g *Game) checkCharge(p *Property) int {
+	if p.IsMortgaged {
+		return 0
+	}
+	charges := g.charge_map[p.PropertyIndex]
+	charge_idx := -1
+	set := g.sets[p.Set]
+	for _, propertyIdx := range set {
+		if g.properties[propertyIdx].Owner == p.Owner {
+			charge_idx++
+		}
+	}
+	if charge_idx < 0 {
+		panic("charge_idx below 0")
+	}
+	charge_idx += p.Houses
+	return charges[charge_idx]
 }
