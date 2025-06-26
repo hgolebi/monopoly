@@ -9,6 +9,7 @@ type Property struct {
 	PropertyIndex int
 	Name          string
 	Price         int
+	HousePrice    int
 	Owner         *Player
 	IsMortgaged   bool
 	CanBuildHouse bool
