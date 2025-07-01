@@ -2,6 +2,7 @@ package monopoly
 
 type Field interface {
 	Action(*Game)
+	GetName() string
 }
 
 type Property struct {
@@ -36,8 +37,25 @@ type Chance struct {
 
 type TaxField struct {
 	FieldIndex int
-	Name       int
+	Name       string
 	Tax        int
+}
+
+func NewProperty(field_id int, property_id int, name string, price int, house_price int, can_build bool, set string) *Property {
+	if price < 0 || house_price < 0 {
+		panic("Price and house price cannot be negative")
+	}
+	return &Property{
+		FieldIndex:    field_id,
+		PropertyIndex: property_id,
+		Name:          name,
+		Price:         price,
+		HousePrice:    house_price,
+		CanBuildHouse: can_build,
+		Set:           set,
+		IsMortgaged:   false,
+		Houses:        0,
+	}
 }
 
 func (f *NoActionField) Action(game *Game) {
@@ -62,4 +80,28 @@ func (f *Chance) Action(game *Game) {
 
 func (f *TaxField) Action(game *Game) {
 	game.doForTaxField(f)
+}
+
+func (f *NoActionField) GetName() string {
+	return f.Name
+}
+
+func (f *Property) GetName() string {
+	return f.Name
+}
+
+func (f *GoToJailField) GetName() string {
+	return "Go to Jail Field"
+}
+
+func (f *Chest) GetName() string {
+	return "Chest Field"
+}
+
+func (f *Chance) GetName() string {
+	return "Chance Field"
+}
+
+func (f *TaxField) GetName() string {
+	return f.Name
 }

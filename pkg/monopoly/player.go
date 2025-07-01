@@ -4,12 +4,27 @@ type Player struct {
 	Name            string
 	Money           int
 	Properties      []*Property
-	Sets            []string
 	CurrentPosition int
 	IsBankrupt      bool
 	IsJailed        bool
 	JailCards       int
 	roundsInJail    int
+}
+
+func NewPlayer(name string, money int) *Player {
+	if money < 0 {
+		panic("Money cannot be negative")
+	}
+	return &Player{
+		Name:            name,
+		Money:           money,
+		Properties:      make([]*Property, 0),
+		CurrentPosition: 0,
+		IsBankrupt:      false,
+		IsJailed:        false,
+		JailCards:       0,
+		roundsInJail:    0,
+	}
 }
 
 func (p *Player) AddMoney(amount int) {

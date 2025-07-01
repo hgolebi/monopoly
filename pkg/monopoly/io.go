@@ -56,6 +56,5 @@ type GameState struct {
 }
 
 type IMonopoly_IO interface {
-	SendState(state GameState)
 	GetAction(availableActions FullActionList, state GameState) ActionDetails
 }

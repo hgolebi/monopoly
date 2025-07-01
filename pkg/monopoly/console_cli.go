@@ -17,8 +17,8 @@ func (c *ConsoleCLI) GetAction(actions FullActionList, state GameState) (respons
 	defer keyboard.Close()
 
 	fmt.Println("Available actions:")
-	for _, action := range actions.Actions {
-		fmt.Printf("%v. %s\n", action, actionNames[action])
+	for idx, action := range actions.Actions {
+		fmt.Printf("%v. %s\n", idx+1, actionNames[action])
 	}
 
 	for {
@@ -31,12 +31,13 @@ func (c *ConsoleCLI) GetAction(actions FullActionList, state GameState) (respons
 			response.Action = QUIT
 			return response
 		}
-		action := Action(int(char))
-		if !slices.Contains(actions.Actions, action) {
+
+		if char < '1' || char >= '1'+rune(len(actions.Actions)) {
 			fmt.Println("Unknown action")
 			continue
 		}
-		fmt.Printf("Action: %s\n", actionNames[action])
+		action := actions.Actions[char-'1']
+		fmt.Printf("Selected action: %s\n", actionNames[action])
 		response.Action = action
 		switch action {
 		case MORTGAGE:
