@@ -436,6 +436,8 @@ func (g *Game) standardActions() {
 
 func (g *Game) resolveStandardAction(action_details ActionDetails) {
 	switch action_details.Action {
+	case QUIT:
+		panic("You quit the game.")
 	case MORTGAGE:
 		g.mortgage(action_details.PropertyId)
 		return

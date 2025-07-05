@@ -3,7 +3,6 @@ package monopoly
 import (
 	"fmt"
 	"log"
-	"slices"
 
 	"github.com/eiannone/keyboard"
 )
@@ -49,25 +48,50 @@ func (c *ConsoleCLI) GetAction(actions FullActionList, state GameState) (respons
 		case SELLHOUSE:
 			response.PropertyId = chooseProperty(actions.SellHouseList)
 		}
+		if response.PropertyId < 0 {
+			fmt.Println("You quit.")
+			response.Action = QUIT
+		}
 		return
 	}
 }
 
 func chooseProperty(properties []int) int {
-	fmt.Println("Choose property (index):")
-	for _, property := range properties {
-		fmt.Printf("Property index: %d\n", property)
-	}
-	var propertyIndex int
 	for {
-		char, _, err := keyboard.GetKey()
-		if err != nil {
-			log.Fatal(err)
+		fmt.Println("Choose property (index):")
+		page := 0
+		max_page := (len(properties) - 1) / 8
+		for idx, property := range properties[page*8 : min(page*8+8, len(properties))] {
+			fmt.Printf("%d. Property index: %d\n", idx+1, property)
 		}
-		propertyIndex = int(char)
-		if slices.Contains(properties, propertyIndex) {
-			return propertyIndex
+		if page > 0 {
+			fmt.Println("9. Previous page")
 		}
-		fmt.Println("Invalid property index. Try again.")
+		if page < max_page {
+			fmt.Println("0. Next page")
+		}
+		for {
+			char, key, err := keyboard.GetKey()
+			if err != nil {
+				log.Fatal(err)
+			}
+			if key == keyboard.KeyEsc {
+				fmt.Println("Canceled.")
+				return -1
+			}
+			if page > 0 && char == '9' {
+				page--
+				break
+			}
+			if page < max_page && char == '0' {
+				page++
+				break
+			}
+			chosen_number := int(char - '1')
+			if page*8+chosen_number < len(properties) {
+				return properties[page*8+chosen_number]
+			}
+			fmt.Println("Invalid character. Try again.")
+		}
 	}
 }
