@@ -1,51 +1,39 @@
 package monopoly
 
-type Action int
+type StdAction int
 
 const (
-	QUIT Action = iota
-	JAIL_ROLL_DICE
-	JAIL_BAIL
-	JAIL_CARD
-	NOACTION
+	NOACTION StdAction = iota
 	MORTGAGE
 	BUYOUT
 	SELLOFFER
 	BUYOFFER
 	BUYHOUSE
 	SELLHOUSE
-	BUY
 )
 
-var actionNames = map[Action]string{
-	JAIL_ROLL_DICE: "JAIL_ROLL_DICE",
-	JAIL_BAIL:      "JAIL_BAIL",
-	JAIL_CARD:      "JAIL_CARD",
-	NOACTION:       "NOACTION",
-	MORTGAGE:       "MORTGAGE",
-	BUYOUT:         "BUYOUT",
-	SELLOFFER:      "SELLOFFER",
-	BUYOFFER:       "BUYOFFER",
-	BUYHOUSE:       "BUYHOUSE",
-	SELLHOUSE:      "SELLHOUSE",
-	BUY:            "BUY",
+var stdActionNames = map[StdAction]string{
+	NOACTION:  "NOACTION",
+	MORTGAGE:  "MORTGAGE",
+	BUYOUT:    "BUYOUT",
+	SELLOFFER: "SELLOFFER",
+	BUYOFFER:  "BUYOFFER",
+	BUYHOUSE:  "BUYHOUSE",
+	SELLHOUSE: "SELLHOUSE",
 }
 
-type FullActionList struct {
-	Actions          []Action
-	MortgageList     []int
-	BuyOutList       []int
-	SellPropertyList []int
-	BuyPropertyList  []int
-	BuyHouseList     []int
-	SellHouseList    []int
-}
+type JailAction int
 
-type ActionDetails struct {
-	Action     Action
-	PropertyId int
-	Price      int
-	PlayerId   int
+const (
+	ROLL_DICE JailAction = iota
+	BAIL
+	CARD
+)
+
+var jailActionNames = map[JailAction]string{
+	ROLL_DICE: "ROLL DICE",
+	BAIL:      "BAIL",
+	CARD:      "USE CARD",
 }
 
 type GameState struct {
@@ -56,5 +44,10 @@ type GameState struct {
 }
 
 type IMonopoly_IO interface {
-	GetAction(availableActions FullActionList, state GameState) ActionDetails
+	GetStdAction(state GameState, available []StdAction) StdAction
+	GetProperty(state GameState, available []int, action StdAction) int
+	GetPlayer(state GameState, available []int) int
+	GetMoney(state GameState, min int, max int) int
+	GetJailAction(state GameState, available []JailAction) JailAction
+	BuyDecision(state GameState, propertyId int) bool
 }
