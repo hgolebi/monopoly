@@ -41,13 +41,31 @@ type GameState struct {
 	Fields           []Field
 	Round            int
 	CurrentPlayerIdx int
+	Charge           int // In case of a charge that would result in a player going bankrupt
+}
+
+type FullActionList struct {
+	Actions          []StdAction
+	MortgageList     []int
+	BuyOutList       []int
+	SellPropertyList []int
+	BuyPropertyList  []int
+	BuyHouseList     []int
+	SellHouseList    []int
+}
+
+type ActionDetails struct {
+	Action     StdAction
+	PropertyId int
+	Price      int
+	PlayerId   int
 }
 
 type IMonopoly_IO interface {
-	GetStdAction(state GameState, available []StdAction) StdAction
-	GetProperty(state GameState, available []int, action StdAction) int
-	GetPlayer(state GameState, available []int) int
-	GetMoney(state GameState, min int, max int) int
-	GetJailAction(state GameState, available []JailAction) JailAction
-	BuyDecision(state GameState, propertyId int) bool
+	GetStdAction(player int, state GameState, availableActions FullActionList) ActionDetails
+	GetJailAction(player int, state GameState, available []JailAction) JailAction
+	BuyDecision(player int, state GameState, propertyId int) bool
+	BuyFromPlayerDecision(player int, state GameState, propertyId int, price int) bool
+	SellToPlayerDecision(player int, state GameState, propertyId int, price int) bool
+	BiddingDecision(player int, state GameState, propertyId int, currentPrice int) int
 }

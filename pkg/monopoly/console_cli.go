@@ -9,15 +9,15 @@ import (
 
 type ConsoleCLI struct{}
 
-func (c *ConsoleCLI) GetAction(actions FullActionList, state GameState) (response ActionDetails) {
+func (c *ConsoleCLI) GetStdAction(state GameState, available []StdAction) StdAction {
 	if err := keyboard.Open(); err != nil {
 		log.Fatal(err)
 	}
 	defer keyboard.Close()
 
 	fmt.Println("Available actions:")
-	for idx, action := range actions.Actions {
-		fmt.Printf("%v. %s\n", idx+1, actionNames[action])
+	for idx, action := range available {
+		fmt.Printf("%v. %s\n", idx, stdActionNames[action])
 	}
 
 	for {
@@ -26,37 +26,20 @@ func (c *ConsoleCLI) GetAction(actions FullActionList, state GameState) (respons
 			log.Fatal(err)
 		}
 		if key == keyboard.KeyEsc {
-			fmt.Println("You quit.")
-			response.Action = QUIT
-			return response
+			panic("User quit the game")
 		}
 
-		if char < '1' || char >= '1'+rune(len(actions.Actions)) {
+		if char < '0' || char >= '0'+rune(len(available)) {
 			fmt.Println("Unknown action")
 			continue
 		}
-		action := actions.Actions[char-'1']
-		fmt.Printf("Selected action: %s\n", actionNames[action])
-		response.Action = action
-		switch action {
-		case MORTGAGE:
-			response.PropertyId = chooseProperty(actions.MortgageList)
-		case BUYOUT:
-			response.PropertyId = chooseProperty(actions.BuyOutList)
-		case BUYHOUSE:
-			response.PropertyId = chooseProperty(actions.BuyHouseList)
-		case SELLHOUSE:
-			response.PropertyId = chooseProperty(actions.SellHouseList)
-		}
-		if response.PropertyId < 0 {
-			fmt.Println("You quit.")
-			response.Action = QUIT
-		}
-		return
+		action := available[char-'0']
+		fmt.Printf("Selected action: %s\n", stdActionNames[action])
+		return action
 	}
 }
 
-func chooseProperty(properties []int) int {
+func chooseProperty(state GameState, available []int) int {
 	for {
 		fmt.Println("Choose property (index):")
 		page := 0

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"slices"
 )
 
 const RAILROAD = "Railroad"
@@ -15,6 +16,7 @@ type GameSettings struct {
 	JAIL_POSITION    int
 	JAIL_BAIL        int
 	MAX_HOUSES       int
+	MIN_PRICE        int
 }
 
 type Game struct {
@@ -185,6 +187,7 @@ func (g *Game) initGame() {
 		JAIL_POSITION:    10,
 		JAIL_BAIL:        50,
 		MAX_HOUSES:       5,
+		MIN_PRICE:        10,
 	}
 
 	g.logger.Log("Game initialized successfully.")
@@ -198,6 +201,16 @@ func (g *Game) getState() GameState {
 		Round:            g.round,
 		CurrentPlayerIdx: g.currentPlayerIdx,
 	}
+}
+
+func (g *Game) getActivePlayers() []int {
+	active_players := []int{}
+	for idx, player := range g.players {
+		if !player.IsBankrupt {
+			active_players = append(active_players, idx)
+		}
+	}
+	return active_players
 }
 
 func (g *Game) getCurrPlayer() *Player {
@@ -227,18 +240,11 @@ func (g *Game) Start() {
 }
 
 func (g *Game) checkForWinner() {
-	players_alive := 0
-	var potential_winner *Player
-	for _, player := range g.players {
-		if !player.IsBankrupt {
-			players_alive++
-			potential_winner = player
-		}
-	}
-	if players_alive == 0 {
+	active_players := g.getActivePlayers()
+	if len(active_players) == 0 {
 		g.endDraw()
-	} else if players_alive == 1 {
-		g.endWinner(potential_winner)
+	} else if len(active_players) == 1 {
+		g.endWinner(g.players[active_players[0]])
 	} else if g.round > g.settings.MAX_ROUNDS {
 		g.endRoundLimit()
 	}
@@ -331,32 +337,30 @@ func (g *Game) handleJail() {
 	g.logger.Log("Player is jailed.")
 	player := g.getCurrPlayer()
 	g.standardActions()
-	var action_list = FullActionList{
-		Actions: []Action{},
-	}
-	action_list.Actions = append(action_list.Actions, JAIL_BAIL)
+	var action_list []JailAction
+	action_list = append(action_list, BAIL)
 	if player.JailCards > 0 {
-		action_list.Actions = append(action_list.Actions, JAIL_CARD)
+		action_list = append(action_list, CARD)
 	}
 	if player.roundsInJail < 3 {
-		action_list.Actions = append(action_list.Actions, JAIL_ROLL_DICE)
+		action_list = append(action_list, ROLL_DICE)
 	}
-	action_details := g.io.GetAction(action_list, g.getState())
-	switch action_details.Action {
-	case JAIL_ROLL_DICE:
+	action_details := g.io.GetJailAction(g.currentPlayerIdx, g.getState(), action_list)
+	switch action_details {
+	case ROLL_DICE:
 		g.logger.Log("Player chose to roll dice to get out of jail.")
 		g.jailRollDice()
 		return
-	case JAIL_BAIL:
+	case BAIL:
 		g.logger.Log("Player chose to pay bail to get out of jail.")
 		g.jailBail()
 		return
-	case JAIL_CARD:
+	case CARD:
 		g.logger.Log("Player chose to use a jail card to get out of jail.")
 		g.jailCard()
 		return
 	default:
-		panic("unknown action: " + fmt.Sprint(action_details.Action))
+		panic("unknown action: " + fmt.Sprint(action_details))
 	}
 
 }
@@ -407,7 +411,7 @@ func (g *Game) standardActions() {
 	action_list.BuyHouseList = g.getBuyHouseList()
 	action_list.SellHouseList = g.getSellHouseList()
 
-	action_list.Actions = []Action{NOACTION}
+	action_list.Actions = []StdAction{NOACTION}
 	if len(action_list.MortgageList) > 0 {
 		action_list.Actions = append(action_list.Actions, MORTGAGE)
 	}
@@ -426,7 +430,7 @@ func (g *Game) standardActions() {
 	if len(action_list.SellHouseList) > 0 {
 		action_list.Actions = append(action_list.Actions, SELLHOUSE)
 	}
-	action_details := g.io.GetAction(action_list, g.getState())
+	action_details := g.io.GetStdAction(g.currentPlayerIdx, g.getState(), action_list)
 	if action_details.Action == NOACTION {
 		return
 	}
@@ -436,8 +440,6 @@ func (g *Game) standardActions() {
 
 func (g *Game) resolveStandardAction(action_details ActionDetails) {
 	switch action_details.Action {
-	case QUIT:
-		panic("You quit the game.")
 	case MORTGAGE:
 		g.mortgage(action_details.PropertyId)
 		return
@@ -595,7 +597,7 @@ func (g *Game) chargePlayer(player *Player, amount int, target *Player) {
 		if len(action_list.SellHouseList) > 0 {
 			action_list.Actions = append(action_list.Actions, SELLHOUSE)
 		}
-		action_details := g.io.GetAction(action_list, g.getState())
+		action_details := g.io.GetStdAction(g.currentPlayerIdx, g.getState(), action_list)
 		g.resolveStandardAction(action_details)
 	}
 	player.Charge(amount, target)
@@ -679,21 +681,14 @@ func (g *Game) doForProperty(p *Property) {
 		g.auction(p, g.currentPlayerIdx)
 		return
 	}
-
-	actions := FullActionList{
-		Actions: []Action{NOACTION},
-	}
-	if player.Money >= p.Price {
-		actions.Actions = append(actions.Actions, BUY)
-	}
-	action_details := g.io.GetAction(actions, g.getState())
-	if action_details.Action == BUY {
-		player.Charge(p.Price, nil)
-		player.AddProperty(p)
+	wantToBuy := g.io.BuyDecision(g.currentPlayerIdx, g.getState(), p.PropertyIndex)
+	if !wantToBuy {
+		g.auction(p, g.currentPlayerIdx)
 		return
 	}
+	player.Charge(p.Price, nil)
+	player.AddProperty(p)
 
-	g.auction(p, g.currentPlayerIdx)
 }
 
 func (g *Game) checkCharge(p *Property) int {
@@ -736,5 +731,38 @@ func (g *Game) checkCharge(p *Property) int {
 }
 
 func (g *Game) auction(property *Property, first_player_id int) {
-	panic("unimplemented")
+	g.logger.Log(fmt.Sprintf("Auctioning property %s", property.Name))
+	active_players := g.getActivePlayers()
+	bid_player_iterator := slices.Index[[]int](active_players, first_player_id)
+	curr_price := g.settings.MIN_PRICE
+	auction_winner := -1
+	for len(active_players) > 1 {
+		bidding_player_id := active_players[bid_player_iterator]
+		bidding_player := g.players[bidding_player_id]
+		bid_offer := g.io.BiddingDecision(bidding_player_id, g.getState(), property.PropertyIndex, curr_price)
+		if bid_offer <= curr_price {
+			g.logger.Log(fmt.Sprintf("Player %s did not bid.", bidding_player.Name))
+			active_players = append(active_players[:bid_player_iterator], active_players[bid_player_iterator+1:]...)
+		} else if bid_offer > bidding_player.Money {
+			g.logger.Log(fmt.Sprintf("Player %s does not have enough money to bid %d. Going bankrupt.", bidding_player.Name, bid_offer))
+			bidding_player.Charge(bid_offer, nil)
+			active_players = append(active_players[:bid_player_iterator], active_players[bid_player_iterator+1:]...)
+		} else {
+			g.logger.Log(fmt.Sprintf("Player %s bid %d", bidding_player.Name, bid_offer))
+			curr_price = bid_offer
+			auction_winner = bidding_player_id
+		}
+		bid_player_iterator++
+		if bid_player_iterator >= len(active_players) {
+			bid_player_iterator = 0
+		}
+	}
+	if auction_winner == -1 {
+		g.logger.Log("Auction ended without any bids.")
+		return
+	}
+	winner := g.players[auction_winner]
+	g.logger.Log(fmt.Sprintf("Player %s won the auction with a bid of %d", winner.Name, curr_price))
+	winner.Charge(curr_price, nil)
+	winner.AddProperty(property)
 }
