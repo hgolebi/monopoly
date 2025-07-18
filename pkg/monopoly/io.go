@@ -12,7 +12,7 @@ const (
 	SELLHOUSE
 )
 
-var stdActionNames = map[StdAction]string{
+var StdActionNames = map[StdAction]string{
 	NOACTION:  "NOACTION",
 	MORTGAGE:  "MORTGAGE",
 	BUYOUT:    "BUYOUT",
@@ -30,7 +30,7 @@ const (
 	CARD
 )
 
-var jailActionNames = map[JailAction]string{
+var JailActionNames = map[JailAction]string{
 	ROLL_DICE: "ROLL DICE",
 	BAIL:      "BAIL",
 	CARD:      "USE CARD",
@@ -38,7 +38,7 @@ var jailActionNames = map[JailAction]string{
 
 type GameState struct {
 	Players          []*Player
-	Fields           []Field
+	Properties       []*Property
 	Round            int
 	CurrentPlayerIdx int
 	Charge           int // In case of a charge that would result in a player going bankrupt
@@ -62,6 +62,7 @@ type ActionDetails struct {
 }
 
 type IMonopoly_IO interface {
+	Init(int)
 	GetStdAction(player int, state GameState, availableActions FullActionList) ActionDetails
 	GetJailAction(player int, state GameState, available []JailAction) JailAction
 	BuyDecision(player int, state GameState, propertyId int) bool

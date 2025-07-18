@@ -36,7 +36,7 @@ type Game struct {
 }
 
 func (g *Game) initGame() {
-	g.io = &ConsoleCLI{}
+	g.io = &ConsoleServer{}
 	g.logger = &ConsoleLogger{}
 	g.logger.Log("Initializing game...")
 	g.round = 1
@@ -46,6 +46,7 @@ func (g *Game) initGame() {
 		NewPlayer("player1", 1500),
 		NewPlayer("player2", 1500),
 	}
+	g.io.Init(len(g.players))
 
 	g.properties = []*Property{
 		NewProperty(1, 0, "Mediterranean Avenue", 60, 50, true, "Brown"),
@@ -201,7 +202,7 @@ func (g *Game) initGame() {
 func (g *Game) getState() GameState {
 	return GameState{
 		Players:          g.players,
-		Fields:           g.fields,
+		Properties:       g.properties,
 		Round:            g.round,
 		CurrentPlayerIdx: g.currentPlayerIdx,
 	}
@@ -298,6 +299,9 @@ func (g *Game) makeMove(moves_in_a_row int, d1 int, d2 int) {
 		return
 	}
 	g.standardActions()
+	if player.IsBankrupt {
+		return
+	}
 	if d1 == d2 {
 		g.logger.Log("Player rolled doubles, taking another turn")
 		g.makeMove(moves_in_a_row+1, 0, 0)
@@ -341,6 +345,9 @@ func (g *Game) handleJail() {
 	g.logger.Log("Player is jailed.")
 	player := g.getCurrPlayer()
 	g.standardActions()
+	if player.IsBankrupt {
+		return
+	}
 	var action_list []JailAction
 	action_list = append(action_list, BAIL)
 	if player.JailCards > 0 {
@@ -438,24 +445,60 @@ func (g *Game) standardActions() {
 	if action_details.Action == NOACTION {
 		return
 	}
-	g.resolveStandardAction(action_details)
+	g.resolveStandardAction(action_details, action_list)
+	if g.players[g.currentPlayerIdx].IsBankrupt {
+		return
+	}
 	g.standardActions()
 }
 
-func (g *Game) resolveStandardAction(action_details ActionDetails) {
+func (g *Game) resolveStandardAction(action_details ActionDetails, available FullActionList) {
+	if !slices.Contains(available.Actions, action_details.Action) {
+		g.logger.Log(fmt.Sprintf("Action %s not available, going bankrupt", StdActionNames[action_details.Action]))
+		g.getCurrPlayer().GoBankrupt(nil)
+	}
 	switch action_details.Action {
 	case MORTGAGE:
+		if !slices.Contains(available.MortgageList, action_details.PropertyId) {
+			g.logger.Log(fmt.Sprintf("Action %s not available for property %d, going bankrupt", StdActionNames[action_details.Action], action_details.PropertyId))
+			g.getCurrPlayer().GoBankrupt(nil)
+			return
+		}
 		g.mortgage(action_details.PropertyId)
 		return
 	case SELLHOUSE:
+		if !slices.Contains(available.SellHouseList, action_details.PropertyId) {
+			g.logger.Log(fmt.Sprintf("Action %s not available for property %d, going bankrupt", StdActionNames[action_details.Action], action_details.PropertyId))
+			g.getCurrPlayer().GoBankrupt(nil)
+			return
+		}
 		g.sellHouse(action_details.PropertyId)
 		return
 	case BUYHOUSE:
+		if !slices.Contains(available.BuyHouseList, action_details.PropertyId) {
+			g.logger.Log(fmt.Sprintf("Action %s not available for property %d, going bankrupt", StdActionNames[action_details.Action], action_details.PropertyId))
+			g.getCurrPlayer().GoBankrupt(nil)
+			return
+		}
 		g.buyHouse(action_details.PropertyId)
 		return
 	case SELLOFFER:
 		if g.sell_offer_tries >= g.settings.MAX_OFFER_TRIES {
 			g.logger.Log("Max sell offer tries reached, going bankrupt.")
+			g.getCurrPlayer().GoBankrupt(nil)
+			return
+		}
+		if !slices.Contains(available.SellPropertyList, action_details.PropertyId) {
+			g.logger.Log(fmt.Sprintf("Action %s not available for property %d, going bankrupt", StdActionNames[action_details.Action], action_details.PropertyId))
+			g.getCurrPlayer().GoBankrupt(nil)
+			return
+		}
+		if action_details.PlayerId == g.currentPlayerIdx || g.players[action_details.PlayerId].IsBankrupt {
+			g.logger.Log(fmt.Sprintf("Invalid player %d for sell offer, going bankrupt", action_details.PlayerId))
+			g.getCurrPlayer().GoBankrupt(nil)
+		}
+		if action_details.Price < 0 {
+			g.logger.Log(fmt.Sprintf("Invalid price %d for sell offer, going bankrupt", action_details.Price))
 			g.getCurrPlayer().GoBankrupt(nil)
 			return
 		}
@@ -467,9 +510,29 @@ func (g *Game) resolveStandardAction(action_details ActionDetails) {
 			g.getCurrPlayer().GoBankrupt(nil)
 			return
 		}
+		if !slices.Contains(available.BuyPropertyList, action_details.PropertyId) {
+			g.logger.Log(fmt.Sprintf("Action %s not available for property %d, going bankrupt", StdActionNames[action_details.Action], action_details.PropertyId))
+			g.getCurrPlayer().GoBankrupt(nil)
+			return
+		}
+		if action_details.PlayerId == g.currentPlayerIdx || g.players[action_details.PlayerId].IsBankrupt {
+			g.logger.Log(fmt.Sprintf("Invalid player %d for buy offer, going bankrupt", action_details.PlayerId))
+			g.getCurrPlayer().GoBankrupt(nil)
+			return
+		}
+		if action_details.Price < 0 {
+			g.logger.Log(fmt.Sprintf("Invalid price %d for buy offer, going bankrupt", action_details.Price))
+			g.getCurrPlayer().GoBankrupt(nil)
+			return
+		}
 		g.sendBuyOffer(action_details.PlayerId, action_details.PropertyId, action_details.Price)
 		return
 	case BUYOUT:
+		if !slices.Contains(available.BuyOutList, action_details.PropertyId) {
+			g.logger.Log(fmt.Sprintf("Action %s not available for property %d, going bankrupt", StdActionNames[action_details.Action], action_details.PropertyId))
+			g.getCurrPlayer().GoBankrupt(nil)
+			return
+		}
 		g.buyOut(action_details.PropertyId)
 		return
 	}
@@ -615,7 +678,7 @@ func (g *Game) chargePlayer(player_id int, amount int, target *Player) {
 		state := g.getState()
 		state.Charge = amount
 		action_details := g.io.GetStdAction(player_id, state, action_list)
-		g.resolveStandardAction(action_details)
+		g.resolveStandardAction(action_details, action_list)
 	}
 	player.Charge(amount, target)
 }
@@ -780,6 +843,7 @@ func (g *Game) doForProperty(p *Property) {
 		g.auction(p, g.currentPlayerIdx)
 		return
 	}
+	g.logger.Log(fmt.Sprintf("Player %s bought property %s for %d money", player.Name, p.Name, p.Price))
 	player.Charge(p.Price, nil)
 	player.AddProperty(p)
 
@@ -827,12 +891,16 @@ func (g *Game) checkCharge(p *Property) int {
 func (g *Game) auction(property *Property, first_player_id int) {
 	g.logger.Log(fmt.Sprintf("Auctioning property %s", property.Name))
 	active_players := g.getActivePlayers()
-	bid_player_iterator := slices.Index[[]int](active_players, first_player_id)
+	bid_player_iterator := slices.Index(active_players, first_player_id)
 	curr_price := g.settings.MIN_PRICE
 	auction_winner := -1
-	for len(active_players) > 1 {
+	for len(active_players) > 0 {
+		if len(active_players) == 1 && auction_winner > -1 {
+			break
+		}
 		bidding_player_id := active_players[bid_player_iterator]
 		bidding_player := g.players[bidding_player_id]
+
 		bid_offer := g.io.BiddingDecision(bidding_player_id, g.getState(), property.PropertyIndex, curr_price)
 		if bid_offer <= curr_price {
 			g.logger.Log(fmt.Sprintf("Player %s did not bid.", bidding_player.Name))
