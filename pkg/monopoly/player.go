@@ -1,9 +1,10 @@
 package monopoly
 
 type Player struct {
+	ID              int
 	Name            string
 	Money           int
-	Properties      []*Property
+	Properties      []int
 	CurrentPosition int
 	IsBankrupt      bool
 	IsJailed        bool
@@ -18,7 +19,7 @@ func NewPlayer(name string, money int) *Player {
 	return &Player{
 		Name:            name,
 		Money:           money,
-		Properties:      make([]*Property, 0),
+		Properties:      []int{},
 		CurrentPosition: 0,
 		IsBankrupt:      false,
 		IsJailed:        false,
@@ -34,56 +35,32 @@ func (p *Player) AddMoney(amount int) {
 	p.Money += amount
 }
 
-func (p *Player) AddProperty(property *Property) {
-	for _, elem := range p.Properties {
-		if elem == property {
-			panic("Adding property which is already owned")
-		}
+func (p *Player) RemoveMoney(amount int) {
+	if amount < 0 {
+		panic("Cannot remove negative amount")
 	}
-	p.Properties = append(p.Properties, property)
-	property.Owner = p
+	p.Money -= amount
 }
 
 func (p *Player) SetPosition(pos int) {
 	p.CurrentPosition = pos
 }
 
-func (p *Player) Charge(amount int, target *Player) {
-	if p.Money < amount {
-		p.GoBankrupt(target)
-	}
-	p.Money -= amount
-	if target != nil {
-		target.AddMoney(amount)
-	}
-}
-
-func (p *Player) GoBankrupt(target *Player) {
-	if target != nil {
-		target.AddMoney(max(0, p.Money))
-		for _, property := range p.Properties {
-			p.TransferProperty(target, property)
+func (p *Player) AddProperty(propertyIndex int) {
+	for _, prop := range p.Properties {
+		if prop == propertyIndex {
+			panic("Property already owned by player")
 		}
 	}
-	p.IsBankrupt = true
-	p.Properties = nil
-	p.CurrentPosition = -1
-	p.Money = -1
+	p.Properties = append(p.Properties, propertyIndex)
 }
 
-func (p *Player) TransferProperty(target *Player, property *Property) {
-	var new_list []*Property
-	found := false
-	for _, elem := range p.Properties {
-		if elem == property {
-			found = true
-			target.AddProperty(elem)
-		} else {
-			new_list = append(new_list, elem)
+func (p *Player) RemoveProperty(propertyIndex int) {
+	for i, prop := range p.Properties {
+		if prop == propertyIndex {
+			p.Properties = append(p.Properties[:i], p.Properties[i+1:]...)
+			return
 		}
 	}
-	p.Properties = new_list
-	if !found {
-		panic("Property not found during transfer")
-	}
+	panic("Property not owned by player")
 }
