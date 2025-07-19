@@ -49,34 +49,34 @@ func (g *Game) initGame() {
 	g.io.Init(len(g.players))
 
 	g.properties = []*Property{
-		NewProperty(1, 0, "Mediterranean Avenue", 60, 50, true, "Brown"),
-		NewProperty(3, 1, "Baltic Avenue", 60, 50, true, "Brown"),
-		NewProperty(5, 2, "Reading Railroad", 200, 0, false, RAILROAD),
-		NewProperty(6, 3, "Oriental Avenue", 100, 50, true, "Light Blue"),
-		NewProperty(8, 4, "Vermont Avenue", 100, 50, true, "Light Blue"),
-		NewProperty(9, 5, "Connecticut Avenue", 120, 50, true, "Light Blue"),
-		NewProperty(11, 6, "St. Charles Place", 140, 100, true, "Pink"),
-		NewProperty(12, 7, "Electric Company", 150, 0, false, UTILITY),
-		NewProperty(13, 8, "States Avenue", 140, 100, true, "Pink"),
-		NewProperty(14, 9, "Virginia Avenue", 160, 100, true, "Pink"),
-		NewProperty(15, 10, "Pennsylvania Railroad", 200, 0, false, RAILROAD),
-		NewProperty(16, 11, "St. James Place", 180, 100, true, "Orange"),
-		NewProperty(18, 12, "Tennessee Avenue", 180, 100, true, "Orange"),
-		NewProperty(19, 13, "New York Avenue", 200, 100, true, "Orange"),
-		NewProperty(21, 14, "Kentucky Avenue", 220, 150, true, "Red"),
-		NewProperty(23, 15, "Indiana Avenue", 220, 150, true, "Red"),
-		NewProperty(24, 16, "Illinois Avenue", 240, 150, true, "Red"),
-		NewProperty(25, 17, "B&O Railroad", 200, 0, false, RAILROAD),
-		NewProperty(26, 18, "Atlantic Avenue", 260, 150, true, "Yellow"),
-		NewProperty(27, 19, "Ventnor Avenue", 260, 150, true, "Yellow"),
-		NewProperty(28, 20, "Water Works", 150, 0, false, UTILITY),
-		NewProperty(29, 21, "Marvin Gardens", 280, 150, true, "Yellow"),
-		NewProperty(31, 22, "Pacific Avenue", 300, 200, true, "Green"),
-		NewProperty(32, 23, "North Carolina Avenue", 300, 200, true, "Green"),
-		NewProperty(34, 24, "Pennsylvania Avenue", 320, 200, true, "Green"),
-		NewProperty(35, 25, "Short Line", 200, 0, false, RAILROAD),
-		NewProperty(37, 26, "Park Place", 350, 200, true, "Dark Blue"),
-		NewProperty(39, 27, "Boardwalk", 400, 200, true, "Dark Blue"),
+		NewProperty(1, 0, "Brown1", 60, 50, true, "Brown"),
+		NewProperty(3, 1, "Brown2", 60, 50, true, "Brown"),
+		NewProperty(5, 2, "Railroad1", 200, 0, false, RAILROAD),
+		NewProperty(6, 3, "LightBlue1", 100, 50, true, "Light Blue"),
+		NewProperty(8, 4, "LightBlue2", 100, 50, true, "Light Blue"),
+		NewProperty(9, 5, "LightBlue3", 120, 50, true, "Light Blue"),
+		NewProperty(11, 6, "Pink1", 140, 100, true, "Pink"),
+		NewProperty(12, 7, "Utility1", 150, 0, false, UTILITY),
+		NewProperty(13, 8, "Pink2", 140, 100, true, "Pink"),
+		NewProperty(14, 9, "Pink3", 160, 100, true, "Pink"),
+		NewProperty(15, 10, "Railroad2", 200, 0, false, RAILROAD),
+		NewProperty(16, 11, "Orange1", 180, 100, true, "Orange"),
+		NewProperty(18, 12, "Orange2", 180, 100, true, "Orange"),
+		NewProperty(19, 13, "Orange3", 200, 100, true, "Orange"),
+		NewProperty(21, 14, "Red1", 220, 150, true, "Red"),
+		NewProperty(23, 15, "Red2", 220, 150, true, "Red"),
+		NewProperty(24, 16, "Red3", 240, 150, true, "Red"),
+		NewProperty(25, 17, "Railroad3", 200, 0, false, RAILROAD),
+		NewProperty(26, 18, "Yellow1", 260, 150, true, "Yellow"),
+		NewProperty(27, 19, "Yellow2", 260, 150, true, "Yellow"),
+		NewProperty(28, 20, "Utility2", 150, 0, false, UTILITY),
+		NewProperty(29, 21, "Yellow3", 280, 150, true, "Yellow"),
+		NewProperty(31, 22, "Green1", 300, 200, true, "Green"),
+		NewProperty(32, 23, "Green2", 300, 200, true, "Green"),
+		NewProperty(34, 24, "Green3", 320, 200, true, "Green"),
+		NewProperty(35, 25, "Railroad4", 200, 0, false, RAILROAD),
+		NewProperty(37, 26, "DarkBlue1", 350, 200, true, "Dark Blue"),
+		NewProperty(39, 27, "DarkBlue2", 400, 200, true, "Dark Blue"),
 	}
 
 	g.fields = []Field{
@@ -227,6 +227,7 @@ func (g *Game) Start() {
 	for {
 		g.logger.Log(fmt.Sprintf("Round %d", g.round))
 		for idx, player := range g.players {
+			g.logger.LogState(g.getState())
 			g.currentPlayerIdx = idx
 			g.checkForWinner()
 			if player.IsBankrupt {
@@ -312,6 +313,7 @@ func (g *Game) takeAction() {
 	player := g.getCurrPlayer()
 	field := g.fields[player.CurrentPosition]
 	field.Action(g)
+	g.logger.LogState(g.getState())
 }
 
 func (g *Game) jailPlayer() {
@@ -449,6 +451,7 @@ func (g *Game) standardActions() {
 	if g.players[g.currentPlayerIdx].IsBankrupt {
 		return
 	}
+	g.logger.LogState(g.getState())
 	g.standardActions()
 }
 
@@ -496,6 +499,7 @@ func (g *Game) resolveStandardAction(action_details ActionDetails, available Ful
 		if action_details.PlayerId == g.currentPlayerIdx || g.players[action_details.PlayerId].IsBankrupt {
 			g.logger.Log(fmt.Sprintf("Invalid player %d for sell offer, going bankrupt", action_details.PlayerId))
 			g.bankrupt(g.getCurrPlayer(), nil)
+			return
 		}
 		if action_details.Price < 0 {
 			g.logger.Log(fmt.Sprintf("Invalid price %d for sell offer, going bankrupt", action_details.Price))
@@ -938,6 +942,8 @@ func (g *Game) addProperty(player *Player, property_id int) {
 	if g.properties[property_id].Owner != nil {
 		panic("Property is already owned")
 	}
+	property := g.properties[property_id]
+	property.Owner = player
 	player.AddProperty(property_id)
 }
 

@@ -120,7 +120,7 @@ func (s *ConsoleServer) BuyDecision(player int, state GameState, propertyId int)
 		State:      state,
 		PropertyId: propertyId,
 	}
-	fmt.Println(req.State)
+
 	encoder := json.NewEncoder(s.Players[player].Conn)
 	decoder := json.NewDecoder(s.Players[player].Conn)
 	if err := encoder.Encode(req); err != nil {
