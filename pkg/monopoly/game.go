@@ -45,6 +45,8 @@ func (g *Game) initGame() {
 	g.players = []*Player{
 		NewPlayer("player1", 1500),
 		NewPlayer("player2", 1500),
+		NewPlayer("player3", 1500),
+		NewPlayer("player4", 1500),
 	}
 	g.io.Init(len(g.players))
 
@@ -959,13 +961,21 @@ func (g *Game) charge(player *Player, amount int, target *Player) {
 }
 
 func (g *Game) bankrupt(player *Player, creditor *Player) {
+	player.IsBankrupt = true
 	if creditor != nil {
 		creditor.AddMoney(max(0, player.Money))
 		for _, property := range player.Properties {
 			g.transferProperty(player, creditor, property)
 		}
+	} else {
+		for _, property := range player.Properties {
+			g.properties[property].Owner = nil
+			g.properties[property].IsMortgaged = false
+			g.properties[property].Houses = 0
+			active_players := g.getActivePlayers()
+			g.auction(g.properties[property], active_players[rand.Intn(len(active_players))])
+		}
 	}
-	player.IsBankrupt = true
 	player.Properties = []int{}
 	player.CurrentPosition = -1
 	player.Money = -1

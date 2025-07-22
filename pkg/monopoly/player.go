@@ -28,6 +28,7 @@ func NewPlayer(name string, money int) *Player {
 	}
 }
 
+
 func (p *Player) AddMoney(amount int) {
 	if amount < 0 {
 		panic("Cannot add negative amount")
