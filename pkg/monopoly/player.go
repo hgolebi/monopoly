@@ -12,11 +12,12 @@ type Player struct {
 	roundsInJail    int
 }
 
-func NewPlayer(name string, money int) *Player {
+func NewPlayer(id int, name string, money int) *Player {
 	if money < 0 {
 		panic("Money cannot be negative")
 	}
 	return &Player{
+		ID:              id,
 		Name:            name,
 		Money:           money,
 		Properties:      []int{},
@@ -27,7 +28,6 @@ func NewPlayer(name string, money int) *Player {
 		roundsInJail:    0,
 	}
 }
-
 
 func (p *Player) AddMoney(amount int) {
 	if amount < 0 {

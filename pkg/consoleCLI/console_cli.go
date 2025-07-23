@@ -53,7 +53,6 @@ func (c *ConsoleCLI) GetStdAction(player int, state monopoly.GameState, availabl
 			response.Price = choosePrice()
 		case monopoly.BUYOFFER:
 			response.PropertyId = chooseProperty(availableActions.BuyPropertyList)
-			response.PlayerId = choosePlayer(state.Players)
 			response.Price = choosePrice()
 		case monopoly.BUYHOUSE:
 			response.PropertyId = chooseProperty(availableActions.BuyHouseList)
@@ -205,7 +204,7 @@ func (c *ConsoleCLI) BuyFromPlayerDecision(player int, state monopoly.GameState,
 	}
 	defer keyboard.Close()
 
-	fmt.Printf("Player %s wants you to buy property %d for %d? (y/n) \n", state.Players[state.CurrentPlayerIdx].Name, propertyId, price)
+	fmt.Printf("Player %s wants to sell you property %d for %d? (y/n) \n", state.Players[state.CurrentPlayerIdx].Name, propertyId, price)
 	for {
 		char, key, err := keyboard.GetKey()
 		if err != nil {
@@ -231,7 +230,7 @@ func (c *ConsoleCLI) SellToPlayerDecision(player int, state monopoly.GameState, 
 	}
 	defer keyboard.Close()
 
-	fmt.Printf("Player %s wants to sell you property %d for %d. Do you want to buy it? (y/n)\n ", state.Players[state.CurrentPlayerIdx].Name, propertyId, price)
+	fmt.Printf("Player %s wants to buy property %d from you for %d. Do you want to sell it? (y/n)\n ", state.Players[state.CurrentPlayerIdx].Name, propertyId, price)
 	for {
 		char, key, err := keyboard.GetKey()
 		if err != nil {

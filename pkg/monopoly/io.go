@@ -46,6 +46,10 @@ type GameState struct {
 	Charge           int // In case of a charge that would result in a player going bankrupt
 }
 
+func formatStr(str string, length int) string {
+	return str + fmt.Sprintf("%*s", length-len(str), " ")
+}
+
 func (s GameState) String() string {
 	result := "========================="
 	result = fmt.Sprintf("ROUND %d || PLAYER %d", s.Round, s.CurrentPlayerIdx)
@@ -53,7 +57,7 @@ func (s GameState) String() string {
 	result = "PLAYERS:\n"
 	for i, p := range s.Players {
 		status := "----"
-		if !p.IsBankrupt {
+		if p.IsBankrupt {
 			status = "DEAD"
 		} else if p.IsJailed {
 			status = "JAIL"
@@ -76,7 +80,7 @@ func (s GameState) String() string {
 				mortgaged = "MORTGAGED"
 			}
 			result += fmt.Sprintf("    %s %d %d %s %s %dHouse\n",
-				owner, prop.FieldIndex, prop.PropertyIndex, prop.Name, mortgaged, prop.Houses)
+				owner, prop.FieldIndex, prop.PropertyIndex, formatStr(prop.Name, 10), mortgaged, prop.Houses)
 		}
 	}
 	result += "\nPROPERTIES:\n"
@@ -90,7 +94,7 @@ func (s GameState) String() string {
 			mortgaged = "MORTGAGED"
 		}
 		result += fmt.Sprintf("field%d property%d %s %s %s %dHouse %v %s %d$ %d$\n",
-			prop.FieldIndex, prop.PropertyIndex, prop.Name, ownerName, mortgaged, prop.Houses, prop.CanBuildHouse, prop.Set, prop.Price, prop.HousePrice)
+			prop.FieldIndex, prop.PropertyIndex, formatStr(prop.Name, 10), ownerName, mortgaged, prop.Houses, prop.CanBuildHouse, prop.Set, prop.Price, prop.HousePrice)
 	}
 	return result
 }

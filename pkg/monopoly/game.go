@@ -38,15 +38,16 @@ type Game struct {
 func (g *Game) initGame() {
 	g.io = &ConsoleServer{}
 	g.logger = &ConsoleLogger{}
+	g.logger.Init()
 	g.logger.Log("Initializing game...")
 	g.round = 1
 	g.currentPlayerIdx = 0
 
 	g.players = []*Player{
-		NewPlayer("player1", 1500),
-		NewPlayer("player2", 1500),
-		NewPlayer("player3", 1500),
-		NewPlayer("player4", 1500),
+		NewPlayer(0, "player1", 1500),
+		NewPlayer(1, "player2", 1500),
+		NewPlayer(2, "player3", 1500),
+		NewPlayer(3, "player4", 1500),
 	}
 	g.io.Init(len(g.players))
 
@@ -521,17 +522,12 @@ func (g *Game) resolveStandardAction(action_details ActionDetails, available Ful
 			g.bankrupt(g.getCurrPlayer(), nil)
 			return
 		}
-		if action_details.PlayerId == g.currentPlayerIdx || g.players[action_details.PlayerId].IsBankrupt {
-			g.logger.Log(fmt.Sprintf("Invalid player %d for buy offer, going bankrupt", action_details.PlayerId))
-			g.bankrupt(g.getCurrPlayer(), nil)
-			return
-		}
 		if action_details.Price < 0 {
 			g.logger.Log(fmt.Sprintf("Invalid price %d for buy offer, going bankrupt", action_details.Price))
 			g.bankrupt(g.getCurrPlayer(), nil)
 			return
 		}
-		g.sendBuyOffer(action_details.PlayerId, action_details.PropertyId, action_details.Price)
+		g.sendBuyOffer(action_details.PropertyId, action_details.Price)
 		return
 	case BUYOUT:
 		if !slices.Contains(available.BuyOutList, action_details.PropertyId) {
@@ -737,15 +733,21 @@ func (g *Game) sendSellOffer(player_id int, property_id int, price int) {
 
 }
 
-func (g *Game) sendBuyOffer(player_id int, property_id int, price int) {
+func (g *Game) sendBuyOffer(property_id int, price int) {
 	buyer := g.getCurrPlayer()
-	seller := g.players[player_id]
 	property := g.properties[property_id]
+	seller := property.Owner
+	if seller == nil {
+		g.logger.Log(fmt.Sprintf("Property %s is not owned by anyone, going bankrupt", property.Name))
+		g.bankrupt(buyer, nil)
+		g.buy_offer_tries = 0
+		return
+	}
 	g.logger.Log(fmt.Sprintf("Player %s sent a buy offer to %s for property %s with price %d", seller.Name, buyer.Name, property.Name, price))
-	accepted := g.io.SellToPlayerDecision(player_id, g.getState(), property_id, price)
+	accepted := g.io.SellToPlayerDecision(seller.ID, g.getState(), property_id, price)
 	if accepted {
 		g.buy_offer_tries = 0
-		if seller.Money < price {
+		if buyer.Money < price {
 			g.logger.Log(fmt.Sprintf("Player %s does not have enough money to buy property %s for %d. Going bankrupt.", buyer.Name, property.Name, price))
 			g.bankrupt(buyer, nil)
 			return
