@@ -6,7 +6,7 @@ logi:
 +podczas buy offer zle się graczowi na kliencie
 ?przy kupowaniu od innego gracza gracz zbankrutował, mimo że miał więcej pięniędzy niż zaoferował (sprawdzam seller money, zamiast buyer)
 +po bankructwie properties maja nadal ownera
-next page nie dziala na wyborze property podczas buy offer
+?next page nie dziala na wyborze property podczas buy offer
 standard actions nie powinny uzywac getCurrentPlayer (bo może się zdażyć że inny gracz ma zbankrutować)
 możliwe, że szansa spowoduje insta bankructwo bez mozliwosci sprzedarzy posiadłości (do sprawdzenia)
 zablokować możliwość wysłania oferty wiekszej niz budzet gracza

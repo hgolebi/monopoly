@@ -64,10 +64,10 @@ func (c *ConsoleCLI) GetStdAction(player int, state monopoly.GameState, availabl
 }
 
 func chooseProperty(properties []int) int {
+	page := 0
+	max_page := (len(properties) - 1) / 8
 	for {
 		fmt.Println("Choose property (index):")
-		page := 0
-		max_page := (len(properties) - 1) / 8
 		for idx, property := range properties[page*8 : min(page*8+8, len(properties))] {
 			fmt.Printf("%d. Property index: %d\n", idx+1, property)
 		}
