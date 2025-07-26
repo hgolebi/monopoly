@@ -6,18 +6,17 @@ import (
 	"monopoly/pkg/monopoly"
 )
 
-func startGame() {
-	game := monopoly.Game{}
-	game.Start()
-}
-
 func main() {
 	cliMode := flag.Bool("cli", false, "run in CLI client mode")
 	flag.Parse()
+	io := monopoly.ConsoleServer{}
+	logger := monopoly.ConsoleLogger{}
+	numberOfPlayers := 4
 
 	if *cliMode {
 		consoleCLI.StartClient()
 	} else {
-		startGame()
+		game := monopoly.NewGame(numberOfPlayers, &io, &logger)
+		game.Start()
 	}
 }

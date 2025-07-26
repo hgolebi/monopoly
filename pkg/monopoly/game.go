@@ -36,21 +36,26 @@ type Game struct {
 	sell_offer_tries int
 }
 
-func (g *Game) initGame() {
-	g.io = &ConsoleServer{}
-	g.logger = &ConsoleLogger{}
+func NewGame(players_count int, io IMonopoly_IO, logger Logger) *Game {
+	g := &Game{}
+	g.io = io
+	g.logger = logger
 	g.logger.Init()
 	g.logger.Log("Initializing game...")
 	g.round = 1
 	g.currentPlayerIdx = 0
+
+	if players_count < 2 || players_count > 4 {
+		panic("Players count must be between 2 and 4")
+	}
 
 	g.players = []*Player{
 		NewPlayer(0, "player1", 1500),
 		NewPlayer(1, "player2", 1500),
 		NewPlayer(2, "player3", 1500),
 		NewPlayer(3, "player4", 1500),
-	}
-	g.io.Init(len(g.players))
+	}[:players_count]
+	g.io.Init(players_count)
 
 	g.properties = []*Property{
 		NewProperty(1, 0, "Brown1", 60, 50, true, "Brown"),
@@ -200,7 +205,7 @@ func (g *Game) initGame() {
 	}
 
 	g.logger.Log("Game initialized successfully.")
-
+	return g
 }
 
 func (g *Game) getState() GameState {
@@ -227,7 +232,6 @@ func (g *Game) getCurrPlayer() *Player {
 }
 
 func (g *Game) Start() {
-	g.initGame()
 	for {
 		g.logger.Log(fmt.Sprintf("Round %d", g.round))
 		for idx, player := range g.players {
