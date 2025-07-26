@@ -1,6 +1,7 @@
 package monopoly
 
 import (
+	"container/list"
 	"fmt"
 	"math/rand"
 	"os"
@@ -420,12 +421,12 @@ func (g *Game) jailCard() {
 func (g *Game) standardActions() {
 	action_list := FullActionList{}
 
-	action_list.MortgageList = g.getMortgageList()
-	action_list.BuyOutList = g.getBuyOutList()
-	action_list.SellPropertyList = g.getSellPropertyList()
-	action_list.BuyPropertyList = g.getBuyPropertyList()
-	action_list.BuyHouseList = g.getBuyHouseList()
-	action_list.SellHouseList = g.getSellHouseList()
+	action_list.MortgageList = g.getMortgageList(g.currentPlayerIdx)
+	action_list.BuyOutList = g.getBuyOutList(g.currentPlayerIdx)
+	action_list.SellPropertyList = g.getSellPropertyList(g.currentPlayerIdx)
+	action_list.BuyPropertyList = g.getBuyPropertyList(g.currentPlayerIdx)
+	action_list.BuyHouseList = g.getBuyHouseList(g.currentPlayerIdx)
+	action_list.SellHouseList = g.getSellHouseList(g.currentPlayerIdx)
 
 	action_list.Actions = []StdAction{NOACTION}
 	if len(action_list.MortgageList) > 0 {
@@ -450,7 +451,7 @@ func (g *Game) standardActions() {
 	if action_details.Action == NOACTION {
 		return
 	}
-	g.resolveStandardAction(action_details, action_list)
+	g.resolveStandardAction(g.currentPlayerIdx, action_details, action_list)
 	if g.players[g.currentPlayerIdx].IsBankrupt {
 		return
 	}
@@ -458,92 +459,98 @@ func (g *Game) standardActions() {
 	g.standardActions()
 }
 
-func (g *Game) resolveStandardAction(action_details ActionDetails, available FullActionList) {
+func (g *Game) resolveStandardAction(player_id int, action_details ActionDetails, available FullActionList) {
+	player := g.players[player_id]
 	if !slices.Contains(available.Actions, action_details.Action) {
 		g.logger.Log(fmt.Sprintf("Action %s not available, going bankrupt", StdActionNames[action_details.Action]))
-		g.bankrupt(g.getCurrPlayer(), nil)
+		g.bankrupt(player, nil)
 	}
 	switch action_details.Action {
 	case MORTGAGE:
 		if !slices.Contains(available.MortgageList, action_details.PropertyId) {
 			g.logger.Log(fmt.Sprintf("Action %s not available for property %d, going bankrupt", StdActionNames[action_details.Action], action_details.PropertyId))
-			g.bankrupt(g.getCurrPlayer(), nil)
+			g.bankrupt(player, nil)
 			return
 		}
-		g.mortgage(action_details.PropertyId)
+		g.mortgage(player_id, action_details.PropertyId)
 		return
 	case SELLHOUSE:
 		if !slices.Contains(available.SellHouseList, action_details.PropertyId) {
 			g.logger.Log(fmt.Sprintf("Action %s not available for property %d, going bankrupt", StdActionNames[action_details.Action], action_details.PropertyId))
-			g.bankrupt(g.getCurrPlayer(), nil)
+			g.bankrupt(player, nil)
 			return
 		}
-		g.sellHouse(action_details.PropertyId)
+		g.sellHouse(player_id, action_details.PropertyId)
 		return
 	case BUYHOUSE:
 		if !slices.Contains(available.BuyHouseList, action_details.PropertyId) {
 			g.logger.Log(fmt.Sprintf("Action %s not available for property %d, going bankrupt", StdActionNames[action_details.Action], action_details.PropertyId))
-			g.bankrupt(g.getCurrPlayer(), nil)
+			g.bankrupt(player, nil)
 			return
 		}
-		g.buyHouse(action_details.PropertyId)
+		g.buyHouse(player_id, action_details.PropertyId)
 		return
 	case SELLOFFER:
 		if g.sell_offer_tries >= g.settings.MAX_OFFER_TRIES {
 			g.logger.Log("Max sell offer tries reached, going bankrupt.")
-			g.bankrupt(g.getCurrPlayer(), nil)
+			g.bankrupt(player, nil)
 			return
 		}
 		if !slices.Contains(available.SellPropertyList, action_details.PropertyId) {
 			g.logger.Log(fmt.Sprintf("Action %s not available for property %d, going bankrupt", StdActionNames[action_details.Action], action_details.PropertyId))
-			g.bankrupt(g.getCurrPlayer(), nil)
+			g.bankrupt(player, nil)
 			return
 		}
-		if action_details.PlayerId == g.currentPlayerIdx || g.players[action_details.PlayerId].IsBankrupt {
+		if action_details.PlayerId == player_id || g.players[action_details.PlayerId].IsBankrupt {
 			g.logger.Log(fmt.Sprintf("Invalid player %d for sell offer, going bankrupt", action_details.PlayerId))
-			g.bankrupt(g.getCurrPlayer(), nil)
+			g.bankrupt(player, nil)
 			return
 		}
 		if action_details.Price < 0 {
 			g.logger.Log(fmt.Sprintf("Invalid price %d for sell offer, going bankrupt", action_details.Price))
-			g.bankrupt(g.getCurrPlayer(), nil)
+			g.bankrupt(player, nil)
 			return
 		}
-		g.sendSellOffer(action_details.PlayerId, action_details.PropertyId, action_details.Price)
+		if action_details.Price > g.players[action_details.PlayerId].Money {
+			g.logger.Log(fmt.Sprintf("Player %d cannot afford to buy property for %d", action_details.PlayerId, action_details.Price))
+			g.sell_offer_tries++
+			return
+		}
+		g.sendSellOffer(player_id, action_details.PlayerId, action_details.PropertyId, action_details.Price)
 		return
 	case BUYOFFER:
 		if g.buy_offer_tries >= g.settings.MAX_OFFER_TRIES {
 			g.logger.Log("Max buy offer tries reached, going bankrupt.")
-			g.bankrupt(g.getCurrPlayer(), nil)
+			g.bankrupt(player, nil)
 			return
 		}
 		if !slices.Contains(available.BuyPropertyList, action_details.PropertyId) {
 			g.logger.Log(fmt.Sprintf("Action %s not available for property %d, going bankrupt", StdActionNames[action_details.Action], action_details.PropertyId))
-			g.bankrupt(g.getCurrPlayer(), nil)
+			g.bankrupt(player, nil)
 			return
 		}
 		if action_details.Price < 0 {
 			g.logger.Log(fmt.Sprintf("Invalid price %d for buy offer, going bankrupt", action_details.Price))
-			g.bankrupt(g.getCurrPlayer(), nil)
+			g.bankrupt(player, nil)
 			return
 		}
-		g.sendBuyOffer(action_details.PropertyId, action_details.Price)
+		g.sendBuyOffer(player_id, action_details.PropertyId, action_details.Price)
 		return
 	case BUYOUT:
 		if !slices.Contains(available.BuyOutList, action_details.PropertyId) {
 			g.logger.Log(fmt.Sprintf("Action %s not available for property %d, going bankrupt", StdActionNames[action_details.Action], action_details.PropertyId))
-			g.bankrupt(g.getCurrPlayer(), nil)
+			g.bankrupt(player, nil)
 			return
 		}
-		g.buyOut(action_details.PropertyId)
+		g.buyOut(player_id, action_details.PropertyId)
 		return
 	}
 
 }
 
-func (g *Game) getMortgageList() []int {
+func (g *Game) getMortgageList(player_id int) []int {
 	mortgage_list := []int{}
-	properties := g.players[g.currentPlayerIdx].Properties
+	properties := g.players[player_id].Properties
 	for _, id := range properties {
 		property := g.properties[id]
 		if !property.IsMortgaged && !g.checkHouses(property) {
@@ -553,9 +560,9 @@ func (g *Game) getMortgageList() []int {
 	return mortgage_list
 }
 
-func (g *Game) getBuyOutList() []int {
+func (g *Game) getBuyOutList(player_id int) []int {
 	buyout_list := []int{}
-	properties := g.players[g.currentPlayerIdx].Properties
+	properties := g.players[player_id].Properties
 	for _, id := range properties {
 		property := g.properties[id]
 		if property.IsMortgaged {
@@ -565,9 +572,9 @@ func (g *Game) getBuyOutList() []int {
 	return buyout_list
 }
 
-func (g *Game) getSellPropertyList() []int {
+func (g *Game) getSellPropertyList(player_id int) []int {
 	sell_list := []int{}
-	properties := g.players[g.currentPlayerIdx].Properties
+	properties := g.players[player_id].Properties
 	for _, id := range properties {
 		property := g.properties[id]
 		if !g.checkHouses(property) {
@@ -577,9 +584,9 @@ func (g *Game) getSellPropertyList() []int {
 	return sell_list
 }
 
-func (g *Game) getBuyPropertyList() []int {
+func (g *Game) getBuyPropertyList(player_id int) []int {
 	buy_list := []int{}
-	player := g.getCurrPlayer()
+	player := g.players[player_id]
 	for _, property := range g.properties {
 		if property.Owner != nil && property.Owner != player && !g.checkHouses(property) {
 			buy_list = append(buy_list, property.PropertyIndex)
@@ -588,9 +595,9 @@ func (g *Game) getBuyPropertyList() []int {
 	return buy_list
 }
 
-func (g *Game) getBuyHouseList() []int {
+func (g *Game) getBuyHouseList(player_id int) []int {
 	buy_list := []int{}
-	player := g.getCurrPlayer()
+	player := g.players[player_id]
 	for _, set := range g.sets {
 		has_full_set := true
 		var temp_list []int
@@ -615,9 +622,9 @@ func (g *Game) getBuyHouseList() []int {
 	return buy_list
 }
 
-func (g *Game) getSellHouseList() []int {
+func (g *Game) getSellHouseList(player_id int) []int {
 	sell_list := []int{}
-	properties := g.players[g.currentPlayerIdx].Properties
+	properties := g.players[player_id].Properties
 	for _, id := range properties {
 		property := g.properties[id]
 		if property.Houses > 0 {
@@ -674,8 +681,8 @@ func (g *Game) chargePlayer(player_id int, amount int, target *Player) {
 	}
 	for player.Money < amount {
 		action_list := FullActionList{}
-		action_list.MortgageList = g.getMortgageList()
-		action_list.SellHouseList = g.getSellHouseList()
+		action_list.MortgageList = g.getMortgageList(player_id)
+		action_list.SellHouseList = g.getSellHouseList(player_id)
 		if len(action_list.MortgageList) > 0 {
 			action_list.Actions = append(action_list.Actions, MORTGAGE)
 		}
@@ -685,41 +692,41 @@ func (g *Game) chargePlayer(player_id int, amount int, target *Player) {
 		state := g.getState()
 		state.Charge = amount
 		action_details := g.io.GetStdAction(player_id, state, action_list)
-		g.resolveStandardAction(action_details, action_list)
+		g.resolveStandardAction(player_id, action_details, action_list)
 	}
 	g.charge(player, amount, target)
 }
 
-func (g *Game) mortgage(propertyId int) {
+func (g *Game) mortgage(player_id int, propertyId int) {
 	property := g.properties[propertyId]
-	player := g.getCurrPlayer()
+	player := g.players[player_id]
 	player.AddMoney(property.Price / 2)
 	property.IsMortgaged = true
 	g.logger.Log(fmt.Sprintf("Player %s mortgaged property %s for %d money", player.Name, property.Name, property.Price/2))
 }
 
-func (g *Game) sellHouse(propertyId int) {
+func (g *Game) sellHouse(player_id int, propertyId int) {
 	property := g.properties[propertyId]
-	player := g.getCurrPlayer()
+	player := g.players[player_id]
 	player.AddMoney(property.HousePrice / 2)
 	property.Houses--
 	g.logger.Log(fmt.Sprintf("Player %s sold a house on property %s for %d money", player.Name, property.Name, property.HousePrice/2))
 }
 
-func (g *Game) buyHouse(propertyId int) {
+func (g *Game) buyHouse(player_id int, propertyId int) {
 	property := g.properties[propertyId]
-	player := g.getCurrPlayer()
-	g.chargePlayer(g.currentPlayerIdx, property.HousePrice, nil)
+	player := g.players[player_id]
+	g.chargePlayer(player_id, property.HousePrice, nil)
 	property.Houses++
 	g.logger.Log(fmt.Sprintf("Player %s bought a house on property %s for %d money", player.Name, property.Name, property.HousePrice))
 }
 
-func (g *Game) sendSellOffer(player_id int, property_id int, price int) {
-	seller := g.getCurrPlayer()
-	buyer := g.players[player_id]
+func (g *Game) sendSellOffer(player_id int, target_id int, property_id int, price int) {
+	seller := g.players[player_id]
+	buyer := g.players[target_id]
 	property := g.properties[property_id]
 	g.logger.Log(fmt.Sprintf("Player %s sent a sell offer to %s for property %s with price %d", seller.Name, buyer.Name, property.Name, price))
-	accepted := g.io.BuyFromPlayerDecision(player_id, g.getState(), property_id, price)
+	accepted := g.io.BuyFromPlayerDecision(target_id, g.getState(), property_id, price)
 	if accepted {
 		g.sell_offer_tries = 0
 		if buyer.Money < price {
@@ -733,8 +740,8 @@ func (g *Game) sendSellOffer(player_id int, property_id int, price int) {
 
 }
 
-func (g *Game) sendBuyOffer(property_id int, price int) {
-	buyer := g.getCurrPlayer()
+func (g *Game) sendBuyOffer(player_id int, property_id int, price int) {
+	buyer := g.players[player_id]
 	property := g.properties[property_id]
 	seller := property.Owner
 	if seller == nil {
@@ -757,10 +764,10 @@ func (g *Game) sendBuyOffer(property_id int, price int) {
 	}
 }
 
-func (g *Game) buyOut(propertyId int) {
+func (g *Game) buyOut(player_id int, propertyId int) {
 	property := g.properties[propertyId]
-	player := g.getCurrPlayer()
-	g.chargePlayer(g.currentPlayerIdx, int(float64(property.Price)*1.1), nil)
+	player := g.players[player_id]
+	g.chargePlayer(player_id, int(float64(property.Price)*1.1), nil)
 	property.IsMortgaged = false
 	g.logger.Log(fmt.Sprintf("Player %s bought out property %s for %d money", player.Name, property.Name, int(float64(property.Price)*1.1)))
 }
@@ -903,33 +910,37 @@ func (g *Game) checkCharge(p *Property) int {
 
 func (g *Game) auction(property *Property, first_player_id int) {
 	g.logger.Log(fmt.Sprintf("Auctioning property %s", property.Name))
-	active_players := g.getActivePlayers()
-	bid_player_iterator := slices.Index(active_players, first_player_id)
+	queue := list.New()
+	for _, player := range g.players[first_player_id:] {
+		if !player.IsBankrupt {
+			queue.PushBack(player.ID)
+		}
+	}
+	for _, player := range g.players[:first_player_id] {
+		if !player.IsBankrupt {
+			queue.PushBack(player.ID)
+		}
+	}
 	curr_price := g.settings.MIN_PRICE
 	auction_winner := -1
-	for len(active_players) > 0 {
-		if len(active_players) == 1 && auction_winner > -1 {
+	for queue.Len() > 0 {
+		bidderID := queue.Front().Value.(int)
+		queue.Remove(queue.Front())
+		if auction_winner == bidderID {
 			break
 		}
-		bidding_player_id := active_players[bid_player_iterator]
-		bidding_player := g.players[bidding_player_id]
-
-		bid_offer := g.io.BiddingDecision(bidding_player_id, g.getState(), property.PropertyIndex, curr_price)
+		bidder := g.players[bidderID]
+		bid_offer := g.io.BiddingDecision(bidderID, g.getState(), property.PropertyIndex, curr_price)
 		if bid_offer <= curr_price {
-			g.logger.Log(fmt.Sprintf("Player %s did not bid.", bidding_player.Name))
-			active_players = append(active_players[:bid_player_iterator], active_players[bid_player_iterator+1:]...)
-		} else if bid_offer > bidding_player.Money {
-			g.logger.Log(fmt.Sprintf("Player %s does not have enough money to bid %d. Going bankrupt.", bidding_player.Name, bid_offer))
-			g.bankrupt(bidding_player, nil)
-			active_players = append(active_players[:bid_player_iterator], active_players[bid_player_iterator+1:]...)
+			g.logger.Log(fmt.Sprintf("Player %s did not bid.", bidder.Name))
+		} else if bid_offer > bidder.Money {
+			g.logger.Log(fmt.Sprintf("Player %s does not have enough money to bid %d. Going bankrupt.", bidder.Name, bid_offer))
+			g.bankrupt(bidder, nil)
 		} else {
-			g.logger.Log(fmt.Sprintf("Player %s bid %d", bidding_player.Name, bid_offer))
+			g.logger.Log(fmt.Sprintf("Player %s bid %d", bidder.Name, bid_offer))
 			curr_price = bid_offer
-			auction_winner = bidding_player_id
-		}
-		bid_player_iterator++
-		if bid_player_iterator >= len(active_players) {
-			bid_player_iterator = 0
+			auction_winner = bidderID
+			queue.PushBack(bidderID)
 		}
 	}
 	if auction_winner == -1 {

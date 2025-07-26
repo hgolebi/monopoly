@@ -3,7 +3,6 @@ package monopoly
 import (
 	"fmt"
 	"os"
-	"time"
 )
 
 type Logger interface {
@@ -27,7 +26,7 @@ func (c *ConsoleLogger) Init() {
 }
 
 func (c *ConsoleLogger) Log(message string) {
-	time.Sleep(500 * time.Millisecond)
+	// time.Sleep(500 * time.Millisecond)
 	println(message)
 }
 
