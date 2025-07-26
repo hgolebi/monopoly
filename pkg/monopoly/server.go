@@ -215,3 +215,17 @@ func (s *ConsoleServer) BiddingDecision(player int, state GameState, propertyId 
 	fmt.Printf("Gracz %d złożył ofertę licytacyjną: %d\n", player, resp)
 	return resp
 }
+
+func (s *ConsoleServer) Finish(f FinishOption, winner int, state GameState) {
+	switch f {
+	case WIN:
+		fmt.Printf("Gra skonczona. Gracz o ID %d wygrał!\n", winner)
+	case DRAW:
+		fmt.Println("Gra zakończona remisem!")
+	case ROUND_LIMIT:
+		fmt.Printf("Gra zakończona z powodu przekroczenia limitu rund. Wygrywa gracz z ID %d!\n", winner)
+	}
+	for _, player := range s.Players {
+		player.Conn.Close()
+	}
+}

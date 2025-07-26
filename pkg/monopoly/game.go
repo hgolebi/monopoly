@@ -4,7 +4,6 @@ import (
 	"container/list"
 	"fmt"
 	"math/rand"
-	"os"
 	"slices"
 )
 
@@ -232,12 +231,16 @@ func (g *Game) getCurrPlayer() *Player {
 }
 
 func (g *Game) Start() {
-	for {
+	finishFlag := false
+	for finishFlag {
 		g.logger.Log(fmt.Sprintf("Round %d", g.round))
 		for idx, player := range g.players {
 			g.logger.LogState(g.getState())
 			g.currentPlayerIdx = idx
-			g.checkForWinner()
+			finishFlag := g.checkForWinner()
+			if finishFlag {
+				break
+			}
 			if player.IsBankrupt {
 				continue
 			}
@@ -253,40 +256,45 @@ func (g *Game) Start() {
 	}
 }
 
-func (g *Game) checkForWinner() {
+func (g *Game) checkForWinner() bool {
 	active_players := g.getActivePlayers()
 	if len(active_players) == 0 {
 		g.endDraw()
+		return true
 	} else if len(active_players) == 1 {
 		g.endWinner(g.players[active_players[0]])
+		return true
 	} else if g.round > g.settings.MAX_ROUNDS {
 		g.endRoundLimit()
+		return true
 	}
+	return false
 }
 
 func (g *Game) endRoundLimit() {
 	g.logger.Log("Game ended due to round limit reached.")
-	winner := g.players[0]
-	max_net_worth := g.calculateNetWorth(winner)
-	for _, player := range g.players {
-		net_worth := g.calculateNetWorth(player)
+	winner_id := -1
+	max_net_worth := -1
+	for _, player_id := range g.getActivePlayers() {
+		net_worth := g.calculateNetWorth(g.players[player_id])
 		if net_worth > max_net_worth {
 			max_net_worth = net_worth
-			winner = player
+			winner_id = player_id
 		}
 	}
+	winner := g.players[winner_id]
 	g.logger.Log(fmt.Sprintf("Winner is %s with net worth of %d", winner.Name, max_net_worth))
-	os.Exit(0)
+	g.io.Finish(ROUND_LIMIT, winner_id, g.getState())
 }
 
 func (g *Game) endWinner(winner *Player) {
 	g.logger.Log(fmt.Sprintf("Game ended. Winner is %s", winner.Name))
-	os.Exit(0)
+	g.io.Finish(WIN, winner.ID, g.getState())
 }
 
 func (g *Game) endDraw() {
 	g.logger.Log("Game ended in a draw. No players left.")
-	os.Exit(0)
+	g.io.Finish(DRAW, -1, g.getState())
 }
 
 func (g *Game) makeMove(moves_in_a_row int, d1 int, d2 int) {
@@ -328,6 +336,7 @@ func (g *Game) jailPlayer() {
 	player := g.getCurrPlayer()
 	player.IsJailed = true
 	player.CurrentPosition = g.settings.JAIL_POSITION
+	player.roundsInJail = 0
 	g.logger.Log("Player is going to jail.")
 }
 

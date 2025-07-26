@@ -117,6 +117,14 @@ type ActionDetails struct {
 	PlayerId   int
 }
 
+type FinishOption int
+
+const (
+	WIN FinishOption = iota
+	DRAW
+	ROUND_LIMIT
+)
+
 type IMonopoly_IO interface {
 	Init(int)
 	GetStdAction(player int, state GameState, availableActions FullActionList) ActionDetails
@@ -125,4 +133,5 @@ type IMonopoly_IO interface {
 	BuyFromPlayerDecision(player int, state GameState, propertyId int, price int) bool
 	SellToPlayerDecision(player int, state GameState, propertyId int, price int) bool
 	BiddingDecision(player int, state GameState, propertyId int, currentPrice int) int
+	Finish(f FinishOption, winner int, state GameState)
 }

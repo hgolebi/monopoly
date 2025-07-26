@@ -1,1 +1,2 @@
 resetować stan po zmianie gracza
+po przekroczeniu limitu rund może dojść do remisu, trzeba obsłużyć
