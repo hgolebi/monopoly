@@ -72,7 +72,7 @@ func TestGetState(t *testing.T) {
 	logger.On("Init").Return()
 	logger.On("Log", mock.Anything).Return()
 	logger.On("LogState", mock.Anything).Return()
-	game := NewGame(2, io, logger)
+	game := NewGame(2, io, logger, 0)
 	state := game.getState()
 
 	assert.NotNil(t, state, "State should not be nil")
@@ -114,7 +114,7 @@ func TestGetActivePlayers(t *testing.T) {
 		logger.On("Log", mock.Anything).Return()
 		logger.On("LogState", mock.Anything).Return()
 
-		game := NewGame(test.playersCount, io, logger)
+		game := NewGame(test.playersCount, io, logger, 0)
 		for _, playerId := range test.bankruptPlayers {
 			game.players[playerId].IsBankrupt = true
 		}
@@ -150,7 +150,7 @@ func TestGetCurrPlayer(t *testing.T) {
 		logger.On("Log", mock.Anything).Return()
 		logger.On("LogState", mock.Anything).Return()
 
-		game := NewGame(test.playersCount, io, logger)
+		game := NewGame(test.playersCount, io, logger, 0)
 		game.currentPlayerIdx = test.currentPlayer
 
 		currPlayer := game.getCurrPlayer()
@@ -190,7 +190,7 @@ func TestCheckForWinner(t *testing.T) {
 		logger.On("Log", mock.Anything).Return()
 		logger.On("LogState", mock.Anything).Return()
 
-		game := NewGame(test.playersCount, io, logger)
+		game := NewGame(test.playersCount, io, logger, 0)
 		for _, playerId := range test.bankrupts {
 			game.players[playerId].IsBankrupt = true
 		}
@@ -204,6 +204,10 @@ func TestCheckForWinner(t *testing.T) {
 			io.AssertCalled(t, "Finish", test.expectedFinishOption, test.expectedWinnerID, mock.Anything)
 		}
 	}
+}
+
+func TestMakeMove(t *testing.T) {
+	panic("not implemented")
 }
 
 func TestJailPlayer(t *testing.T) {
@@ -224,12 +228,307 @@ func TestJailPlayer(t *testing.T) {
 		logger.On("Log", mock.Anything).Return()
 		logger.On("LogState", mock.Anything).Return()
 
-		game := NewGame(4, io, logger)
+		game := NewGame(4, io, logger, 0)
 		game.currentPlayerIdx = test.playerId
 		game.jailPlayer()
 
 		assert.True(t, game.players[test.playerId].IsJailed, "Player should be jailed")
-		assert.Equal(t, game.players[test.playerId].roundsInJail, 0, "Rounds in jail should be 1")
+		assert.Equal(t, game.players[test.playerId].RoundsInJail, 0, "Rounds in jail should be 1")
 		assert.Equal(t, game.players[test.playerId].CurrentPosition, game.settings.JAIL_POSITION, "Player's position should be set to jail")
+	}
+}
+
+func TestMovePlayer(t *testing.T) {
+	tests := []struct {
+		playerId         int
+		startingPosition int
+		numberOfFields   int
+		expectedPosition int
+		expectedCash     int
+	}{
+		{0, 0, 2, 2, 1500},
+		{1, 0, 2, 2, 1500},
+		{2, 0, 2, 2, 1500},
+		{3, 0, 2, 2, 1500},
+		{0, 2, 4, 6, 1500},
+		{0, 39, 1, 0, 1700},
+		{0, 38, 3, 1, 1700},
+	}
+
+	for _, test := range tests {
+		io := &MockMonopolyIO{}
+		io.On("Init", 4).Return()
+		logger := &MockLogger{}
+		logger.On("Init").Return()
+		logger.On("Log", mock.Anything).Return()
+		logger.On("LogState", mock.Anything).Return()
+
+		game := NewGame(4, io, logger, 0)
+		game.currentPlayerIdx = test.playerId
+		game.players[test.playerId].CurrentPosition = test.startingPosition
+
+		game.movePlayer(test.numberOfFields)
+
+		assert.Equal(t, game.players[test.playerId].CurrentPosition, test.expectedPosition, "Player's position should match expected")
+		assert.Equal(t, game.players[test.playerId].Money, test.expectedCash, "Player's cash should match expected")
+	}
+}
+
+func TestRollDiceBetween1And6(t *testing.T) {
+	io := &MockMonopolyIO{}
+	io.On("Init", 4).Return()
+	logger := &MockLogger{}
+	logger.On("Init").Return()
+	logger.On("Log", mock.Anything).Return()
+	logger.On("LogState", mock.Anything).Return()
+
+	g := NewGame(4, io, logger, 0)
+
+	for range 1000 {
+		d1, d2 := g.rollDice()
+		if d1 < 1 || d1 > 6 {
+			t.Errorf("dice1 out of range: got %d", d1)
+		}
+		if d2 < 1 || d2 > 6 {
+			t.Errorf("dice2 out of range: got %d", d2)
+		}
+	}
+}
+
+func TestSeededRollDice(t *testing.T) {
+	tests := []struct {
+		seed int64
+		d1   int
+		d2   int
+	}{
+		{1, 6, 4},
+		{2, 5, 1},
+		{22, 4, 4},
+		{42, 6, 6},
+		{56, 1, 1},
+	}
+	for _, test := range tests {
+		for i := 0; i < 100; i++ {
+			io := &MockMonopolyIO{}
+			io.On("Init", 4).Return()
+			logger := &MockLogger{}
+			logger.On("Init").Return()
+			logger.On("Log", mock.Anything).Return()
+			logger.On("LogState", mock.Anything).Return()
+
+			game := NewGame(4, io, logger, test.seed)
+			d1, d2 := game.rollDice()
+			assert.Equal(t, test.d1, d1, "First die should match expected")
+			assert.Equal(t, test.d2, d2, "Second die should match expected")
+		}
+	}
+}
+
+// func TestFindSeed(t *testing.T) {
+// 	for i := 0; i < 100; i++ {
+// 		io := &MockMonopolyIO{}
+// 		io.On("Init", 4).Return()
+// 		logger := &MockLogger{}
+// 		logger.On("Init").Return()
+// 		logger.On("Log", mock.Anything).Return()
+// 		logger.On("LogState", mock.Anything).Return()
+
+// 		game := NewGame(4, io, logger, int64(i))
+// 		d1, d2 := game.rollDice()
+// 		assert.NotEqual(t, d1, d2, fmt.Sprintf("Seed: %d", i))
+// 	}
+// }
+
+func TestRollDiceAllValuesPossible(t *testing.T) {
+	io := &MockMonopolyIO{}
+	io.On("Init", 4).Return()
+	logger := &MockLogger{}
+	logger.On("Init").Return()
+	logger.On("Log", mock.Anything).Return()
+	logger.On("LogState", mock.Anything).Return()
+
+	g := NewGame(4, io, logger, 0)
+
+	countsD1 := make([]int, 6)
+	countsD2 := make([]int, 6)
+
+	for range 10000 {
+		d1, d2 := g.rollDice()
+		countsD1[d1-1]++
+		countsD2[d2-1]++
+	}
+	for i, c := range countsD1 {
+		if c == 0 {
+			t.Errorf("Value %d never rolled on dice1", i+1)
+		}
+	}
+	for i, c := range countsD2 {
+		if c == 0 {
+			t.Errorf("Value %d never rolled on dice2", i+1)
+		}
+	}
+}
+
+func TestHandleJail(t *testing.T) {
+	tests := []struct {
+		playerId         int
+		jailCards        int
+		roundsInJail     int
+		availableActions []JailAction
+	}{
+		{0, 0, 0, []JailAction{BAIL, ROLL_DICE}},
+		{0, 0, 1, []JailAction{BAIL, ROLL_DICE}},
+		{0, 0, 2, []JailAction{BAIL, ROLL_DICE}},
+		{0, 0, 3, []JailAction{BAIL}},
+		{0, 1, 1, []JailAction{BAIL, CARD, ROLL_DICE}},
+		{0, 1, 3, []JailAction{BAIL, CARD}},
+	}
+
+	for _, test := range tests {
+		io := &MockMonopolyIO{}
+		io.On("Init", 4).Return()
+		logger := &MockLogger{}
+		logger.On("Init").Return()
+		logger.On("Log", mock.Anything).Return()
+		logger.On("LogState", mock.Anything).Return()
+
+		io.On("GetStdAction", test.playerId, mock.Anything, mock.Anything).Return(ActionDetails{
+			Action: NOACTION,
+		})
+		io.On("GetJailAction", test.playerId, mock.Anything, mock.Anything).Return(ROLL_DICE)
+		game := NewGame(4, io, logger, 0)
+		game.currentPlayerIdx = test.playerId
+		player := game.players[test.playerId]
+		player.IsJailed = true
+		player.JailCards = test.jailCards
+		player.RoundsInJail = test.roundsInJail
+
+		game.handleJail()
+		io.AssertCalled(t, "GetJailAction", test.playerId, mock.Anything, test.availableActions)
+
+	}
+}
+
+func TestJailRollDice(t *testing.T) {
+	tests := []struct {
+		playerId             int
+		roundsInJail         int
+		seed                 int64
+		expectedPosition     int
+		expectedRoundsInJail int
+		expectedJailed       bool
+	}{
+		{1, 0, 1, 10, 1, true},
+		{1, 1, 1, 10, 2, true},
+		{1, 2, 1, 10, 3, true},
+		{0, 0, 56, 20, 0, false},
+	}
+	for _, test := range tests {
+		io := &MockMonopolyIO{}
+		io.On("Init", 4).Return()
+		logger := &MockLogger{}
+		logger.On("Init").Return()
+		logger.On("Log", mock.Anything).Return()
+		logger.On("LogState", mock.Anything).Return()
+
+		io.On("BuyDecision", mock.Anything, mock.Anything, mock.Anything).Return(true)
+		io.On("GetStdAction", test.playerId, mock.Anything, mock.Anything).Return(ActionDetails{
+			Action: NOACTION,
+		})
+		game := NewGame(4, io, logger, test.seed)
+		game.currentPlayerIdx = test.playerId
+		player := game.players[test.playerId]
+		player.IsJailed = true
+		player.CurrentPosition = 10
+		player.RoundsInJail = test.roundsInJail
+
+		game.jailRollDice()
+		assert.Equal(t, test.expectedPosition, player.CurrentPosition, "Player's position should match expected after rolling dice in jail")
+		assert.Equal(t, test.expectedRoundsInJail, player.RoundsInJail, "Player's rounds in jail should match expected after rolling dice in jail")
+		assert.Equal(t, test.expectedJailed, player.IsJailed, "Player's jailed status should match expected after rolling dice in jail")
+	}
+}
+
+func TestJailBail(t *testing.T) {
+	tests := []struct {
+		playerId             int
+		roundsInJail         int
+		cash                 int
+		expectedCash         int
+		expectedJailed       bool
+		expectedBankrupt     bool
+		expectedRoundsInJail int
+	}{
+		{1, 0, 1500, 1450, false, false, 0},
+		{1, 1, 1500, 1450, false, false, 0},
+		{1, 3, 1500, 1450, false, false, 0},
+		{0, 0, 50, 0, false, false, 0},
+		{0, 0, 49, -1, true, true, 0},
+	}
+	for _, test := range tests {
+		io := &MockMonopolyIO{}
+		io.On("Init", 4).Return()
+		logger := &MockLogger{}
+		logger.On("Init").Return()
+		logger.On("Log", mock.Anything).Return()
+		logger.On("LogState", mock.Anything).Return()
+
+		io.On("BuyDecision", mock.Anything, mock.Anything, mock.Anything).Return(true)
+		io.On("GetStdAction", test.playerId, mock.Anything, mock.Anything).Return(ActionDetails{
+			Action: NOACTION,
+		})
+		game := NewGame(4, io, logger, 1)
+		game.currentPlayerIdx = test.playerId
+		player := game.players[test.playerId]
+		player.IsJailed = true
+		player.CurrentPosition = 10
+		player.Money = test.cash
+		player.RoundsInJail = test.roundsInJail
+
+		game.jailBail()
+		assert.Equal(t, test.expectedCash, player.Money, "Player's cash should match expected after bailing out of jail")
+		assert.Equal(t, test.expectedJailed, player.IsJailed, "Player's jailed status should match expected after bailing out of jail")
+		assert.Equal(t, test.expectedBankrupt, player.IsBankrupt, "Player's bankrupt status should match expected after bailing out of jail")
+		assert.Equal(t, test.expectedRoundsInJail, player.RoundsInJail, "Player's rounds in jail should match expected after rolling dice in jail")
+	}
+}
+
+func TestJailCard(t *testing.T) {
+	tests := []struct {
+		playerId             int
+		roundsInJail         int
+		cards                int
+		expectedCards        int
+		expectedJailed       bool
+		expectedRoundsInJail int
+	}{
+		{1, 0, 1, 0, false, 0},
+		{1, 1, 2, 1, false, 0},
+		{1, 3, 3, 2, false, 0},
+	}
+	for _, test := range tests {
+		io := &MockMonopolyIO{}
+		io.On("Init", 4).Return()
+		logger := &MockLogger{}
+		logger.On("Init").Return()
+		logger.On("Log", mock.Anything).Return()
+		logger.On("LogState", mock.Anything).Return()
+
+		io.On("BuyDecision", mock.Anything, mock.Anything, mock.Anything).Return(true)
+		io.On("GetStdAction", test.playerId, mock.Anything, mock.Anything).Return(ActionDetails{
+			Action: NOACTION,
+		})
+		game := NewGame(4, io, logger, 1)
+		game.currentPlayerIdx = test.playerId
+		player := game.players[test.playerId]
+		player.IsJailed = true
+		player.CurrentPosition = 10
+		player.JailCards = test.cards
+		player.RoundsInJail = test.roundsInJail
+
+		game.jailCard()
+		assert.Equal(t, test.expectedCards, player.JailCards, "Player's jail cards should match expected after using a jail card")
+		assert.Equal(t, test.expectedJailed, player.IsJailed, "Player's jailed status should match expected after using a jail card")
+		assert.Equal(t, test.expectedRoundsInJail, player.RoundsInJail, "Player's rounds in jail should match expected after using a jail card")
 	}
 }

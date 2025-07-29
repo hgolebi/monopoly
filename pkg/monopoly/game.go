@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"slices"
+	"time"
 )
 
 const RAILROAD = "Railroad"
@@ -33,14 +34,20 @@ type Game struct {
 	logger           Logger
 	buy_offer_tries  int
 	sell_offer_tries int
+	randomSource     *rand.Rand
 }
 
-func NewGame(players_count int, io IMonopoly_IO, logger Logger) *Game {
+func NewGame(players_count int, io IMonopoly_IO, logger Logger, seed int64) *Game {
 	g := &Game{}
 	g.io = io
 	g.logger = logger
 	g.logger.Init()
 	g.logger.Log("Initializing game...")
+	if seed == 0 {
+		seed = time.Now().UnixNano()
+	}
+	g.randomSource = rand.New(rand.NewSource(seed))
+
 	g.round = 1
 	g.currentPlayerIdx = 0
 
@@ -336,7 +343,7 @@ func (g *Game) jailPlayer() {
 	player := g.getCurrPlayer()
 	player.IsJailed = true
 	player.CurrentPosition = g.settings.JAIL_POSITION
-	player.roundsInJail = 0
+	player.RoundsInJail = 0
 	g.logger.Log("Player is going to jail.")
 }
 
@@ -355,7 +362,7 @@ func (g *Game) movePlayer(count int) {
 }
 
 func (g *Game) rollDice() (dice1 int, dice2 int) {
-	d1, d2 := rand.Intn(6)+1, rand.Intn(6)+1
+	d1, d2 := g.randomSource.Intn(6)+1, g.randomSource.Intn(6)+1
 	g.logger.Log(fmt.Sprintf("Rolled dice: %d, %d", d1, d2))
 	return d1, d2
 }
@@ -372,7 +379,7 @@ func (g *Game) handleJail() {
 	if player.JailCards > 0 {
 		action_list = append(action_list, CARD)
 	}
-	if player.roundsInJail < 3 {
+	if player.RoundsInJail < 3 {
 		action_list = append(action_list, ROLL_DICE)
 	}
 	action_details := g.io.GetJailAction(g.currentPlayerIdx, g.getState(), action_list)
@@ -387,6 +394,10 @@ func (g *Game) handleJail() {
 		return
 	case CARD:
 		g.logger.Log("Player chose to use a jail card to get out of jail.")
+		if player.JailCards <= 0 {
+			g.logger.Log("Player has no jail cards left, going bankrupt.")
+			g.bankrupt(player, nil)
+		}
 		g.jailCard()
 		return
 	default:
@@ -401,10 +412,10 @@ func (g *Game) jailRollDice() {
 	if d1 == d2 {
 		g.logger.Log("Player rolled doubles, getting out of jail.")
 		player.IsJailed = false
-		player.roundsInJail = 0
+		player.RoundsInJail = 0
 		g.makeMove(1, d1, d2)
 	} else {
-		player.roundsInJail++
+		player.RoundsInJail++
 	}
 }
 
@@ -415,7 +426,7 @@ func (g *Game) jailBail() {
 		return
 	}
 	player.IsJailed = false
-	player.roundsInJail = 0
+	player.RoundsInJail = 0
 	g.makeMove(1, 0, 0)
 }
 
@@ -427,7 +438,7 @@ func (g *Game) jailCard() {
 	player.JailCards--
 	g.logger.Log(fmt.Sprintf("Jail cards left: %d", player.JailCards))
 	player.IsJailed = false
-	player.roundsInJail = 0
+	player.RoundsInJail = 0
 	g.makeMove(1, 0, 0)
 }
 
@@ -788,12 +799,12 @@ func (g *Game) buyOut(player_id int, propertyId int) {
 func (g *Game) doForNoActionField() {}
 
 func (g *Game) doForChest() {
-	action := rand.Intn(7)
+	action := g.randomSource.Intn(7)
 	g.resolveChanceOrChest(action)
 }
 
 func (g *Game) doForChance() {
-	action := rand.Intn(8)
+	action := g.randomSource.Intn(8)
 	g.resolveChanceOrChest(action)
 }
 
@@ -802,15 +813,15 @@ func (g *Game) resolveChanceOrChest(action int) {
 
 	switch action {
 	case 0: // Player receives money from the bank
-		amount := rand.Intn(151) + 50 // 50-200
+		amount := g.randomSource.Intn(151) + 50 // 50-200
 		g.logger.Log(fmt.Sprintf("Chest: Player %s receives %d from the bank.", player.Name, amount))
 		player.AddMoney(amount)
 	case 1: // Player pays money to the bank
-		amount := rand.Intn(101) + 50 // 50-150
+		amount := g.randomSource.Intn(101) + 50 // 50-150
 		g.logger.Log(fmt.Sprintf("Chest: Player %s pays %d to the bank.", player.Name, amount))
 		g.chargePlayer(g.currentPlayerIdx, amount, nil)
 	case 2: // Each player pays money to the current player
-		amount := rand.Intn(11) + 10 // 10-20
+		amount := g.randomSource.Intn(11) + 10 // 10-20
 		g.logger.Log(fmt.Sprintf("Chest: Each player pays %d to %s.", amount, player.Name))
 		for idx, p := range g.players {
 			if idx != g.currentPlayerIdx && !p.IsBankrupt {
@@ -818,7 +829,7 @@ func (g *Game) resolveChanceOrChest(action int) {
 			}
 		}
 	case 3: // Current player pays money to each other player
-		amount := rand.Intn(11) + 10 // 10-20
+		amount := g.randomSource.Intn(11) + 10 // 10-20
 		g.logger.Log(fmt.Sprintf("Chest: %s pays %d to each other player.", player.Name, amount))
 		for idx, p := range g.players {
 			if idx == g.currentPlayerIdx && !p.IsBankrupt {
@@ -836,7 +847,7 @@ func (g *Game) resolveChanceOrChest(action int) {
 		player.SetPosition(0)
 		player.AddMoney(g.settings.START_PASS_MONEY)
 	case 7: // Player moves to a specific field
-		field_index := rand.Intn(len(g.fields))
+		field_index := g.randomSource.Intn(len(g.fields))
 		field := g.fields[field_index]
 		g.logger.Log(fmt.Sprintf("Chest: Player %s moves to field %s.", player.Name, field.GetName()))
 		player.SetPosition(field_index)
@@ -999,7 +1010,7 @@ func (g *Game) bankrupt(player *Player, creditor *Player) {
 			g.properties[property].IsMortgaged = false
 			g.properties[property].Houses = 0
 			active_players := g.getActivePlayers()
-			g.auction(g.properties[property], active_players[rand.Intn(len(active_players))])
+			g.auction(g.properties[property], active_players[g.randomSource.Intn(len(active_players))])
 		}
 	}
 	player.Properties = []int{}

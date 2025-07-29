@@ -9,7 +9,7 @@ type Player struct {
 	IsBankrupt      bool
 	IsJailed        bool
 	JailCards       int
-	roundsInJail    int
+	RoundsInJail    int
 }
 
 func NewPlayer(id int, name string, money int) *Player {
@@ -25,7 +25,7 @@ func NewPlayer(id int, name string, money int) *Player {
 		IsBankrupt:      false,
 		IsJailed:        false,
 		JailCards:       0,
-		roundsInJail:    0,
+		RoundsInJail:    0,
 	}
 }
 
