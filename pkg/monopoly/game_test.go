@@ -1,6 +1,7 @@
 package monopoly
 
 import (
+	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -530,5 +531,407 @@ func TestJailCard(t *testing.T) {
 		assert.Equal(t, test.expectedCards, player.JailCards, "Player's jail cards should match expected after using a jail card")
 		assert.Equal(t, test.expectedJailed, player.IsJailed, "Player's jailed status should match expected after using a jail card")
 		assert.Equal(t, test.expectedRoundsInJail, player.RoundsInJail, "Player's rounds in jail should match expected after using a jail card")
+	}
+}
+
+func TestCheckHouses(t *testing.T) {
+	tests := []struct {
+		propertyId     int
+		canBuildHouses bool
+		Houses         int
+		expectedResult bool
+	}{
+		{1, false, 0, false},
+		{2, true, 0, false},
+		{3, true, 1, true},
+		{4, true, 2, true},
+		{5, true, 3, true},
+		{6, true, 4, true},
+		{7, true, 5, true},
+	}
+
+	for _, test := range tests {
+		io := &MockMonopolyIO{}
+		io.On("Init", 4).Return()
+		logger := &MockLogger{}
+		logger.On("Init").Return()
+		logger.On("Log", mock.Anything).Return()
+		logger.On("LogState", mock.Anything).Return()
+
+		game := NewGame(4, io, logger, 1)
+		property := game.properties[test.propertyId]
+		property.CanBuildHouse = test.canBuildHouses
+		property.Houses = test.Houses
+
+		result := game.checkHouses(game.properties[test.propertyId])
+		assert.Equal(t, test.expectedResult, result, "Check houses result should match expected")
+	}
+}
+
+// "Brown":      {0, 1},
+// "Light Blue": {3, 4, 5},
+// "Pink":       {6, 8, 9},
+// "Orange":     {11, 12, 13},
+// "Red":        {14, 15, 16},
+// "Yellow":     {18, 19, 21},
+// "Green":      {22, 23, 24},
+// "Dark Blue":  {26, 27},
+func TestCheckHousesSets(t *testing.T) {
+	tests := []struct {
+		propertyIds       []int
+		propertyWithHouse int
+		expectedResult    bool
+	}{
+		{[]int{0, 1}, 0, true},        // Brown
+		{[]int{0, 1}, 1, true},        // Brown
+		{[]int{0, 1}, 2, false},       // Brown
+		{[]int{3, 4, 5}, 3, true},     // Light Blue
+		{[]int{3, 4, 5}, 4, true},     // Light Blue
+		{[]int{3, 4, 5}, 5, true},     // Light Blue
+		{[]int{6, 8, 9}, 6, true},     // Pink
+		{[]int{6, 8, 9}, 8, true},     // Pink
+		{[]int{6, 8, 9}, 7, false},    // Pink
+		{[]int{6, 8, 9}, 9, true},     // Pink
+		{[]int{11, 12, 13}, 11, true}, // Orange
+		{[]int{11, 12, 13}, 12, true}, // Orange
+		{[]int{11, 12, 13}, 13, true}, // Orange
+		{[]int{14, 15, 16}, 14, true}, // Red
+		{[]int{14, 15, 16}, 15, true}, // Red
+		{[]int{14, 15, 16}, 16, true}, // Red
+		{[]int{18, 19, 21}, 18, true}, // Yellow
+		{[]int{18, 19, 21}, 19, true}, // Yellow
+		{[]int{18, 19, 21}, 21, true}, // Yellow
+		{[]int{22, 23, 24}, 22, true}, // Green
+		{[]int{22, 23, 24}, 23, true}, // Green
+		{[]int{22, 23, 24}, 24, true}, // Green
+		{[]int{26, 27}, 26, true},     // Dark Blue
+		{[]int{26, 27}, 27, true},     // Dark Blue
+	}
+
+	for _, test := range tests {
+		io := &MockMonopolyIO{}
+		io.On("Init", 4).Return()
+		logger := &MockLogger{}
+		logger.On("Init").Return()
+		logger.On("Log", mock.Anything).Return()
+		logger.On("LogState", mock.Anything).Return()
+
+		game := NewGame(4, io, logger, 1)
+		game.properties[test.propertyWithHouse].Houses = 1
+		for _, propId := range test.propertyIds {
+			property := game.properties[propId]
+			result := game.checkHouses(property)
+			assert.Equal(t, test.expectedResult, result, "Check houses sets result should match expected")
+		}
+
+	}
+}
+
+func TestGetMortgageList(t *testing.T) {
+	tests := []struct {
+		playerId             int
+		playerProperties     []int
+		mortgagedProperties  []int
+		propertiesWithHouses []int
+		expectedMortgageList []int
+	}{
+		{
+			playerId:             1,
+			playerProperties:     []int{},
+			mortgagedProperties:  []int{},
+			propertiesWithHouses: []int{},
+			expectedMortgageList: []int{},
+		},
+		{
+			playerId:             1,
+			playerProperties:     []int{4, 5},
+			mortgagedProperties:  []int{},
+			propertiesWithHouses: []int{},
+			expectedMortgageList: []int{4, 5},
+		},
+		{
+			playerId:             0,
+			playerProperties:     []int{1, 2, 3},
+			mortgagedProperties:  []int{2},
+			propertiesWithHouses: []int{},
+			expectedMortgageList: []int{1, 3},
+		},
+		{
+			playerId:             0,
+			playerProperties:     []int{1, 2, 3},
+			mortgagedProperties:  []int{},
+			propertiesWithHouses: []int{1},
+			expectedMortgageList: []int{2, 3},
+		},
+		{
+			playerId:             0,
+			playerProperties:     []int{1, 2, 3},
+			mortgagedProperties:  []int{1},
+			propertiesWithHouses: []int{3},
+			expectedMortgageList: []int{2},
+		},
+		{
+			playerId:             0,
+			playerProperties:     []int{0, 1},
+			mortgagedProperties:  []int{},
+			propertiesWithHouses: []int{1},
+			expectedMortgageList: []int{},
+		},
+	}
+	for _, test := range tests {
+		io := &MockMonopolyIO{}
+		io.On("Init", 4).Return()
+		logger := &MockLogger{}
+		logger.On("Init").Return()
+		logger.On("Log", mock.Anything).Return()
+		logger.On("LogState", mock.Anything).Return()
+
+		game := NewGame(4, io, logger, 1)
+		game.currentPlayerIdx = test.playerId
+		player := game.players[test.playerId]
+		player.Properties = test.playerProperties
+		for _, propId := range test.mortgagedProperties {
+			property := game.properties[propId]
+			property.IsMortgaged = true
+		}
+
+		for _, propId := range test.propertiesWithHouses {
+			property := game.properties[propId]
+			property.Houses = rand.Intn(5) + 1
+		}
+
+		mortgageList := game.getMortgageList(test.playerId)
+		assert.ElementsMatch(t, test.expectedMortgageList, mortgageList, "Mortgage list should match expected")
+	}
+}
+
+func TestGetBuyOutList(t *testing.T) {
+	tests := []struct {
+		playerId            int
+		playerProperties    []int
+		mortgagedProperties []int
+		expectedBuyOutList  []int
+	}{
+		{
+			playerId:            1,
+			playerProperties:    []int{},
+			mortgagedProperties: []int{},
+			expectedBuyOutList:  []int{},
+		},
+		{
+			playerId:            3,
+			playerProperties:    []int{4, 5},
+			mortgagedProperties: []int{},
+			expectedBuyOutList:  []int{},
+		},
+		{
+			playerId:            0,
+			playerProperties:    []int{1, 2, 3},
+			mortgagedProperties: []int{2},
+			expectedBuyOutList:  []int{2},
+		},
+		{
+			playerId:            2,
+			playerProperties:    []int{1, 2, 3},
+			mortgagedProperties: []int{1, 2, 3},
+			expectedBuyOutList:  []int{1, 2, 3},
+		},
+		{
+			playerId:            3,
+			playerProperties:    []int{4, 5},
+			mortgagedProperties: []int{6, 7},
+			expectedBuyOutList:  []int{},
+		},
+		{
+			playerId:            3,
+			playerProperties:    []int{4, 5},
+			mortgagedProperties: []int{4, 6, 7},
+			expectedBuyOutList:  []int{4},
+		},
+	}
+
+	for _, test := range tests {
+		io := &MockMonopolyIO{}
+		io.On("Init", 4).Return()
+		logger := &MockLogger{}
+		logger.On("Init").Return()
+		logger.On("Log", mock.Anything).Return()
+		logger.On("LogState", mock.Anything).Return()
+
+		game := NewGame(4, io, logger, 1)
+		game.currentPlayerIdx = test.playerId
+		player := game.players[test.playerId]
+		player.Properties = test.playerProperties
+		for _, propId := range test.mortgagedProperties {
+			property := game.properties[propId]
+			property.IsMortgaged = true
+		}
+		buyOutList := game.getBuyOutList(test.playerId)
+		assert.ElementsMatch(t, test.expectedBuyOutList, buyOutList, "Buy out list should match expected")
+	}
+}
+
+func TestGetSellPropertyList(t *testing.T) {
+	tests := []struct {
+		playerId             int
+		playerProperties     []int
+		mortgagedProperties  []int
+		propertiesWithHouses []int
+		expectedSellList     []int
+	}{
+		{
+			playerId:             1,
+			playerProperties:     []int{},
+			mortgagedProperties:  []int{},
+			propertiesWithHouses: []int{},
+			expectedSellList:     []int{},
+		},
+		{
+			playerId:             3,
+			playerProperties:     []int{4, 5},
+			mortgagedProperties:  []int{},
+			propertiesWithHouses: []int{},
+			expectedSellList:     []int{4, 5},
+		},
+		{
+			playerId:             0,
+			playerProperties:     []int{1, 2, 3},
+			mortgagedProperties:  []int{2},
+			propertiesWithHouses: []int{},
+			expectedSellList:     []int{1, 2, 3},
+		},
+		{
+			playerId:             2,
+			playerProperties:     []int{1, 2, 3},
+			mortgagedProperties:  []int{1, 2, 3},
+			propertiesWithHouses: []int{},
+			expectedSellList:     []int{1, 2, 3},
+		},
+		{
+			playerId:             3,
+			playerProperties:     []int{4, 5},
+			mortgagedProperties:  []int{6, 7},
+			propertiesWithHouses: []int{},
+			expectedSellList:     []int{4, 5},
+		},
+		{
+			playerId:             3,
+			playerProperties:     []int{1, 20},
+			mortgagedProperties:  []int{},
+			propertiesWithHouses: []int{1},
+			expectedSellList:     []int{20},
+		},
+		{
+			playerId:             3,
+			playerProperties:     []int{4, 5},
+			mortgagedProperties:  []int{},
+			propertiesWithHouses: []int{4},
+			expectedSellList:     []int{},
+		},
+	}
+
+	for _, test := range tests {
+		io := &MockMonopolyIO{}
+		io.On("Init", 4).Return()
+		logger := &MockLogger{}
+		logger.On("Init").Return()
+		logger.On("Log", mock.Anything).Return()
+		logger.On("LogState", mock.Anything).Return()
+
+		game := NewGame(4, io, logger, 1)
+		game.currentPlayerIdx = test.playerId
+		player := game.players[test.playerId]
+		player.Properties = test.playerProperties
+		for _, propId := range test.mortgagedProperties {
+			property := game.properties[propId]
+			property.IsMortgaged = true
+		}
+		for _, propId := range test.propertiesWithHouses {
+			property := game.properties[propId]
+			property.Houses = rand.Intn(5) + 1
+		}
+		sellList := game.getSellPropertyList(test.playerId)
+		assert.ElementsMatch(t, test.expectedSellList, sellList, "Sell list should match expected")
+	}
+}
+
+func TestBuyPropertyList(t *testing.T) {
+	tests := []struct {
+		playerId             int
+		player0Properties    []int
+		player1Properties    []int
+		player2Properties    []int
+		player3Properties    []int
+		propertiesWithHouses []int
+		expectedBuyList      []int
+	}{
+		{
+			playerId:             0,
+			player0Properties:    []int{},
+			player1Properties:    []int{},
+			player2Properties:    []int{},
+			player3Properties:    []int{},
+			propertiesWithHouses: []int{},
+			expectedBuyList:      []int{},
+		},
+		{
+			playerId:             0,
+			player0Properties:    []int{1, 2, 3},
+			player1Properties:    []int{},
+			player2Properties:    []int{},
+			player3Properties:    []int{},
+			propertiesWithHouses: []int{},
+			expectedBuyList:      []int{},
+		},
+		{
+			playerId:             0,
+			player0Properties:    []int{1, 2, 3},
+			player1Properties:    []int{},
+			player2Properties:    []int{},
+			player3Properties:    []int{6, 7},
+			propertiesWithHouses: []int{},
+			expectedBuyList:      []int{6, 7},
+		},
+		{
+			playerId:             0,
+			player0Properties:    []int{1, 2, 3},
+			player1Properties:    []int{4, 5},
+			player2Properties:    []int{6, 7},
+			player3Properties:    []int{8, 9},
+			propertiesWithHouses: []int{},
+			expectedBuyList:      []int{4, 5, 6, 7, 8, 9},
+		},
+		{
+			playerId:             0,
+			player0Properties:    []int{1, 2},
+			player1Properties:    []int{3, 4, 5},
+			player2Properties:    []int{6, 7},
+			player3Properties:    []int{8, 9},
+			propertiesWithHouses: []int{5},
+			expectedBuyList:      []int{6, 7, 8, 9},
+		},
+	}
+
+	for _, test := range tests {
+		io := &MockMonopolyIO{}
+		io.On("Init", 4).Return()
+		logger := &MockLogger{}
+		logger.On("Init").Return()
+		logger.On("Log", mock.Anything).Return()
+		logger.On("LogState", mock.Anything).Return()
+
+		game := NewGame(4, io, logger, 1)
+		game.currentPlayerIdx = test.playerId
+
+		game.players[0].Properties = test.player0Properties
+		game.players[1].Properties = test.player1Properties
+		game.players[2].Properties = test.player2Properties
+		game.players[3].Properties = test.player3Properties
+		for _, propId := range test.propertiesWithHouses {
+			property := game.properties[propId]
+			property.Houses = rand.Intn(5) + 1
+		}
+		buyList := game.getBuyPropertyList(test.playerId)
+		assert.ElementsMatch(t, test.expectedBuyList, buyList, "Buy property list should match expected")
 	}
 }

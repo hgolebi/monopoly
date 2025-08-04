@@ -16,7 +16,7 @@ func main() {
 	if *cliMode {
 		consoleCLI.StartClient()
 	} else {
-		game := monopoly.NewGame(numberOfPlayers, &io, &logger)
+		game := monopoly.NewGame(numberOfPlayers, &io, &logger, 0)
 		game.Start()
 	}
 }
