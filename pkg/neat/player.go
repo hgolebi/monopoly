@@ -5,16 +5,22 @@ import (
 	"fmt"
 	"monopoly/pkg/monopoly"
 
+	"github.com/yaricom/goNEAT/v4/neat/genetics"
 	"github.com/yaricom/goNEAT/v4/neat/network"
 )
 
 type NEATMonopolyPlayer struct {
 	network   *network.Network
-	player_id int
+	organism  *genetics.Organism
 	max_depth int
 }
 
-func NewNEATMonopolyPlayer(network *network.Network, player_id int) (*NEATMonopolyPlayer, error) {
+func NewNEATMonopolyPlayer(organism *genetics.Organism) (*NEATMonopolyPlayer, error) {
+	network, err := organism.Phenotype()
+	if err != nil {
+		errorMsg := fmt.Sprintf("Error getting phenotype for organism %d: %v\n", organism.Genotype.Id, err)
+		return nil, fmt.Errorf(errorMsg)
+	}
 	max_depth, err := network.MaxActivationDepthWithCap(0)
 	if err != nil {
 		return nil, err
@@ -25,7 +31,7 @@ func NewNEATMonopolyPlayer(network *network.Network, player_id int) (*NEATMonopo
 
 	return &NEATMonopolyPlayer{
 		network:   network,
-		player_id: player_id,
+		organism:  organism,
 		max_depth: max_depth,
 	}, nil
 }

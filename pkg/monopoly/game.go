@@ -6,20 +6,12 @@ import (
 	"math/rand"
 	"slices"
 	"time"
+
+	cfg "monopoly/pkg/config"
 )
 
 const RAILROAD = "Railroad"
 const UTILITY = "Utility"
-
-type GameSettings struct {
-	MAX_ROUNDS       int
-	START_PASS_MONEY int
-	JAIL_POSITION    int
-	JAIL_BAIL        int
-	MAX_HOUSES       int
-	MIN_PRICE        int
-	MAX_OFFER_TRIES  int
-}
 
 type Game struct {
 	players          []*Player
@@ -29,7 +21,7 @@ type Game struct {
 	sets             map[string][]int
 	currentPlayerIdx int
 	round            int
-	settings         GameSettings
+	settings         cfg.GameSettings
 	io               IMonopoly_IO
 	logger           Logger
 	buy_offer_tries  int
@@ -199,15 +191,7 @@ func NewGame(io IMonopoly_IO, logger Logger, seed int64) *Game {
 		20: {4, 10}, // Water Works
 	}
 
-	g.settings = GameSettings{
-		MAX_ROUNDS:       50,
-		START_PASS_MONEY: 200,
-		JAIL_POSITION:    10,
-		JAIL_BAIL:        50,
-		MAX_HOUSES:       5,
-		MIN_PRICE:        10,
-		MAX_OFFER_TRIES:  3,
-	}
+	g.settings = cfg.NewGameSettings()
 
 	g.logger.Log("Game initialized successfully.")
 	return g
@@ -272,7 +256,7 @@ func (g *Game) checkForWinner() bool {
 	} else if len(active_players) == 1 {
 		g.endWinner(g.players[active_players[0]])
 		return true
-	} else if g.round > g.settings.MAX_ROUNDS {
+	} else if g.round > g.settings.MaxRounds {
 		g.endRoundLimit()
 		return true
 	}
@@ -343,7 +327,7 @@ func (g *Game) takeAction() {
 func (g *Game) jailPlayer() {
 	player := g.getCurrPlayer()
 	player.IsJailed = true
-	player.CurrentPosition = g.settings.JAIL_POSITION
+	player.CurrentPosition = g.settings.JailPosition
 	player.RoundsInJail = 0
 	g.logger.Log("Player is going to jail.")
 }
@@ -353,8 +337,8 @@ func (g *Game) movePlayer(count int) {
 	curr_pos := player.CurrentPosition
 	new_pos := curr_pos + count
 	for new_pos > len(g.fields)-1 {
-		player.AddMoney(g.settings.START_PASS_MONEY)
-		g.logger.Log(fmt.Sprintf("Player passed GO and received %d money", g.settings.START_PASS_MONEY))
+		player.AddMoney(g.settings.StartPassMoney)
+		g.logger.Log(fmt.Sprintf("Player passed GO and received %d money", g.settings.StartPassMoney))
 		new_pos = new_pos - len(g.fields)
 	}
 	player.SetPosition(new_pos)
@@ -422,7 +406,7 @@ func (g *Game) jailRollDice() {
 
 func (g *Game) jailBail() {
 	player := g.getCurrPlayer()
-	g.chargePlayer(g.currentPlayerIdx, g.settings.JAIL_BAIL, nil)
+	g.chargePlayer(g.currentPlayerIdx, g.settings.JailBail, nil)
 	if player.IsBankrupt {
 		return
 	}
@@ -460,10 +444,10 @@ func (g *Game) standardActions() {
 	if len(action_list.BuyOutList) > 0 {
 		action_list.Actions = append(action_list.Actions, BUYOUT)
 	}
-	if len(action_list.SellPropertyList) > 0 && g.sell_offer_tries < g.settings.MAX_OFFER_TRIES {
+	if len(action_list.SellPropertyList) > 0 && g.sell_offer_tries < g.settings.MaxOfferTries {
 		action_list.Actions = append(action_list.Actions, SELLOFFER)
 	}
-	if len(action_list.BuyPropertyList) > 0 && g.buy_offer_tries < g.settings.MAX_OFFER_TRIES {
+	if len(action_list.BuyPropertyList) > 0 && g.buy_offer_tries < g.settings.MaxOfferTries {
 		action_list.Actions = append(action_list.Actions, BUYOFFER)
 	}
 	if len(action_list.BuyHouseList) > 0 {
@@ -516,7 +500,7 @@ func (g *Game) resolveStandardAction(player_id int, action_details ActionDetails
 		g.buyHouse(player_id, action_details.PropertyId)
 		return
 	case SELLOFFER:
-		if g.sell_offer_tries >= g.settings.MAX_OFFER_TRIES {
+		if g.sell_offer_tries >= g.settings.MaxOfferTries {
 			g.logger.Log("Max sell offer tries reached, going bankrupt.")
 			g.bankrupt(player, nil)
 			return
@@ -544,7 +528,7 @@ func (g *Game) resolveStandardAction(player_id int, action_details ActionDetails
 		g.sendSellOffer(player_id, action_details.PlayerId, action_details.PropertyId, action_details.Price)
 		return
 	case BUYOFFER:
-		if g.buy_offer_tries >= g.settings.MAX_OFFER_TRIES {
+		if g.buy_offer_tries >= g.settings.MaxOfferTries {
 			g.logger.Log("Max buy offer tries reached, going bankrupt.")
 			g.bankrupt(player, nil)
 			return
@@ -636,7 +620,7 @@ func (g *Game) getBuyHouseList(player_id int) []int {
 				has_full_set = false
 				break
 			}
-			if property.Houses < g.settings.MAX_HOUSES {
+			if property.Houses < g.settings.MaxHouses {
 				temp_list = append(temp_list, propertyIdx)
 			}
 		}
@@ -844,9 +828,9 @@ func (g *Game) resolveChanceOrChest(action int) {
 		player.JailCards++
 		g.logger.Log(fmt.Sprintf("Chest: Player %s receives a Get Out of Jail Free card.", player.Name))
 	case 6: // Player moves to GO
-		g.logger.Log(fmt.Sprintf("Chest: Player %s moves to GO and receives %d money.", player.Name, g.settings.START_PASS_MONEY))
+		g.logger.Log(fmt.Sprintf("Chest: Player %s moves to GO and receives %d money.", player.Name, g.settings.StartPassMoney))
 		player.SetPosition(0)
-		player.AddMoney(g.settings.START_PASS_MONEY)
+		player.AddMoney(g.settings.StartPassMoney)
 	case 7: // Player moves to a specific field
 		field_index := g.randomSource.Intn(len(g.fields))
 		field := g.fields[field_index]
@@ -946,7 +930,7 @@ func (g *Game) auction(property *Property, first_player_id int) {
 			queue.PushBack(player.ID)
 		}
 	}
-	curr_price := g.settings.MIN_PRICE
+	curr_price := g.settings.MinPrice
 	auction_winner := -1
 	for queue.Len() > 0 {
 		bidderID := queue.Front().Value.(int)
@@ -955,7 +939,7 @@ func (g *Game) auction(property *Property, first_player_id int) {
 			break
 		}
 		bidder := g.players[bidderID]
-		bid_offer := g.io.BiddingDecision(bidderID, g.getState(), property.PropertyIndex, curr_price)
+		bid_offer := g.io.BiddingDecision(bidderID, g.getState(), property.PropertyIndex, curr_price, auction_winner)
 		if bid_offer <= curr_price {
 			g.logger.Log(fmt.Sprintf("Player %s did not bid.", bidder.Name))
 		} else if bid_offer > bidder.Money {
