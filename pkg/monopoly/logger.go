@@ -6,7 +6,6 @@ import (
 )
 
 type Logger interface {
-	Init()
 	Log(message string)
 	LogState(state GameState)
 }

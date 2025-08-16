@@ -44,6 +44,8 @@ type GameState struct {
 	Round            int
 	CurrentPlayerIdx int
 	Charge           int // In case of a charge that would result in a player going bankrupt
+	SellOfferTries   int
+	BuyOfferTries    int
 }
 
 func formatStr(str string, length int) string {
@@ -126,12 +128,12 @@ const (
 )
 
 type IMonopoly_IO interface {
-	Init(int)
+	Init() int
 	GetStdAction(player int, state GameState, availableActions FullActionList) ActionDetails
 	GetJailAction(player int, state GameState, available []JailAction) JailAction
 	BuyDecision(player int, state GameState, propertyId int) bool
 	BuyFromPlayerDecision(player int, state GameState, propertyId int, price int) bool
 	SellToPlayerDecision(player int, state GameState, propertyId int, price int) bool
-	BiddingDecision(player int, state GameState, propertyId int, currentPrice int) int
+	BiddingDecision(player int, state GameState, propertyId int, currentPrice int, currentWinner int) int
 	Finish(f FinishOption, winner int, state GameState)
 }

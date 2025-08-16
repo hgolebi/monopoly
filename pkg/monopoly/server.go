@@ -36,11 +36,12 @@ type ConsoleServer struct {
 	Players []PlayerConn
 }
 
-func (s *ConsoleServer) Init(expectedPlayers int) {
+func (s *ConsoleServer) Init() int {
 	ln, err := net.Listen("tcp", ":12345")
 	if err != nil {
 		panic(err)
 	}
+	expectedPlayers := 4
 	fmt.Printf("Serwer nasłuchuje na :12345, oczekuje %d graczy...\n", expectedPlayers)
 	for len(s.Players) < expectedPlayers {
 		conn, err := ln.Accept()
@@ -60,6 +61,7 @@ func (s *ConsoleServer) Init(expectedPlayers int) {
 		}
 	}
 	fmt.Println("Wszyscy gracze połączeni!")
+	return expectedPlayers
 }
 
 // GetStdAction(player int, state GameState, availableActions FullActionList) ActionDetails

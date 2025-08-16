@@ -11,12 +11,12 @@ func main() {
 	flag.Parse()
 	io := monopoly.ConsoleServer{}
 	logger := monopoly.ConsoleLogger{}
-	numberOfPlayers := 4
+	logger.Init()
 
 	if *cliMode {
 		consoleCLI.StartClient()
 	} else {
-		game := monopoly.NewGame(numberOfPlayers, &io, &logger, 0)
+		game := monopoly.NewGame(&io, &logger, 0)
 		game.Start()
 	}
 }

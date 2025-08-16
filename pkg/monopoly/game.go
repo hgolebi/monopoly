@@ -37,11 +37,10 @@ type Game struct {
 	randomSource     *rand.Rand
 }
 
-func NewGame(players_count int, io IMonopoly_IO, logger Logger, seed int64) *Game {
+func NewGame(io IMonopoly_IO, logger Logger, seed int64) *Game {
 	g := &Game{}
 	g.io = io
 	g.logger = logger
-	g.logger.Init()
 	g.logger.Log("Initializing game...")
 	if seed == 0 {
 		seed = time.Now().UnixNano()
@@ -51,6 +50,7 @@ func NewGame(players_count int, io IMonopoly_IO, logger Logger, seed int64) *Gam
 	g.round = 1
 	g.currentPlayerIdx = 0
 
+	players_count := g.io.Init()
 	if players_count < 2 || players_count > 4 {
 		panic("Players count must be between 2 and 4")
 	}
@@ -61,7 +61,6 @@ func NewGame(players_count int, io IMonopoly_IO, logger Logger, seed int64) *Gam
 		NewPlayer(2, "player3", 1500),
 		NewPlayer(3, "player4", 1500),
 	}[:players_count]
-	g.io.Init(players_count)
 
 	g.properties = []*Property{
 		NewProperty(1, 0, "Brown1", 60, 50, true, "Brown"),
@@ -220,6 +219,8 @@ func (g *Game) getState() GameState {
 		Properties:       g.properties,
 		Round:            g.round,
 		CurrentPlayerIdx: g.currentPlayerIdx,
+		SellOfferTries:   g.sell_offer_tries,
+		BuyOfferTries:    g.buy_offer_tries,
 	}
 }
 
@@ -998,7 +999,12 @@ func (g *Game) charge(player *Player, amount int, target *Player) {
 }
 
 func (g *Game) bankrupt(player *Player, creditor *Player) {
+	if player.IsBankrupt {
+		g.logger.Log(fmt.Sprintf("!!!!!!!!!!!!!!!! WARNING Player %s is already bankrupt.", player.Name))
+		return
+	}
 	player.IsBankrupt = true
+	player.RoundWhenBankrupted = g.round
 	if creditor != nil {
 		creditor.AddMoney(max(0, player.Money))
 		for _, property := range player.Properties {
