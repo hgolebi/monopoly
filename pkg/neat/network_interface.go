@@ -2,6 +2,7 @@ package neatnetwork
 
 import (
 	"math"
+	cfg "monopoly/pkg/config"
 	"monopoly/pkg/monopoly"
 )
 
@@ -276,7 +277,7 @@ func GetPlayerOutputValues(output []float64) map[int]float64 {
 
 func GetPriceOutputValue(output []float64) int {
 	out := output[outputs["PRICE"]]
-	return int(math.Round(out * float64(MAX_MONEY)))
+	return int(math.Round(out * float64(cfg.MAX_MONEY)))
 }
 
 func GetJailOutputValues(output []float64) map[monopoly.JailAction]float64 {
@@ -286,15 +287,6 @@ func GetJailOutputValues(output []float64) map[monopoly.JailAction]float64 {
 		monopoly.CARD:      output[outputs["JAIL_CARD"]],
 	}
 }
-
-const LAST_FIELD_ID = 39
-const LAST_PROPERTY_ID = 27
-const MAX_MONEY = 15000
-const MAX_JAIL_CARDS = 20
-const LAST_PLAYER_ID = 3
-const MAX_HOUSES = 5
-const MAX_ROUNDS = 50
-const MAX_OFFER_TRIES = 3
 
 type MonopolySensors []float64
 
@@ -312,33 +304,33 @@ func (s MonopolySensors) LoadState(state monopoly.GameState, playerID int) {
 	for idx, property := range state.Properties {
 		s.loadPropertyState(idx, property)
 	}
-	s[baseInputs["PLAYER_ID"]] = normalize(playerID, 0, LAST_PLAYER_ID, true)
-	s[baseInputs["CURR_PLAYER"]] = normalize(state.CurrentPlayerIdx, 0, LAST_PLAYER_ID, true)
-	s[baseInputs["ROUND"]] = normalize(state.Round, 0, MAX_ROUNDS, false)
+	s[baseInputs["PLAYER_ID"]] = normalize(playerID, 0, cfg.LAST_PLAYER_ID, true)
+	s[baseInputs["CURR_PLAYER"]] = normalize(state.CurrentPlayerIdx, 0, cfg.LAST_PLAYER_ID, true)
+	s[baseInputs["ROUND"]] = normalize(state.Round, 0, cfg.MAX_ROUNDS, false)
 }
 
 func (s MonopolySensors) loadPlayerState(playerId int, player *monopoly.Player) {
 	s[playerInputs[playerId]["IS_ALIVE"]] = fromBool(!player.IsBankrupt)
 	s[playerInputs[playerId]["IS_JAILED"]] = fromBool(player.IsJailed)
-	s[playerInputs[playerId]["POSITION"]] = normalize(player.CurrentPosition, 0, LAST_FIELD_ID, false)
-	s[playerInputs[playerId]["MONEY"]] = normalize(player.Money, 0, MAX_MONEY, false)
-	s[playerInputs[playerId]["JAIL_CARDS"]] = normalize(player.JailCards, 0, MAX_JAIL_CARDS, false)
+	s[playerInputs[playerId]["POSITION"]] = normalize(player.CurrentPosition, 0, cfg.LAST_FIELD_ID, false)
+	s[playerInputs[playerId]["MONEY"]] = normalize(player.Money, 0, cfg.MAX_MONEY, false)
+	s[playerInputs[playerId]["JAIL_CARDS"]] = normalize(player.JailCards, 0, cfg.MAX_JAIL_CARDS, false)
 }
 
 func (s MonopolySensors) loadPropertyState(propertyId int, property *monopoly.Property) {
-	s[propertyInputs[propertyId]["OWNER"]] = normalize(property.Owner.ID, 0, LAST_PLAYER_ID, true)
+	s[propertyInputs[propertyId]["OWNER"]] = normalize(property.Owner.ID, 0, cfg.LAST_PLAYER_ID, true)
 	s[propertyInputs[propertyId]["IS_MORTGAGED"]] = fromBool(property.IsMortgaged)
 	if property.CanBuildHouse {
-		s[propertyInputs[propertyId]["HOUSES"]] = normalize(property.Houses, 0, MAX_HOUSES, false)
+		s[propertyInputs[propertyId]["HOUSES"]] = normalize(property.Houses, 0, cfg.MAX_HOUSES, false)
 	}
 }
 
 func (s MonopolySensors) loadCurrentPlayerState(player *monopoly.Player) {
 	s[currPlayerInputs["IS_ALIVE"]] = fromBool(!player.IsBankrupt)
 	s[currPlayerInputs["IS_JAILED"]] = fromBool(player.IsJailed)
-	s[currPlayerInputs["POSITION"]] = normalize(player.CurrentPosition, 0, LAST_FIELD_ID, false)
-	s[currPlayerInputs["MONEY"]] = normalize(player.Money, 0, MAX_MONEY, false)
-	s[currPlayerInputs["JAIL_CARDS"]] = normalize(player.JailCards, 0, MAX_JAIL_CARDS, false)
+	s[currPlayerInputs["POSITION"]] = normalize(player.CurrentPosition, 0, cfg.LAST_FIELD_ID, false)
+	s[currPlayerInputs["MONEY"]] = normalize(player.Money, 0, cfg.MAX_MONEY, false)
+	s[currPlayerInputs["JAIL_CARDS"]] = normalize(player.JailCards, 0, cfg.MAX_JAIL_CARDS, false)
 }
 
 func (s MonopolySensors) LoadDecisionContext(ctx DecisionContext) {
@@ -346,28 +338,28 @@ func (s MonopolySensors) LoadDecisionContext(ctx DecisionContext) {
 }
 
 func (s MonopolySensors) LoadPropertyId(propertyId int) {
-	s[baseInputs["PROPERTY_ID"]] = normalize(propertyId, 0, LAST_PROPERTY_ID, true)
+	s[baseInputs["PROPERTY_ID"]] = normalize(propertyId, 0, cfg.LAST_PROPERTY_ID, true)
 }
 
 func (s MonopolySensors) LoadPrice(price int) {
-	s[baseInputs["PRICE"]] = normalize(price, 0, MAX_MONEY, false)
+	s[baseInputs["PRICE"]] = normalize(price, 0, cfg.MAX_MONEY, false)
 }
 
 func (s MonopolySensors) LoadBiddingInputs(currentBid int, currentBidWinner int) {
-	s[baseInputs["CURR_BID"]] = normalize(currentBid, 0, MAX_MONEY, false)
-	s[baseInputs["CURR_BID_WINNER"]] = normalize(currentBidWinner, 0, LAST_PLAYER_ID, true)
+	s[baseInputs["CURR_BID"]] = normalize(currentBid, 0, cfg.MAX_MONEY, false)
+	s[baseInputs["CURR_BID_WINNER"]] = normalize(currentBidWinner, 0, cfg.LAST_PLAYER_ID, true)
 }
 
 func (s MonopolySensors) LoadCharge(charge int) {
-	s[baseInputs["CHARGE"]] = normalize(charge, 0, MAX_MONEY, false)
+	s[baseInputs["CHARGE"]] = normalize(charge, 0, cfg.MAX_MONEY, false)
 }
 
 func (s MonopolySensors) LoadSellOfferTries(tries int) {
-	s[baseInputs["SELL_OFFER_TRIES"]] = normalize(tries, 0, MAX_OFFER_TRIES, false)
+	s[baseInputs["SELL_OFFER_TRIES"]] = normalize(tries, 0, cfg.MAX_OFFER_TRIES, false)
 }
 
 func (s MonopolySensors) LoadBuyOfferTries(tries int) {
-	s[baseInputs["BUY_OFFER_TRIES"]] = normalize(tries, 0, MAX_OFFER_TRIES, false)
+	s[baseInputs["BUY_OFFER_TRIES"]] = normalize(tries, 0, cfg.MAX_OFFER_TRIES, false)
 }
 
 func (s MonopolySensors) LoadAvailableStdActions(actions []monopoly.StdAction) {
