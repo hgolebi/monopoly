@@ -224,12 +224,12 @@ func (g *Game) getCurrPlayer() *Player {
 
 func (g *Game) Start() {
 	finishFlag := false
-	for finishFlag {
+	for !finishFlag {
 		g.logger.Log(fmt.Sprintf("Round %d", g.round))
 		for idx, player := range g.players {
 			g.logger.LogState(g.getState())
 			g.currentPlayerIdx = idx
-			finishFlag := g.checkForWinner()
+			finishFlag = g.checkForWinner()
 			if finishFlag {
 				break
 			}
@@ -745,6 +745,8 @@ func (g *Game) sendSellOffer(player_id int, target_id int, property_id int, pric
 		}
 		g.charge(buyer, price, seller)
 		g.transferProperty(seller, buyer, property_id)
+	} else {
+		g.sell_offer_tries++
 	}
 
 }
@@ -770,6 +772,8 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, price int) {
 		}
 		g.charge(buyer, price, seller)
 		g.transferProperty(seller, buyer, property_id)
+	} else {
+		g.buy_offer_tries++
 	}
 }
 
