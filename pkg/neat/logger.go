@@ -62,5 +62,4 @@ func (l *TrainerLogger) LogState(state monopoly.GameState) {
 		return
 	}
 	l.stateId++
-	fmt.Printf("#%d\n", l.stateId)
 }

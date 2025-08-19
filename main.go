@@ -4,9 +4,10 @@ import (
 	"flag"
 	"monopoly/pkg/consoleCLI"
 	"monopoly/pkg/monopoly"
+	neatnetwork "monopoly/pkg/neat"
 )
 
-func main() {
+func runConsoleMonopoly() {
 	cliMode := flag.Bool("cli", false, "run in CLI client mode")
 	flag.Parse()
 	io := monopoly.ConsoleServer{}
@@ -19,4 +20,16 @@ func main() {
 		game := monopoly.NewGame(&io, &logger, 0)
 		game.Start()
 	}
+}
+
+func trainNEATNetwork() {
+	neatOptionsFile := "neat_options.yaml"
+	neatGenomeFile := "genome.yaml"
+	outputDir := "output"
+	neatnetwork.TrainNetwork(0, neatOptionsFile, neatGenomeFile, outputDir)
+}
+
+func main() {
+	// trainNEATNetwork()
+	runConsoleMonopoly()
 }

@@ -41,7 +41,7 @@ func (s *ConsoleServer) Init() int {
 	if err != nil {
 		panic(err)
 	}
-	expectedPlayers := 4
+	expectedPlayers := 2
 	fmt.Printf("Serwer nasłuchuje na :12345, oczekuje %d graczy...\n", expectedPlayers)
 	for len(s.Players) < expectedPlayers {
 		conn, err := ln.Accept()
@@ -64,7 +64,6 @@ func (s *ConsoleServer) Init() int {
 	return expectedPlayers
 }
 
-// GetStdAction(player int, state GameState, availableActions FullActionList) ActionDetails
 func (s *ConsoleServer) GetStdAction(player int, state GameState, availableActions FullActionList) ActionDetails {
 	req := ActionRequest{
 		Type:          GetStdAction,
@@ -89,7 +88,6 @@ func (s *ConsoleServer) GetStdAction(player int, state GameState, availableActio
 	return resp
 }
 
-// GetJailAction(player int, state GameState, available []JailAction) JailAction
 func (s *ConsoleServer) GetJailAction(player int, state GameState, available []JailAction) JailAction {
 	req := ActionRequest{
 		Type:           GetJailAction,
@@ -114,7 +112,6 @@ func (s *ConsoleServer) GetJailAction(player int, state GameState, available []J
 	return resp
 }
 
-// BuyDecision(player int, state GameState, propertyId int) bool
 func (s *ConsoleServer) BuyDecision(player int, state GameState, propertyId int) bool {
 	req := ActionRequest{
 		Type:       BuyDecision,
@@ -140,7 +137,6 @@ func (s *ConsoleServer) BuyDecision(player int, state GameState, propertyId int)
 	return resp
 }
 
-// BuyFromPlayerDecision(player int, state GameState, propertyId int, price int) bool
 func (s *ConsoleServer) BuyFromPlayerDecision(player int, state GameState, propertyId int, price int) bool {
 	req := ActionRequest{
 		Type:       BuyFromPlayerDecision,
@@ -166,7 +162,6 @@ func (s *ConsoleServer) BuyFromPlayerDecision(player int, state GameState, prope
 	return resp
 }
 
-// SellToPlayerDecision(player int, state GameState, propertyId int, price int) bool
 func (s *ConsoleServer) SellToPlayerDecision(player int, state GameState, propertyId int, price int) bool {
 	req := ActionRequest{
 		Type:       SellToPlayerDecision,
@@ -192,8 +187,7 @@ func (s *ConsoleServer) SellToPlayerDecision(player int, state GameState, proper
 	return resp
 }
 
-// BiddingDecision(player int, state GameState, propertyId int, currentPrice int) int
-func (s *ConsoleServer) BiddingDecision(player int, state GameState, propertyId int, currentPrice int) int {
+func (s *ConsoleServer) BiddingDecision(player int, state GameState, propertyId int, currentPrice int, currentWinner int) int {
 	req := ActionRequest{
 		Type:       BiddingDecision,
 		PlayerId:   player,

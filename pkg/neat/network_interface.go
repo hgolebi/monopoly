@@ -198,19 +198,19 @@ var baseInputs = map[string]int{
 }
 
 var availableStdActionInputs = map[monopoly.StdAction]int{
-	monopoly.NOACTION:  113,
-	monopoly.MORTGAGE:  114,
-	monopoly.BUYOUT:    115,
-	monopoly.SELLOFFER: 116,
-	monopoly.BUYOFFER:  117,
-	monopoly.BUYHOUSE:  118,
-	monopoly.SELLHOUSE: 119,
+	monopoly.NOACTION:  114,
+	monopoly.MORTGAGE:  115,
+	monopoly.BUYOUT:    116,
+	monopoly.SELLOFFER: 117,
+	monopoly.BUYOFFER:  118,
+	monopoly.BUYHOUSE:  119,
+	monopoly.SELLHOUSE: 120,
 }
 
 var availableJailActionInputs = map[monopoly.JailAction]int{
-	monopoly.ROLL_DICE: 120,
-	monopoly.BAIL:      121,
-	monopoly.CARD:      122,
+	monopoly.ROLL_DICE: 121,
+	monopoly.BAIL:      122,
+	monopoly.CARD:      123,
 }
 
 type DecisionContext int
@@ -227,30 +227,30 @@ const (
 var outputs = map[string]int{
 	"BUY_DECISION":    0, // yes / no
 	"BID_DECISION":    1, // yes / no
-	"BUY_FROM_PLAYER": 3, // yes / no
-	"SELL_TO_PLAYER":  4, // yes / no
+	"BUY_FROM_PLAYER": 2, // yes / no
+	"SELL_TO_PLAYER":  3, // yes / no
 
 	// jail actions; highest score is the result (if applicable)
-	"JAIL_ROLL_DICE": 5,
-	"JAIL_BAIL":      6,
-	"JAIL_CARD":      7,
+	"JAIL_ROLL_DICE": 4,
+	"JAIL_BAIL":      5,
+	"JAIL_CARD":      6,
 
 	// standard actions; highest score is the result (if applicable)
-	"NO_ACTION":  8,
-	"MORTGAGE":   9,
-	"BUYOUT":     10,
-	"SELL_OFFER": 11,
-	"BUY_OFFER":  12,
-	"BUY_HOUSE":  13,
-	"SELL_HOUSE": 14,
+	"NO_ACTION":  7,
+	"MORTGAGE":   8,
+	"BUYOUT":     9,
+	"SELL_OFFER": 10,
+	"BUY_OFFER":  11,
+	"BUY_HOUSE":  12,
+	"SELL_HOUSE": 13,
 
 	// in case of player-related actions; highest score is the result (if applicable)
-	"PLAYER_1": 15,
-	"PLAYER_2": 16,
-	"PLAYER_3": 17,
-	"PLAYER_4": 18,
+	"PLAYER_1": 14,
+	"PLAYER_2": 15,
+	"PLAYER_3": 16,
+	"PLAYER_4": 17,
 
-	"PRICE": 19, // in case of price-related actions; normalized to 0.0 - 1.0, where 1.0 is MAX_MONEY
+	"PRICE": 18, // in case of price-related actions; normalized to 0.0 - 1.0, where 1.0 is MAX_MONEY
 }
 
 func GetStdActionOutputValues(output []float64) map[monopoly.StdAction]float64 {
@@ -291,7 +291,7 @@ func GetJailOutputValues(output []float64) map[monopoly.JailAction]float64 {
 type MonopolySensors []float64
 
 func NewMonopolySensors() MonopolySensors {
-	return make([]float64, 113)
+	return make([]float64, 124)
 }
 
 func (s MonopolySensors) LoadState(state monopoly.GameState, playerID int) {
@@ -318,8 +318,10 @@ func (s MonopolySensors) loadPlayerState(playerId int, player *monopoly.Player) 
 }
 
 func (s MonopolySensors) loadPropertyState(propertyId int, property *monopoly.Property) {
-	s[propertyInputs[propertyId]["OWNER"]] = normalize(property.Owner.ID, 0, cfg.LAST_PLAYER_ID, true)
 	s[propertyInputs[propertyId]["IS_MORTGAGED"]] = fromBool(property.IsMortgaged)
+	if property.Owner != nil {
+		s[propertyInputs[propertyId]["OWNER"]] = normalize(property.Owner.ID, 0, cfg.LAST_PLAYER_ID, true)
+	}
 	if property.CanBuildHouse {
 		s[propertyInputs[propertyId]["HOUSES"]] = normalize(property.Houses, 0, cfg.MAX_HOUSES, false)
 	}

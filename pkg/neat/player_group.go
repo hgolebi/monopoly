@@ -81,9 +81,6 @@ func (t *NEATPlayerGroup) BiddingDecision(player int, state monopoly.GameState, 
 }
 
 func (t *NEATPlayerGroup) Finish(f monopoly.FinishOption, winner int, state monopoly.GameState) {
-	if winner < 0 || winner >= len(t.players) {
-		panic("Invalid winner index")
-	}
 	second_place := -1
 	highest_round := -1
 	for i, player := range state.Players {
