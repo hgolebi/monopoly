@@ -1,7 +1,6 @@
 package neatnetwork
 
 import (
-	"errors"
 	"fmt"
 	"monopoly/pkg/monopoly"
 	"os"
@@ -14,7 +13,9 @@ type TrainerLogger struct {
 
 func NewTrainerLogger(outputPath string) (*TrainerLogger, error) {
 	if _, err := os.Stat(outputPath); err == nil {
-		return nil, errors.New("output file already exists")
+		if err := os.Remove(outputPath); err != nil {
+			return nil, fmt.Errorf("failed to remove existing file: %w", err)
+		}
 	} else if !os.IsNotExist(err) {
 		return nil, err
 	}
@@ -54,7 +55,7 @@ func (l *TrainerLogger) LogState(state monopoly.GameState) {
 		return
 	}
 	defer f.Close()
-	log := "#" + fmt.Sprint(l.stateId) + "\n" + state.String()
+	log := fmt.Sprintf("\n\n\n#%d\n%s\n\n\n", l.stateId, state.String())
 	_, err = f.WriteString(log)
 
 	if err != nil {

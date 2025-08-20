@@ -2,6 +2,7 @@ package monopoly
 
 import (
 	"container/list"
+	"context"
 	"fmt"
 	"math/rand"
 	"slices"
@@ -14,6 +15,7 @@ const RAILROAD = "Railroad"
 const UTILITY = "Utility"
 
 type Game struct {
+	ctx              context.Context
 	players          []*Player
 	fields           []Field
 	properties       []*Property
@@ -29,14 +31,16 @@ type Game struct {
 	randomSource     *rand.Rand
 }
 
-func NewGame(io IMonopoly_IO, logger Logger, seed int64) *Game {
+func NewGame(ctx context.Context, io IMonopoly_IO, logger Logger, seed int64) *Game {
 	g := &Game{}
+	g.ctx = ctx
 	g.io = io
 	g.logger = logger
 	g.logger.Log("Initializing game...")
 	if seed == 0 {
 		seed = time.Now().UnixNano()
 	}
+	g.logger.Log(fmt.Sprintf("Using random seed: %d", seed))
 	g.randomSource = rand.New(rand.NewSource(seed))
 
 	g.round = 1
@@ -227,8 +231,15 @@ func (g *Game) Start() {
 	for !finishFlag {
 		g.logger.Log(fmt.Sprintf("Round %d", g.round))
 		for idx, player := range g.players {
+			select {
+			case <-g.ctx.Done():
+				panic("Game cancelled")
+			default:
+			}
 			g.logger.LogState(g.getState())
 			g.currentPlayerIdx = idx
+			g.sell_offer_tries = 0
+			g.buy_offer_tries = 0
 			finishFlag = g.checkForWinner()
 			if finishFlag {
 				break
@@ -428,6 +439,12 @@ func (g *Game) jailCard() {
 }
 
 func (g *Game) standardActions() {
+	select {
+	case <-g.ctx.Done():
+		panic("Game cancelled")
+	default:
+	}
+
 	action_list := FullActionList{}
 
 	action_list.MortgageList = g.getMortgageList(g.currentPlayerIdx)
@@ -731,13 +748,14 @@ func (g *Game) buyHouse(player_id int, propertyId int) {
 }
 
 func (g *Game) sendSellOffer(player_id int, target_id int, property_id int, price int) {
+	g.sell_offer_tries++
 	seller := g.players[player_id]
 	buyer := g.players[target_id]
 	property := g.properties[property_id]
 	g.logger.Log(fmt.Sprintf("Player %s sent a sell offer to %s for property %s with price %d", seller.Name, buyer.Name, property.Name, price))
 	accepted := g.io.BuyFromPlayerDecision(target_id, g.getState(), property_id, price)
 	if accepted {
-		g.sell_offer_tries = 0
+		g.logger.Log(fmt.Sprintf("Player %s accepted the sell offer", buyer.Name))
 		if buyer.Money < price {
 			g.logger.Log(fmt.Sprintf("Player %s does not have enough money to buy property %s for %d. Going bankrupt.", buyer.Name, property.Name, price))
 			g.bankrupt(buyer, nil)
@@ -746,12 +764,13 @@ func (g *Game) sendSellOffer(player_id int, target_id int, property_id int, pric
 		g.charge(buyer, price, seller)
 		g.transferProperty(seller, buyer, property_id)
 	} else {
-		g.sell_offer_tries++
+		g.logger.Log(fmt.Sprintf("Player %s rejected the sell offer", buyer.Name))
 	}
 
 }
 
 func (g *Game) sendBuyOffer(player_id int, property_id int, price int) {
+	g.buy_offer_tries++
 	buyer := g.players[player_id]
 	property := g.properties[property_id]
 	seller := property.Owner
@@ -761,10 +780,10 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, price int) {
 		g.buy_offer_tries = 0
 		return
 	}
-	g.logger.Log(fmt.Sprintf("Player %s sent a buy offer to %s for property %s with price %d", seller.Name, buyer.Name, property.Name, price))
+	g.logger.Log(fmt.Sprintf("Player %s sent a buy offer to %s for property %s with price %d", buyer.Name, seller.Name, property.Name, price))
 	accepted := g.io.SellToPlayerDecision(seller.ID, g.getState(), property_id, price)
 	if accepted {
-		g.buy_offer_tries = 0
+		g.logger.Log(fmt.Sprintf("Player %s accepted the buy offer", seller.Name))
 		if buyer.Money < price {
 			g.logger.Log(fmt.Sprintf("Player %s does not have enough money to buy property %s for %d. Going bankrupt.", buyer.Name, property.Name, price))
 			g.bankrupt(buyer, nil)
@@ -773,7 +792,7 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, price int) {
 		g.charge(buyer, price, seller)
 		g.transferProperty(seller, buyer, property_id)
 	} else {
-		g.buy_offer_tries++
+		g.logger.Log(fmt.Sprintf("Player %s rejected the buy offer", seller.Name))
 	}
 }
 
@@ -937,6 +956,11 @@ func (g *Game) auction(property *Property, first_player_id int) {
 	curr_price := g.settings.MinPrice
 	auction_winner := -1
 	for queue.Len() > 0 {
+		select {
+		case <-g.ctx.Done():
+			panic("Game cancelled")
+		default:
+		}
 		bidderID := queue.Front().Value.(int)
 		queue.Remove(queue.Front())
 		if auction_winner == bidderID {
@@ -1004,6 +1028,10 @@ func (g *Game) bankrupt(player *Player, creditor *Player) {
 			g.properties[property].IsMortgaged = false
 			g.properties[property].Houses = 0
 			active_players := g.getActivePlayers()
+			if len(active_players) <= 1 {
+				g.checkForWinner()
+				return
+			}
 			g.auction(g.properties[property], active_players[g.randomSource.Intn(len(active_players))])
 		}
 	}

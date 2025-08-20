@@ -49,7 +49,7 @@ func (c *ConsoleCLI) GetStdAction(player int, state monopoly.GameState, availabl
 			response.PropertyId = chooseProperty(availableActions.BuyOutList)
 		case monopoly.SELLOFFER:
 			response.PropertyId = chooseProperty(availableActions.SellPropertyList)
-			response.PlayerId = choosePlayer(state.Players)
+			response.PlayerId = choosePlayer(state.Players, player)
 			response.Price = choosePrice()
 		case monopoly.BUYOFFER:
 			response.PropertyId = chooseProperty(availableActions.BuyPropertyList)
@@ -102,17 +102,17 @@ func chooseProperty(properties []int) int {
 	}
 }
 
-func choosePlayer(players []*monopoly.Player) int {
+func choosePlayer(players []*monopoly.Player, currPlayerIdx int) int {
 	for {
 		var availablePlayers []int
 		for idx, player := range players {
-			if !player.IsBankrupt {
+			if !player.IsBankrupt && idx != currPlayerIdx {
 				availablePlayers = append(availablePlayers, idx)
 			}
 		}
 		fmt.Println("Choose player (index):")
-		for _, player_id := range availablePlayers {
-			fmt.Printf("%d. %s\n", player_id+1, players[player_id].Name)
+		for idx, player_id := range availablePlayers {
+			fmt.Printf("%d. %s\n", idx+1, players[player_id].Name)
 		}
 		char, key, err := keyboard.GetKey()
 		if err != nil {

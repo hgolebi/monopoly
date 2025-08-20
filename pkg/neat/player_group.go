@@ -7,8 +7,9 @@ import (
 )
 
 type NEATPlayerGroup struct {
-	Id      int
-	players []*NEATMonopolyPlayer
+	Id           int
+	players      []*NEATMonopolyPlayer
+	gameFinished bool
 }
 
 func NewNEATPlayerGroup(id int, players []*NEATMonopolyPlayer) (*NEATPlayerGroup, error) {
@@ -17,8 +18,9 @@ func NewNEATPlayerGroup(id int, players []*NEATMonopolyPlayer) (*NEATPlayerGroup
 		return nil, fmt.Errorf(errorMsg)
 	}
 	return &NEATPlayerGroup{
-		Id:      id,
-		players: players,
+		Id:           id,
+		players:      players,
+		gameFinished: false,
 	}, nil
 }
 
@@ -81,6 +83,10 @@ func (t *NEATPlayerGroup) BiddingDecision(player int, state monopoly.GameState, 
 }
 
 func (t *NEATPlayerGroup) Finish(f monopoly.FinishOption, winner int, state monopoly.GameState) {
+	if t.gameFinished {
+		return
+	}
+	t.gameFinished = true
 	second_place := -1
 	highest_round := -1
 	for i, player := range state.Players {

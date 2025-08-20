@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"monopoly/pkg/monopoly"
 
+	"github.com/yaricom/goNEAT/v4/neat"
 	"github.com/yaricom/goNEAT/v4/neat/genetics"
 	"github.com/yaricom/goNEAT/v4/neat/network"
 )
@@ -43,10 +44,10 @@ func (p *NEATMonopolyPlayer) GetDecision(input []float64) []float64 {
 	}
 	success, err := p.network.ForwardSteps(p.max_depth)
 	if err != nil {
-		panic("Error during forward steps: " + err.Error())
+		neat.DebugLog(fmt.Sprintf("Error during forward steps for organism %d: %v", p.organism.Genotype.Id, err))
 	}
 	if !success {
-		panic("Forward steps failed")
+		neat.DebugLog(fmt.Sprintf("Forward steps failed for organism %d", p.organism.Genotype.Id))
 	}
 	var output []float64
 	for _, node := range p.network.Outputs {

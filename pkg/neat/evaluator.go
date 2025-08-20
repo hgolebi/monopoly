@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"os"
 	"time"
 
 	cfg "monopoly/pkg/config"
 	"monopoly/pkg/monopoly"
 
 	"github.com/yaricom/goNEAT/v4/experiment"
+	"github.com/yaricom/goNEAT/v4/experiment/utils"
+	"github.com/yaricom/goNEAT/v4/neat"
 	"github.com/yaricom/goNEAT/v4/neat/genetics"
 )
 
@@ -27,6 +28,10 @@ func NewMonopolyEvaluator(outputDir string, groupSize int) *MonopolyEvaluator {
 }
 
 func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetics.Population, epoch *experiment.Generation) error {
+	if _, err := utils.WritePopulationPlain(e.outputDir, pop, epoch); err != nil {
+		neat.ErrorLog(fmt.Sprintf("Failed to dump population, reason: %s\n", err))
+		return err
+	}
 	var players []*NEATMonopolyPlayer
 	for i, org := range pop.Organisms {
 		org.Fitness = 0
@@ -36,18 +41,18 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 		}
 		players = append(players, org)
 	}
-	epochDir := fmt.Sprintf("%s/epoch%d", e.outputDir, epoch.Id)
-	if err := os.MkdirAll(epochDir, os.ModePerm); err != nil {
-		return fmt.Errorf("error creating epoch directory: %v", err)
-	}
+	// epochDir := fmt.Sprintf("%s/epoch%d", e.outputDir, epoch.Id)
+	// if err := os.MkdirAll(epochDir, os.ModePerm); err != nil {
+	// 	return fmt.Errorf("error creating epoch directory: %v", err)
+	// }
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for roundID := range cfg.GAMES_PER_EPOCH {
-		roundDir := fmt.Sprintf("%s/epoch%d/round%d", e.outputDir, epoch.Id, roundID)
-		if err := os.MkdirAll(roundDir, os.ModePerm); err != nil {
-			return fmt.Errorf("error creating round directory: %v", err)
-		}
-
+		// roundDir := fmt.Sprintf("%s/epoch%d/round%d", e.outputDir, epoch.Id, roundID)
+		// if err := os.MkdirAll(roundDir, os.ModePerm); err != nil {
+		// 	return fmt.Errorf("error creating round directory: %v", err)
+		// }
+		neat.InfoLog(fmt.Sprintf("\nStarting round %d; epoch %d\n", roundID, epoch.Id))
 		rng.Shuffle(len(players), func(i, j int) {
 			players[i], players[j] = players[j], players[i]
 		})
@@ -75,12 +80,12 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 					errCh <- fmt.Errorf("error creating player group for group %d: %v", groupID, err)
 					return
 				}
-				logger, err := NewTrainerLogger(fmt.Sprintf("%s/epoch%d/round%d/group%d.log", e.outputDir, epoch.Id, roundID, groupID))
+				logger, err := NewTrainerLogger(fmt.Sprintf("%s/group%d.log", e.outputDir, groupID))
 				if err != nil {
 					errCh <- fmt.Errorf("error creating logger for group %d: %v", groupID, err)
 					return
 				}
-				game := monopoly.NewGame(playerGroup, logger, 0)
+				game := monopoly.NewGame(ctx, playerGroup, logger, 0)
 				game.Start()
 				errCh <- nil
 			}(group)
@@ -93,6 +98,10 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 				fmt.Printf("Group %d finished successfully\n", i)
 			}
 		}
+		neat.InfoLog(fmt.Sprintf("\nRound %d finished successfully; epoch %d\n", roundID, epoch.Id))
+	}
+	for _, org := range pop.Organisms {
+		neat.InfoLog(fmt.Sprintf("Organism %d finished with fitness %f\n", org.Genotype.Id, org.Fitness))
 	}
 	return nil
 }

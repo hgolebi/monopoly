@@ -145,31 +145,33 @@ genome:
 
 
 
-    # OUTPUT nodes based on outputs map (IDs 125-144) - total 20 outputs
-    - { id: 125, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BUY_DECISION (0)
-    - { id: 126, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BID_DECISION (1)
-    - { id: 128, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BUY_FROM_PLAYER (3)
-    - { id: 129, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # SELL_TO_PLAYER (4)
-    - { id: 130, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # JAIL_ROLL_DICE (5)
-    - { id: 131, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # JAIL_BAIL (6)
-    - { id: 132, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # JAIL_CARD (7)
-    - { id: 133, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # NO_ACTION (8)
-    - { id: 134, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # MORTGAGE (9)
-    - { id: 135, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BUYOUT (10)
-    - { id: 136, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # SELL_OFFER (11)
-    - { id: 137, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BUY_OFFER (12)
-    - { id: 138, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BUY_HOUSE (13)
-    - { id: 139, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # SELL_HOUSE (14)
-    - { id: 140, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # PLAYER_1 (15)
-    - { id: 141, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # PLAYER_2 (16)
-    - { id: 142, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # PLAYER_3 (17)
-    - { id: 143, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # PLAYER_4 (18)
-    - { id: 144, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # PRICE (19)
+       # OUTPUT nodes based on outputs map (IDs 124-142) - total 19 outputs
+    - { id: 124, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BUY_DECISION (0)
+    - { id: 125, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BID_DECISION (1)
+    - { id: 126, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BUY_FROM_PLAYER (2)
+    - { id: 127, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # SELL_TO_PLAYER (3)
+    - { id: 128, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # JAIL_ROLL_DICE (4)
+    - { id: 129, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # JAIL_BAIL (5)
+    - { id: 130, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # JAIL_CARD (6)
+    - { id: 131, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # NO_ACTION (7)
+    - { id: 132, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # MORTGAGE (8)
+    - { id: 133, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BUYOUT (9)
+    - { id: 134, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # SELL_OFFER (10)
+    - { id: 135, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BUY_OFFER (11)
+    - { id: 136, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BUY_HOUSE (12)
+    - { id: 137, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # SELL_HOUSE (13)
+    - { id: 138, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # PLAYER_1 (14)
+    - { id: 139, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # PLAYER_2 (15)
+    - { id: 140, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # PLAYER_3 (16)
+    - { id: 141, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # PLAYER_4 (17)
+    - { id: 142, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # PRICE (18)
 
-  # The genes - minimal connections from BIAS to all outputs
+
   genes:
+    - { src_id: 98,  tgt_id: 124,  weight: 0.0, trait_id: 1, innov_num: 0,  mut_num: 0, recurrent: false, enabled: true }
     - { src_id: 98,  tgt_id: 125,  weight: 0.0, trait_id: 1, innov_num: 1,  mut_num: 0, recurrent: false, enabled: true }
     - { src_id: 98,  tgt_id: 126,  weight: 0.0, trait_id: 1, innov_num: 2,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 98,  tgt_id: 127,  weight: 0.0, trait_id: 1, innov_num: 18,  mut_num: 0, recurrent: false, enabled: true }
     - { src_id: 98,  tgt_id: 128,  weight: 0.0, trait_id: 1, innov_num: 3,  mut_num: 0, recurrent: false, enabled: true }
     - { src_id: 98,  tgt_id: 129,  weight: 0.0, trait_id: 1, innov_num: 4,  mut_num: 0, recurrent: false, enabled: true }
     - { src_id: 98,  tgt_id: 130,  weight: 0.0, trait_id: 1, innov_num: 5,  mut_num: 0, recurrent: false, enabled: true }
@@ -185,5 +187,3 @@ genome:
     - { src_id: 98,  tgt_id: 140,  weight: 0.0, trait_id: 1, innov_num: 15, mut_num: 0, recurrent: false, enabled: true }
     - { src_id: 98,  tgt_id: 141,  weight: 0.0, trait_id: 1, innov_num: 16, mut_num: 0, recurrent: false, enabled: true }
     - { src_id: 98,  tgt_id: 142,  weight: 0.0, trait_id: 1, innov_num: 17, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 98,  tgt_id: 143,  weight: 0.0, trait_id: 1, innov_num: 18, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 98,  tgt_id: 144,  weight: 0.0, trait_id: 1, innov_num: 19, mut_num: 0, recurrent: false, enabled: true }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"monopoly/pkg/consoleCLI"
 	"monopoly/pkg/monopoly"
@@ -13,11 +14,11 @@ func runConsoleMonopoly() {
 	io := monopoly.ConsoleServer{}
 	logger := monopoly.ConsoleLogger{}
 	logger.Init()
-
+	ctx := context.Background()
 	if *cliMode {
 		consoleCLI.StartClient()
 	} else {
-		game := monopoly.NewGame(&io, &logger, 0)
+		game := monopoly.NewGame(ctx, &io, &logger, 0)
 		game.Start()
 	}
 }
@@ -30,6 +31,6 @@ func trainNEATNetwork() {
 }
 
 func main() {
-	// trainNEATNetwork()
-	runConsoleMonopoly()
+	trainNEATNetwork()
+	// runConsoleMonopoly()
 }
