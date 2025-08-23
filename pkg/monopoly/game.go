@@ -46,17 +46,15 @@ func NewGame(ctx context.Context, io IMonopoly_IO, logger Logger, seed int64) *G
 	g.round = 1
 	g.currentPlayerIdx = 0
 
-	players_count := g.io.Init()
-	if players_count < 2 || players_count > 4 {
+	player_names := g.io.Init()
+	if len(player_names) < 2 || len(player_names) > 4 {
 		panic("Players count must be between 2 and 4")
 	}
 
-	g.players = []*Player{
-		NewPlayer(0, "player1", 1500),
-		NewPlayer(1, "player2", 1500),
-		NewPlayer(2, "player3", 1500),
-		NewPlayer(3, "player4", 1500),
-	}[:players_count]
+	g.players = make([]*Player, len(player_names))
+	for i, name := range player_names {
+		g.players[i] = NewPlayer(i, name, 1500)
+	}
 
 	g.properties = []*Property{
 		NewProperty(1, 0, "Brown1", 60, 50, true, "Brown"),
@@ -490,6 +488,7 @@ func (g *Game) resolveStandardAction(player_id int, action_details ActionDetails
 	if !slices.Contains(available.Actions, action_details.Action) {
 		g.logger.Log(fmt.Sprintf("Action %s not available, going bankrupt", StdActionNames[action_details.Action]))
 		g.bankrupt(player, nil)
+		return
 	}
 	switch action_details.Action {
 	case MORTGAGE:

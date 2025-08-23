@@ -168,22 +168,37 @@ genome:
 
 
   genes:
-    - { src_id: 98,  tgt_id: 124,  weight: 0.0, trait_id: 1, innov_num: 0,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 98,  tgt_id: 125,  weight: 0.0, trait_id: 1, innov_num: 1,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 98,  tgt_id: 126,  weight: 0.0, trait_id: 1, innov_num: 2,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 98,  tgt_id: 127,  weight: 0.0, trait_id: 1, innov_num: 18,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 98,  tgt_id: 128,  weight: 0.0, trait_id: 1, innov_num: 3,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 98,  tgt_id: 129,  weight: 0.0, trait_id: 1, innov_num: 4,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 98,  tgt_id: 130,  weight: 0.0, trait_id: 1, innov_num: 5,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 98,  tgt_id: 131,  weight: 0.0, trait_id: 1, innov_num: 6,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 98,  tgt_id: 132,  weight: 0.0, trait_id: 1, innov_num: 7,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 98,  tgt_id: 133,  weight: 0.0, trait_id: 1, innov_num: 8,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 98,  tgt_id: 134,  weight: 0.0, trait_id: 1, innov_num: 9,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 98,  tgt_id: 135,  weight: 0.0, trait_id: 1, innov_num: 10, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 98,  tgt_id: 136,  weight: 0.0, trait_id: 1, innov_num: 11, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 98,  tgt_id: 137,  weight: 0.0, trait_id: 1, innov_num: 12, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 98,  tgt_id: 138,  weight: 0.0, trait_id: 1, innov_num: 13, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 98,  tgt_id: 139,  weight: 0.0, trait_id: 1, innov_num: 14, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 98,  tgt_id: 140,  weight: 0.0, trait_id: 1, innov_num: 15, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 98,  tgt_id: 141,  weight: 0.0, trait_id: 1, innov_num: 16, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 98,  tgt_id: 142,  weight: 0.0, trait_id: 1, innov_num: 17, mut_num: 0, recurrent: false, enabled: true }
+  # DECISION_CONTEXT -> All outputs
+    - { src_id: 106,  tgt_id: 124,  weight: 0.0, trait_id: 1, innov_num: 0,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 125,  weight: 0.0, trait_id: 1, innov_num: 1,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 126,  weight: 0.0, trait_id: 1, innov_num: 2,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 127,  weight: 0.0, trait_id: 1, innov_num: 18,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 128,  weight: 0.0, trait_id: 1, innov_num: 3,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 129,  weight: 0.0, trait_id: 1, innov_num: 4,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 130,  weight: 0.0, trait_id: 1, innov_num: 5,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 131,  weight: 0.0, trait_id: 1, innov_num: 6,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 132,  weight: 0.0, trait_id: 1, innov_num: 7,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 133,  weight: 0.0, trait_id: 1, innov_num: 8,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 134,  weight: 0.0, trait_id: 1, innov_num: 9,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 135,  weight: 0.0, trait_id: 1, innov_num: 10, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 136,  weight: 0.0, trait_id: 1, innov_num: 11, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 137,  weight: 0.0, trait_id: 1, innov_num: 12, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 138,  weight: 0.0, trait_id: 1, innov_num: 13, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 139,  weight: 0.0, trait_id: 1, innov_num: 14, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 140,  weight: 0.0, trait_id: 1, innov_num: 15, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 141,  weight: 0.0, trait_id: 1, innov_num: 16, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 142,  weight: 0.0, trait_id: 1, innov_num: 17, mut_num: 0, recurrent: false, enabled: true }
+
+  # STD_ACTIONS available actions -> STD_ACTION outputs
+    - { src_id: 114,  tgt_id: 131,  weight: 0.0, trait_id: 1, innov_num: 19, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 115,  tgt_id: 132,  weight: 0.0, trait_id: 1, innov_num: 20, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 116,  tgt_id: 133,  weight: 0.0, trait_id: 1, innov_num: 21, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 117,  tgt_id: 134,  weight: 0.0, trait_id: 1, innov_num: 22, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 118,  tgt_id: 135,  weight: 0.0, trait_id: 1, innov_num: 23, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 119,  tgt_id: 136,  weight: 0.0, trait_id: 1, innov_num: 24, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 120,  tgt_id: 137,  weight: 0.0, trait_id: 1, innov_num: 25, mut_num: 0, recurrent: false, enabled: true }
+
+    # JAIL_ACTIONS available actions -> JAIL_ACTION outputs
+    - { src_id: 121,  tgt_id: 128,  weight: 0.0, trait_id: 1, innov_num: 26, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 122,  tgt_id: 129,  weight: 0.0, trait_id: 1, innov_num: 27, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 123,  tgt_id: 130,  weight: 0.0, trait_id: 1, innov_num: 28, mut_num: 0, recurrent: false, enabled: true }

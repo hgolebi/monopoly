@@ -36,7 +36,7 @@ type ConsoleServer struct {
 	Players []PlayerConn
 }
 
-func (s *ConsoleServer) Init() int {
+func (s *ConsoleServer) Init() []string {
 	ln, err := net.Listen("tcp", ":12345")
 	if err != nil {
 		panic(err)
@@ -61,7 +61,12 @@ func (s *ConsoleServer) Init() int {
 		}
 	}
 	fmt.Println("Wszyscy gracze połączeni!")
-	return expectedPlayers
+	return []string{
+		"Player0",
+		"Player1",
+		"Player2",
+		"Player3",
+	}[:expectedPlayers]
 }
 
 func (s *ConsoleServer) GetStdAction(player int, state GameState, availableActions FullActionList) ActionDetails {

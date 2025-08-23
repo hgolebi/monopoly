@@ -24,8 +24,12 @@ func NewNEATPlayerGroup(id int, players []*NEATMonopolyPlayer) (*NEATPlayerGroup
 	}, nil
 }
 
-func (t *NEATPlayerGroup) Init() int {
-	return len(t.players)
+func (t *NEATPlayerGroup) Init() []string {
+	player_names := make([]string, len(t.players))
+	for i, player := range t.players {
+		player_names[i] = fmt.Sprintf("Bot%d", player.organism.Genotype.Id)
+	}
+	return player_names
 }
 
 func (t *NEATPlayerGroup) GetStdAction(player int, state monopoly.GameState, availableActions monopoly.FullActionList) monopoly.ActionDetails {
@@ -109,6 +113,11 @@ func (t *NEATPlayerGroup) Finish(f monopoly.FinishOption, winner int, state mono
 	case monopoly.ROUND_LIMIT:
 		t.players[winner].organism.Fitness += cfg.ROUND_LIMIT_WINNER_SCORE
 	case monopoly.WIN:
+		for _, propertyId := range state.Players[winner].Properties {
+			property := state.Properties[propertyId]
+			t.players[winner].organism.Fitness += float64(cfg.POINT_PER_PROPERTY)
+			t.players[winner].organism.Fitness += float64(cfg.POINTS_PER_HOUSE * property.Houses)
+		}
 		t.players[winner].organism.Fitness += cfg.FIRST_PLACE_SCORE
 		if second_place != -1 {
 			t.players[second_place].organism.Fitness += cfg.SECOND_PLACE_SCORE

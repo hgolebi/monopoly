@@ -167,24 +167,33 @@ func (p *NEATMonopolyPlayer) BiddingDecision(player int, state monopoly.GameStat
 
 func transformAvailableActionsList(actions monopoly.FullActionList) map[int][]monopoly.StdAction {
 	propertyActions := make(map[int][]monopoly.StdAction)
-	for _, propertyID := range actions.MortgageList {
-		propertyActions[propertyID] = append(propertyActions[propertyID], monopoly.MORTGAGE)
+	for _, action := range actions.Actions {
+		switch action {
+		case monopoly.MORTGAGE:
+			for _, propertyID := range actions.MortgageList {
+				propertyActions[propertyID] = append(propertyActions[propertyID], monopoly.MORTGAGE)
+			}
+		case monopoly.BUYOUT:
+			for _, propertyID := range actions.BuyOutList {
+				propertyActions[propertyID] = append(propertyActions[propertyID], monopoly.BUYOUT)
+			}
+		case monopoly.SELLOFFER:
+			for _, propertyID := range actions.SellPropertyList {
+				propertyActions[propertyID] = append(propertyActions[propertyID], monopoly.SELLOFFER)
+			}
+		case monopoly.BUYOFFER:
+			for _, propertyID := range actions.BuyPropertyList {
+				propertyActions[propertyID] = append(propertyActions[propertyID], monopoly.BUYOFFER)
+			}
+		case monopoly.BUYHOUSE:
+			for _, propertyID := range actions.BuyHouseList {
+				propertyActions[propertyID] = append(propertyActions[propertyID], monopoly.BUYHOUSE)
+			}
+		case monopoly.SELLHOUSE:
+			for _, propertyID := range actions.SellHouseList {
+				propertyActions[propertyID] = append(propertyActions[propertyID], monopoly.SELLHOUSE)
+			}
+		}
 	}
-	for _, propertyID := range actions.BuyOutList {
-		propertyActions[propertyID] = append(propertyActions[propertyID], monopoly.BUYOUT)
-	}
-	for _, propertyID := range actions.SellPropertyList {
-		propertyActions[propertyID] = append(propertyActions[propertyID], monopoly.SELLOFFER)
-	}
-	for _, propertyID := range actions.BuyPropertyList {
-		propertyActions[propertyID] = append(propertyActions[propertyID], monopoly.BUYOFFER)
-	}
-	for _, propertyID := range actions.BuyHouseList {
-		propertyActions[propertyID] = append(propertyActions[propertyID], monopoly.BUYHOUSE)
-	}
-	for _, propertyID := range actions.SellHouseList {
-		propertyActions[propertyID] = append(propertyActions[propertyID], monopoly.SELLHOUSE)
-	}
-
 	return propertyActions
 }

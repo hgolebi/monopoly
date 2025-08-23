@@ -23,13 +23,15 @@ const (
 const (
 	PUNISHMENT_FIRST_THRESHOLD  = 10 // if player bankrupts before this round he will receive HIGHEST_PUNISHMENT
 	PUNISHMENT_SECOND_THRESHOLD = 20 // if player bankrupts before this round he will receive SECOND_HIGHEST_PUNISHMENT
-	HIGHEST_PUNISHMENT          = -100
-	SECOND_HIGHEST_PUNISHMENT   = -50
-	SECOND_PLACE_SCORE          = 10
-	FIRST_PLACE_SCORE           = 50
-	ROUND_LIMIT_WINNER_SCORE    = 10 // if player wins the game by reaching the round limit he will receive this score
+	HIGHEST_PUNISHMENT          = -60
+	SECOND_HIGHEST_PUNISHMENT   = -30
+	SECOND_PLACE_SCORE          = 20
+	FIRST_PLACE_SCORE           = 100
+	ROUND_LIMIT_WINNER_SCORE    = 5  // if player wins the game by reaching the round limit he will receive this score
+	POINT_PER_PROPERTY          = 10 // points for each property owned by the player. Only for winner
+	POINTS_PER_HOUSE            = 20 // points for each house on the property. Only for winner
 
-	GAMES_PER_EPOCH = 1 // number of games every organism has to play during one epoch
+	GAMES_PER_EPOCH = 4 // number of games every organism has to play during one epoch
 	GROUP_SIZE      = 4 // number of players in each game
 )
 
