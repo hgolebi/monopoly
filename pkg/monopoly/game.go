@@ -734,7 +734,9 @@ func (g *Game) chargePlayer(player_id int, amount int, target *Player) {
 		action_details := g.io.GetStdAction(player_id, state, action_list)
 		g.resolveStandardAction(player_id, action_details, action_list)
 		if !g.continueRound(player_id) {
-			target.AddMoney(amount)
+			if target != nil {
+				target.AddMoney(amount)
+			}
 			return
 		}
 	}
