@@ -128,7 +128,7 @@ const (
 )
 
 type IMonopoly_IO interface {
-	Init() int
+	Init() []string
 	GetStdAction(player int, state GameState, availableActions FullActionList) ActionDetails
 	GetJailAction(player int, state GameState, available []JailAction) JailAction
 	BuyDecision(player int, state GameState, propertyId int) bool
