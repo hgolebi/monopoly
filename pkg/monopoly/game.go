@@ -244,6 +244,10 @@ func (g *Game) Start() {
 			}
 			g.makeMove(1, 0, 0)
 		}
+		if g.round > g.settings.MaxRounds {
+			g.finished = true
+			break
+		}
 	}
 	g.endGame()
 }

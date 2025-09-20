@@ -67,36 +67,57 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 			groups = append(groups, players[i:end])
 		}
 
-		errCh := make(chan error, len(groups))
+		resultsCh := make(chan struct {
+			groupID int
+			err     error
+		}, len(groups))
+
 		for groupID, group := range groups {
-			go func(g []*NEATMonopolyPlayer) {
-				// defer func() {
-				// 	if r := recover(); r != nil {
-				// 		errCh <- fmt.Errorf("panic in group %d: %v", groupID, r)
-				// 	}
-				// }()
+			go func(groupID int, g []*NEATMonopolyPlayer) {
+				defer func() {
+					if r := recover(); r != nil {
+						resultsCh <- struct {
+							groupID int
+							err     error
+						}{groupID: groupID, err: fmt.Errorf("panic in group %d: %v", groupID, r)}
+					}
+				}()
 				playerGroup, err := NewNEATPlayerGroup(groupID, g)
 				if err != nil {
-					errCh <- fmt.Errorf("error creating player group for group %d: %v", groupID, err)
+					resultsCh <- struct {
+						groupID int
+						err     error
+					}{groupID: groupID, err: fmt.Errorf("error creating player group for group %d: %v", groupID, err)}
 					return
 				}
 				logger, err := NewTrainerLogger(fmt.Sprintf("%s/group%d.log", e.outputDir, groupID))
 				if err != nil {
-					errCh <- fmt.Errorf("error creating logger for group %d: %v", groupID, err)
+					resultsCh <- struct {
+						groupID int
+						err     error
+					}{groupID: groupID, err: fmt.Errorf("error creating logger for group %d: %v", groupID, err)}
 					return
 				}
 				game := monopoly.NewGame(ctx, playerGroup, logger, 0)
 				game.Start()
-				errCh <- nil
-			}(group)
+				resultsCh <- struct {
+					groupID int
+					err     error
+				}{groupID: groupID, err: nil}
+			}(groupID, group)
 		}
-
+		var err error
 		for i := 0; i < len(groups); i++ {
-			if err := <-errCh; err != nil {
-				return fmt.Errorf("error in group %d: %v", i, err)
+			result := <-resultsCh
+			if result.err != nil {
+				fmt.Printf("[%d] Error in group %d: %v\n", i, result.groupID, result.err)
+				err = fmt.Errorf("error in one of the groups: %v", result.err)
 			} else {
-				fmt.Printf("Group %d finished successfully\n", i)
+				fmt.Printf("[%d] Group %d finished successfully\n", i, result.groupID)
 			}
+		}
+		if err != nil {
+			return err
 		}
 		neat.InfoLog(fmt.Sprintf("\nRound %d finished successfully; epoch %d\n", roundID, epoch.Id))
 	}
