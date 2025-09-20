@@ -292,7 +292,7 @@ func GetJailOutputValues(output []float64) map[monopoly.JailAction]float64 {
 type MonopolySensors []float64
 
 func NewMonopolySensors() MonopolySensors {
-	return make([]float64, 124)
+	return make([]float64, 125)
 }
 
 func (s MonopolySensors) LoadState(state monopoly.GameState, playerID int) {
