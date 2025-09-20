@@ -195,22 +195,23 @@ var baseInputs = map[string]int{
 	"CHARGE":           111, // In case of charge that would result in player going bankrupt
 	"SELL_OFFER_TRIES": 112, // In case of standard actions
 	"BUY_OFFER_TRIES":  113, // In case of standard actions
+	"STD_ACTIONS_USED": 114, // Number of standard actions used in the current turn
 }
 
 var availableStdActionInputs = map[monopoly.StdAction]int{
-	monopoly.NOACTION:  114,
-	monopoly.MORTGAGE:  115,
-	monopoly.BUYOUT:    116,
-	monopoly.SELLOFFER: 117,
-	monopoly.BUYOFFER:  118,
-	monopoly.BUYHOUSE:  119,
-	monopoly.SELLHOUSE: 120,
+	monopoly.NOACTION:  115,
+	monopoly.MORTGAGE:  116,
+	monopoly.BUYOUT:    117,
+	monopoly.SELLOFFER: 118,
+	monopoly.BUYOFFER:  119,
+	monopoly.BUYHOUSE:  120,
+	monopoly.SELLHOUSE: 121,
 }
 
 var availableJailActionInputs = map[monopoly.JailAction]int{
-	monopoly.ROLL_DICE: 121,
-	monopoly.BAIL:      122,
-	monopoly.CARD:      123,
+	monopoly.ROLL_DICE: 122,
+	monopoly.BAIL:      123,
+	monopoly.CARD:      124,
 }
 
 type DecisionContext int
@@ -362,6 +363,10 @@ func (s MonopolySensors) LoadSellOfferTries(tries int) {
 
 func (s MonopolySensors) LoadBuyOfferTries(tries int) {
 	s[baseInputs["BUY_OFFER_TRIES"]] = normalize(tries, 0, cfg.MAX_OFFER_TRIES, false)
+}
+
+func (s MonopolySensors) LoadStdActionsUsed(used int) {
+	s[baseInputs["STD_ACTIONS_USED"]] = normalize(used, 0, cfg.MAX_STD_ACTIONS, false)
 }
 
 func (s MonopolySensors) LoadAvailableStdActions(actions []monopoly.StdAction) {

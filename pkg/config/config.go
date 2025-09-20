@@ -10,6 +10,7 @@ const (
 	MIN_PRICE        = 10
 	MAX_OFFER_TRIES  = 3
 	MAX_PLAYERS      = 4
+	MAX_STD_ACTIONS  = 5
 
 	// game settings used for normalization of NEAT input/outputs
 	LAST_FIELD_ID    = 39
@@ -36,23 +37,25 @@ const (
 )
 
 type GameSettings struct {
-	MaxRounds      int
-	StartPassMoney int
-	JailPosition   int
-	JailBail       int
-	MaxHouses      int
-	MinPrice       int
-	MaxOfferTries  int
+	MaxRounds            int
+	StartPassMoney       int
+	JailPosition         int
+	JailBail             int
+	MaxHouses            int
+	MinPrice             int
+	MaxOfferTries        int
+	MaxStdActionsPerTurn int
 }
 
 func NewGameSettings() GameSettings {
 	return GameSettings{
-		MaxRounds:      MAX_ROUNDS,
-		StartPassMoney: START_PASS_MONEY,
-		JailPosition:   JAIL_POSITION,
-		JailBail:       JAIL_BAIL,
-		MaxHouses:      MAX_HOUSES,
-		MinPrice:       MIN_PRICE,
-		MaxOfferTries:  MAX_OFFER_TRIES,
+		MaxRounds:            MAX_ROUNDS,
+		StartPassMoney:       START_PASS_MONEY,
+		JailPosition:         JAIL_POSITION,
+		JailBail:             JAIL_BAIL,
+		MaxHouses:            MAX_HOUSES,
+		MinPrice:             MIN_PRICE,
+		MaxOfferTries:        MAX_OFFER_TRIES,
+		MaxStdActionsPerTurn: MAX_STD_ACTIONS,
 	}
 }

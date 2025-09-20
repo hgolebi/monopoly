@@ -46,6 +46,7 @@ type GameState struct {
 	Charge           int // In case of a charge that would result in a player going bankrupt
 	SellOfferTries   int
 	BuyOfferTries    int
+	StdActionsUsed   int
 }
 
 func formatStr(str string, length int) string {

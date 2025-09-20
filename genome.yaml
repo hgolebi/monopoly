@@ -116,7 +116,7 @@ genome:
     - { id: 101, trait_id: 0, type: INPT, activation: NullActivation } # CURRENT_PLAYER_MONEY
     - { id: 102, trait_id: 0, type: INPT, activation: NullActivation } # CURRENT_PLAYER_JAIL_CARDS
 
-    # Base inputs (IDs 103-113)
+    # Base inputs (IDs 103-114)
     - { id: 103, trait_id: 0, type: INPT, activation: NullActivation } # PLAYER_ID
     - { id: 104, trait_id: 0, type: INPT, activation: NullActivation } # CURR_PLAYER
     - { id: 105, trait_id: 0, type: INPT, activation: NullActivation } # ROUND
@@ -128,77 +128,77 @@ genome:
     - { id: 111, trait_id: 0, type: INPT, activation: NullActivation } # CHARGE
     - { id: 112, trait_id: 0, type: INPT, activation: NullActivation } # SELL_OFFER_TRIES
     - { id: 113, trait_id: 0, type: INPT, activation: NullActivation } # BUY_OFFER_TRIES
+    - { id: 114, trait_id: 0, type: INPT, activation: NullActivation } # STD_ACTIONS_USED
 
-    # Available standard action inputs (IDs 114-119)
-    - { id: 114, trait_id: 0, type: INPT, activation: NullActivation } # NOACTION available
-    - { id: 115, trait_id: 0, type: INPT, activation: NullActivation } # MORTGAGE available
-    - { id: 116, trait_id: 0, type: INPT, activation: NullActivation } # BUYOUT available
-    - { id: 117, trait_id: 0, type: INPT, activation: NullActivation } # SELLOFFER available
-    - { id: 118, trait_id: 0, type: INPT, activation: NullActivation } # BUYOFFER available
-    - { id: 119, trait_id: 0, type: INPT, activation: NullActivation } # BUYHOUSE available
-    - { id: 120, trait_id: 0, type: INPT, activation: NullActivation } # SELLHOUSE available
+    # Available standard action inputs (IDs 115-120)
+    - { id: 115, trait_id: 0, type: INPT, activation: NullActivation } # NOACTION available
+    - { id: 116, trait_id: 0, type: INPT, activation: NullActivation } # MORTGAGE available
+    - { id: 117, trait_id: 0, type: INPT, activation: NullActivation } # BUYOUT available
+    - { id: 118, trait_id: 0, type: INPT, activation: NullActivation } # SELLOFFER available
+    - { id: 119, trait_id: 0, type: INPT, activation: NullActivation } # BUYOFFER available
+    - { id: 120, trait_id: 0, type: INPT, activation: NullActivation } # BUYHOUSE available
+    - { id: 121, trait_id: 0, type: INPT, activation: NullActivation } # SELLHOUSE available
 
-    # Available jail action inputs (IDs 121-123)
-    - { id: 121, trait_id: 0, type: INPT, activation: NullActivation } # ROLL_DICE available
-    - { id: 122, trait_id: 0, type: INPT, activation: NullActivation } # BAIL available
-    - { id: 123, trait_id: 0, type: INPT, activation: NullActivation } # CARD available
+    # Available jail action inputs (IDs 122-124)
+    - { id: 122, trait_id: 0, type: INPT, activation: NullActivation } # ROLL_DICE available
+    - { id: 123, trait_id: 0, type: INPT, activation: NullActivation } # BAIL available
+    - { id: 124, trait_id: 0, type: INPT, activation: NullActivation } # CARD available
 
 
-
-       # OUTPUT nodes based on outputs map (IDs 124-142) - total 19 outputs
-    - { id: 124, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BUY_DECISION (0)
-    - { id: 125, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BID_DECISION (1)
-    - { id: 126, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BUY_FROM_PLAYER (2)
-    - { id: 127, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # SELL_TO_PLAYER (3)
-    - { id: 128, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # JAIL_ROLL_DICE (4)
-    - { id: 129, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # JAIL_BAIL (5)
-    - { id: 130, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # JAIL_CARD (6)
-    - { id: 131, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # NO_ACTION (7)
-    - { id: 132, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # MORTGAGE (8)
-    - { id: 133, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BUYOUT (9)
-    - { id: 134, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # SELL_OFFER (10)
-    - { id: 135, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BUY_OFFER (11)
-    - { id: 136, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BUY_HOUSE (12)
-    - { id: 137, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # SELL_HOUSE (13)
-    - { id: 138, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # PLAYER_1 (14)
-    - { id: 139, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # PLAYER_2 (15)
-    - { id: 140, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # PLAYER_3 (16)
-    - { id: 141, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # PLAYER_4 (17)
-    - { id: 142, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # PRICE (18)
+  # OUTPUT nodes based on outputs map (IDs 125-143) - total 19 outputs
+    - { id: 125, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BUY_DECISION (0)
+    - { id: 126, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BID_DECISION (1)
+    - { id: 127, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BUY_FROM_PLAYER (2)
+    - { id: 128, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # SELL_TO_PLAYER (3)
+    - { id: 129, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # JAIL_ROLL_DICE (4)
+    - { id: 130, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # JAIL_BAIL (5)
+    - { id: 131, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # JAIL_CARD (6)
+    - { id: 132, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # NO_ACTION (7)
+    - { id: 133, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # MORTGAGE (8)
+    - { id: 134, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BUYOUT (9)
+    - { id: 135, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # SELL_OFFER (10)
+    - { id: 136, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BUY_OFFER (11)
+    - { id: 137, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # BUY_HOUSE (12)
+    - { id: 138, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # SELL_HOUSE (13)
+    - { id: 139, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # PLAYER_1 (14)
+    - { id: 140, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # PLAYER_2 (15)
+    - { id: 141, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # PLAYER_3 (16)
+    - { id: 142, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # PLAYER_4 (17)
+    - { id: 143, trait_id: 0, type: OUTP, activation: SigmoidSteepenedActivation } # PRICE (18)
 
 
   genes:
   # DECISION_CONTEXT -> All outputs
-    - { src_id: 106,  tgt_id: 124,  weight: 0.0, trait_id: 1, innov_num: 0,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 106,  tgt_id: 125,  weight: 0.0, trait_id: 1, innov_num: 1,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 106,  tgt_id: 126,  weight: 0.0, trait_id: 1, innov_num: 2,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 106,  tgt_id: 127,  weight: 0.0, trait_id: 1, innov_num: 18,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 106,  tgt_id: 128,  weight: 0.0, trait_id: 1, innov_num: 3,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 106,  tgt_id: 129,  weight: 0.0, trait_id: 1, innov_num: 4,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 106,  tgt_id: 130,  weight: 0.0, trait_id: 1, innov_num: 5,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 106,  tgt_id: 131,  weight: 0.0, trait_id: 1, innov_num: 6,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 106,  tgt_id: 132,  weight: 0.0, trait_id: 1, innov_num: 7,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 106,  tgt_id: 133,  weight: 0.0, trait_id: 1, innov_num: 8,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 106,  tgt_id: 134,  weight: 0.0, trait_id: 1, innov_num: 9,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 106,  tgt_id: 135,  weight: 0.0, trait_id: 1, innov_num: 10, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 106,  tgt_id: 136,  weight: 0.0, trait_id: 1, innov_num: 11, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 106,  tgt_id: 137,  weight: 0.0, trait_id: 1, innov_num: 12, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 106,  tgt_id: 138,  weight: 0.0, trait_id: 1, innov_num: 13, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 106,  tgt_id: 139,  weight: 0.0, trait_id: 1, innov_num: 14, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 106,  tgt_id: 140,  weight: 0.0, trait_id: 1, innov_num: 15, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 106,  tgt_id: 141,  weight: 0.0, trait_id: 1, innov_num: 16, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 106,  tgt_id: 142,  weight: 0.0, trait_id: 1, innov_num: 17, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 125,  weight: 0.0, trait_id: 1, innov_num: 0,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 126,  weight: 0.0, trait_id: 1, innov_num: 1,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 127,  weight: 0.0, trait_id: 1, innov_num: 2,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 128,  weight: 0.0, trait_id: 1, innov_num: 18,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 129,  weight: 0.0, trait_id: 1, innov_num: 3,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 130,  weight: 0.0, trait_id: 1, innov_num: 4,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 131,  weight: 0.0, trait_id: 1, innov_num: 5,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 132,  weight: 0.0, trait_id: 1, innov_num: 6,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 133,  weight: 0.0, trait_id: 1, innov_num: 7,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 134,  weight: 0.0, trait_id: 1, innov_num: 8,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 135,  weight: 0.0, trait_id: 1, innov_num: 9,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 136,  weight: 0.0, trait_id: 1, innov_num: 10, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 137,  weight: 0.0, trait_id: 1, innov_num: 11, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 138,  weight: 0.0, trait_id: 1, innov_num: 12, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 139,  weight: 0.0, trait_id: 1, innov_num: 13, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 140,  weight: 0.0, trait_id: 1, innov_num: 14, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 141,  weight: 0.0, trait_id: 1, innov_num: 15, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 142,  weight: 0.0, trait_id: 1, innov_num: 16, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 106,  tgt_id: 143,  weight: 0.0, trait_id: 1, innov_num: 17, mut_num: 0, recurrent: false, enabled: true }
 
   # STD_ACTIONS available actions -> STD_ACTION outputs
-    - { src_id: 114,  tgt_id: 131,  weight: 0.0, trait_id: 1, innov_num: 19, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 115,  tgt_id: 132,  weight: 0.0, trait_id: 1, innov_num: 20, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 116,  tgt_id: 133,  weight: 0.0, trait_id: 1, innov_num: 21, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 117,  tgt_id: 134,  weight: 0.0, trait_id: 1, innov_num: 22, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 118,  tgt_id: 135,  weight: 0.0, trait_id: 1, innov_num: 23, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 119,  tgt_id: 136,  weight: 0.0, trait_id: 1, innov_num: 24, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 120,  tgt_id: 137,  weight: 0.0, trait_id: 1, innov_num: 25, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 115,  tgt_id: 132,  weight: 0.0, trait_id: 1, innov_num: 19, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 116,  tgt_id: 133,  weight: 0.0, trait_id: 1, innov_num: 20, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 117,  tgt_id: 134,  weight: 0.0, trait_id: 1, innov_num: 21, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 118,  tgt_id: 135,  weight: 0.0, trait_id: 1, innov_num: 22, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 119,  tgt_id: 136,  weight: 0.0, trait_id: 1, innov_num: 23, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 120,  tgt_id: 137,  weight: 0.0, trait_id: 1, innov_num: 24, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 121,  tgt_id: 138,  weight: 0.0, trait_id: 1, innov_num: 25, mut_num: 0, recurrent: false, enabled: true }
 
     # JAIL_ACTIONS available actions -> JAIL_ACTION outputs
-    - { src_id: 121,  tgt_id: 128,  weight: 0.0, trait_id: 1, innov_num: 26, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 122,  tgt_id: 129,  weight: 0.0, trait_id: 1, innov_num: 27, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 123,  tgt_id: 130,  weight: 0.0, trait_id: 1, innov_num: 28, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 122,  tgt_id: 129,  weight: 0.0, trait_id: 1, innov_num: 26, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 123,  tgt_id: 130,  weight: 0.0, trait_id: 1, innov_num: 27, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 124,  tgt_id: 131,  weight: 0.0, trait_id: 1, innov_num: 28, mut_num: 0, recurrent: false, enabled: true }

@@ -28,6 +28,7 @@ type Game struct {
 	logger           Logger
 	buy_offer_tries  int
 	sell_offer_tries int
+	std_actions_used int
 	randomSource     *rand.Rand
 	finished         bool
 }
@@ -208,6 +209,7 @@ func (g *Game) getState() GameState {
 		CurrentPlayerIdx: g.currentPlayerIdx,
 		SellOfferTries:   g.sell_offer_tries,
 		BuyOfferTries:    g.buy_offer_tries,
+		StdActionsUsed:   g.std_actions_used,
 	}
 }
 
@@ -253,7 +255,7 @@ func (g *Game) Start() {
 }
 
 func (g *Game) resetRoundState(idx int, player *Player) {
-
+	g.std_actions_used = 0
 	g.sell_offer_tries = 0
 	g.buy_offer_tries = 0
 
@@ -458,6 +460,11 @@ func (g *Game) jailCard() {
 }
 
 func (g *Game) standardActions() {
+	if g.std_actions_used >= g.settings.MaxStdActionsPerTurn {
+		g.logger.Log("Max standard actions used.")
+		return
+	}
+
 	action_list := FullActionList{}
 
 	action_list.MortgageList = g.getMortgageList(g.currentPlayerIdx)
@@ -488,8 +495,10 @@ func (g *Game) standardActions() {
 	}
 	action_details := g.io.GetStdAction(g.currentPlayerIdx, g.getState(), action_list)
 	if action_details.Action == NOACTION {
+		g.std_actions_used = 0
 		return
 	}
+	g.std_actions_used++
 	g.resolveStandardAction(g.currentPlayerIdx, action_details, action_list)
 	if !g.continueRound(g.currentPlayerIdx) {
 		return
