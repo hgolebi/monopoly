@@ -228,6 +228,14 @@ func (g *Game) getCurrPlayer() *Player {
 }
 
 func (g *Game) Start() {
+	defer func() {
+		if r := recover(); r != nil {
+			g.logger.Log(fmt.Sprintf("!!!!!!!!!!!!!!!!!!!!!!! panic error: %v", r))
+			g.logger.LogState(g.getState())
+			panic(r)
+		}
+	}()
+
 	for !g.finished {
 		g.round++
 		g.logger.Log(fmt.Sprintf("Round %d", g.round))
@@ -320,7 +328,7 @@ func (g *Game) continueRound(currentPlayer int) bool {
 func (g *Game) makeMove(moves_in_a_row int, d1 int, d2 int) {
 	if d1 == 0 {
 		if d2 != 0 {
-			panic("d2 should be 0 if d1 is 0")
+			panic(fmt.Sprintf("Invalid dice state: d1=%d, d2=%d", d1, d2))
 		}
 		d1, d2 = g.rollDice()
 	}
@@ -450,7 +458,7 @@ func (g *Game) jailBail() {
 func (g *Game) jailCard() {
 	player := g.getCurrPlayer()
 	if player.JailCards <= 0 {
-		panic("no jail cards left")
+		panic(fmt.Sprintf("no jail cards; player %s has %d jail cards left", player.Name, player.JailCards))
 	}
 	player.JailCards--
 	g.logger.Log(fmt.Sprintf("Jail cards left: %d", player.JailCards))
@@ -1019,7 +1027,7 @@ func (g *Game) auction(property *Property, first_player_id int) {
 
 func (g *Game) addProperty(player *Player, property_id int) {
 	if g.properties[property_id].Owner != nil {
-		panic("Property is already owned")
+		panic(fmt.Sprintf("property %d is already owned by %s; tried to add to %s", property_id, g.properties[property_id].Owner.Name, player.Name))
 	}
 	property := g.properties[property_id]
 	property.Owner = player
@@ -1072,7 +1080,7 @@ func (g *Game) bankrupt(player *Player, creditor *Player) {
 func (g *Game) transferProperty(player *Player, target *Player, property_id int) {
 	property := g.properties[property_id]
 	if property.Owner != player {
-		panic("Property does not belong to player")
+		panic(fmt.Sprintf("property %d is not owned by %s; cannot transfer to %s", property_id, player.Name, target.Name))
 	}
 	property.Owner = target
 	player.RemoveProperty(property_id)
