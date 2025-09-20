@@ -29,6 +29,7 @@ type Game struct {
 	buy_offer_tries  int
 	sell_offer_tries int
 	randomSource     *rand.Rand
+	finished         bool
 }
 
 func NewGame(ctx context.Context, io IMonopoly_IO, logger Logger, seed int64) *Game {
@@ -227,51 +228,45 @@ func (g *Game) getCurrPlayer() *Player {
 }
 
 func (g *Game) Start() {
-	finishFlag := false
-	for !finishFlag {
+	for !g.finished {
+		g.round++
 		g.logger.Log(fmt.Sprintf("Round %d", g.round))
 		for idx, player := range g.players {
-			select {
-			case <-g.ctx.Done():
-				panic("Game cancelled")
-			default:
-			}
-			g.logger.LogState(g.getState())
 			g.currentPlayerIdx = idx
-			g.sell_offer_tries = 0
-			g.buy_offer_tries = 0
-			finishFlag = g.checkForWinner()
-			if finishFlag {
-				break
-			}
-			if player.IsBankrupt {
+			if !g.continueRound(idx) {
 				continue
 			}
+			g.resetRoundState(idx, player)
 			field_name := g.fields[player.CurrentPosition].GetName()
 			g.logger.Log(fmt.Sprintf("Player %s's turn. Current position: %s", player.Name, field_name))
+			g.logger.LogState(g.getState())
 			if player.IsJailed {
 				g.handleJail()
 				continue
 			}
 			g.makeMove(1, 0, 0)
 		}
-		g.round++
 	}
+	g.endGame()
 }
 
-func (g *Game) checkForWinner() bool {
+func (g *Game) resetRoundState(idx int, player *Player) {
+
+	g.sell_offer_tries = 0
+	g.buy_offer_tries = 0
+
+}
+
+func (g *Game) endGame() {
+	g.logger.LogState(g.getState())
 	active_players := g.getActivePlayers()
 	if len(active_players) == 0 {
 		g.endDraw()
-		return true
 	} else if len(active_players) == 1 {
 		g.endWinner(g.players[active_players[0]])
-		return true
 	} else if g.round > g.settings.MaxRounds {
 		g.endRoundLimit()
-		return true
 	}
-	return false
 }
 
 func (g *Game) endRoundLimit() {
@@ -300,6 +295,24 @@ func (g *Game) endDraw() {
 	g.io.Finish(DRAW, -1, g.getState())
 }
 
+func (g *Game) continueRound(currentPlayer int) bool {
+	g.logger.LogState(g.getState())
+	select {
+	case <-g.ctx.Done():
+		g.logger.LogState(g.getState())
+		g.logger.Log("Game cancelled.")
+		panic("Game cancelled")
+	default:
+	}
+	if g.finished {
+		return false
+	}
+	if g.players[currentPlayer].IsBankrupt {
+		return false
+	}
+	return true
+}
+
 func (g *Game) makeMove(moves_in_a_row int, d1 int, d2 int) {
 	if d1 == 0 {
 		if d2 != 0 {
@@ -314,12 +327,11 @@ func (g *Game) makeMove(moves_in_a_row int, d1 int, d2 int) {
 	}
 	g.movePlayer(d1 + d2)
 	g.takeAction()
-	player := g.getCurrPlayer()
-	if player.IsJailed {
+	if !g.continueRound(g.currentPlayerIdx) || g.getCurrPlayer().IsJailed {
 		return
 	}
 	g.standardActions()
-	if player.IsBankrupt {
+	if !g.continueRound(g.currentPlayerIdx) {
 		return
 	}
 	if d1 == d2 {
@@ -367,7 +379,7 @@ func (g *Game) handleJail() {
 	g.logger.Log("Player is jailed.")
 	player := g.getCurrPlayer()
 	g.standardActions()
-	if player.IsBankrupt {
+	if !g.continueRound(g.currentPlayerIdx) {
 		return
 	}
 	var action_list []JailAction
@@ -378,8 +390,13 @@ func (g *Game) handleJail() {
 	if player.RoundsInJail < 3 {
 		action_list = append(action_list, ROLL_DICE)
 	}
-	action_details := g.io.GetJailAction(g.currentPlayerIdx, g.getState(), action_list)
-	switch action_details {
+	action := g.io.GetJailAction(g.currentPlayerIdx, g.getState(), action_list)
+	if !slices.Contains(action_list, action) {
+		g.logger.Log("Unavailable jail action chosen, going bankrupt.")
+		g.bankrupt(player, nil)
+		return
+	}
+	switch action {
 	case ROLL_DICE:
 		g.logger.Log("Player chose to roll dice to get out of jail.")
 		g.jailRollDice()
@@ -397,7 +414,7 @@ func (g *Game) handleJail() {
 		g.jailCard()
 		return
 	default:
-		panic("unknown action: " + fmt.Sprint(action_details))
+		panic("unknown action: " + fmt.Sprint(action))
 	}
 
 }
@@ -418,7 +435,7 @@ func (g *Game) jailRollDice() {
 func (g *Game) jailBail() {
 	player := g.getCurrPlayer()
 	g.chargePlayer(g.currentPlayerIdx, g.settings.JailBail, nil)
-	if player.IsBankrupt {
+	if !g.continueRound(g.currentPlayerIdx) {
 		return
 	}
 	player.IsJailed = false
@@ -439,12 +456,6 @@ func (g *Game) jailCard() {
 }
 
 func (g *Game) standardActions() {
-	select {
-	case <-g.ctx.Done():
-		panic("Game cancelled")
-	default:
-	}
-
 	action_list := FullActionList{}
 
 	action_list.MortgageList = g.getMortgageList(g.currentPlayerIdx)
@@ -478,10 +489,10 @@ func (g *Game) standardActions() {
 		return
 	}
 	g.resolveStandardAction(g.currentPlayerIdx, action_details, action_list)
-	if g.players[g.currentPlayerIdx].IsBankrupt {
+	if !g.continueRound(g.currentPlayerIdx) {
 		return
 	}
-	g.logger.LogState(g.getState())
+
 	g.standardActions()
 }
 
@@ -490,6 +501,7 @@ func (g *Game) resolveStandardAction(player_id int, action_details ActionDetails
 	if !slices.Contains(available.Actions, action_details.Action) {
 		g.logger.Log(fmt.Sprintf("Action %s not available, going bankrupt", StdActionNames[action_details.Action]))
 		g.bankrupt(player, nil)
+		return
 	}
 	switch action_details.Action {
 	case MORTGAGE:
@@ -719,6 +731,10 @@ func (g *Game) chargePlayer(player_id int, amount int, target *Player) {
 		state.Charge = amount
 		action_details := g.io.GetStdAction(player_id, state, action_list)
 		g.resolveStandardAction(player_id, action_details, action_list)
+		if !g.continueRound(player_id) {
+			target.AddMoney(amount)
+			return
+		}
 	}
 	g.charge(player, amount, target)
 }
@@ -956,11 +972,6 @@ func (g *Game) auction(property *Property, first_player_id int) {
 	curr_price := g.settings.MinPrice
 	auction_winner := -1
 	for queue.Len() > 0 {
-		select {
-		case <-g.ctx.Done():
-			panic("Game cancelled")
-		default:
-		}
 		bidderID := queue.Front().Value.(int)
 		queue.Remove(queue.Front())
 		if auction_winner == bidderID {
@@ -978,6 +989,9 @@ func (g *Game) auction(property *Property, first_player_id int) {
 			curr_price = bid_offer
 			auction_winner = bidderID
 			queue.PushBack(bidderID)
+		}
+		if g.finished {
+			return
 		}
 	}
 	if auction_winner == -1 {
@@ -1017,6 +1031,11 @@ func (g *Game) bankrupt(player *Player, creditor *Player) {
 	}
 	player.IsBankrupt = true
 	player.RoundWhenBankrupted = g.round
+
+	active_players := g.getActivePlayers()
+	if len(active_players) <= 1 {
+		g.finished = true
+	}
 	if creditor != nil {
 		creditor.AddMoney(max(0, player.Money))
 		for _, property := range player.Properties {
@@ -1027,12 +1046,9 @@ func (g *Game) bankrupt(player *Player, creditor *Player) {
 			g.properties[property].Owner = nil
 			g.properties[property].IsMortgaged = false
 			g.properties[property].Houses = 0
-			active_players := g.getActivePlayers()
-			if len(active_players) <= 1 {
-				g.checkForWinner()
-				return
+			if !g.finished {
+				g.auction(g.properties[property], active_players[g.randomSource.Intn(len(active_players))])
 			}
-			g.auction(g.properties[property], active_players[g.randomSource.Intn(len(active_players))])
 		}
 	}
 	player.Properties = []int{}
