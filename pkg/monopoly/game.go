@@ -660,11 +660,7 @@ func (g *Game) getBuyHouseList(player_id int) []int {
 		var temp_list []int
 		for _, propertyIdx := range set {
 			property := g.properties[propertyIdx]
-			if !property.CanBuildHouse {
-				has_full_set = false
-				break
-			}
-			if property.Owner != player {
+			if !property.CanBuildHouse || property.Owner != player || property.IsMortgaged {
 				has_full_set = false
 				break
 			}
@@ -1059,7 +1055,8 @@ func (g *Game) bankrupt(player *Player, creditor *Player) {
 	}
 	if creditor != nil {
 		creditor.AddMoney(max(0, player.Money))
-		for _, property := range player.Properties {
+		propertiesCopy := append([]int{}, player.Properties...)
+		for _, property := range propertiesCopy {
 			g.transferProperty(player, creditor, property)
 		}
 	} else {
