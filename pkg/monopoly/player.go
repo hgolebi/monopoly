@@ -1,5 +1,7 @@
 package monopoly
 
+import "fmt"
+
 type Player struct {
 	ID                  int
 	Name                string
@@ -15,7 +17,7 @@ type Player struct {
 
 func NewPlayer(id int, name string, money int) *Player {
 	if money < 0 {
-		panic("Money cannot be negative")
+		panic(fmt.Sprintf("Initial money cannot be negative, got: %d", money))
 	}
 	return &Player{
 		ID:              id,
@@ -32,14 +34,14 @@ func NewPlayer(id int, name string, money int) *Player {
 
 func (p *Player) AddMoney(amount int) {
 	if amount < 0 {
-		panic("Cannot add negative amount")
+		panic(fmt.Sprintf("Cannot add negative amount to player %s, amount: %d", p.Name, amount))
 	}
 	p.Money += amount
 }
 
 func (p *Player) RemoveMoney(amount int) {
 	if amount < 0 {
-		panic("Cannot remove negative amount")
+		panic(fmt.Sprintf("Cannot remove negative amount from player %s, amount: %d", p.Name, amount))
 	}
 	p.Money -= amount
 }
@@ -51,7 +53,7 @@ func (p *Player) SetPosition(pos int) {
 func (p *Player) AddProperty(propertyIndex int) {
 	for _, prop := range p.Properties {
 		if prop == propertyIndex {
-			panic("Property already owned by player")
+			panic(fmt.Sprintf("Property %d already owned by player %s", propertyIndex, p.Name))
 		}
 	}
 	p.Properties = append(p.Properties, propertyIndex)
@@ -64,5 +66,5 @@ func (p *Player) RemoveProperty(propertyIndex int) {
 			return
 		}
 	}
-	panic("Property not owned by player")
+	panic(fmt.Sprintf("Property %d not owned by player %s", propertyIndex, p.Name))
 }

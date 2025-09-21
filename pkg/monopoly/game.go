@@ -1060,16 +1060,19 @@ func (g *Game) bankrupt(player *Player, creditor *Player) {
 			g.transferProperty(player, creditor, property)
 		}
 	} else {
-		for _, property := range player.Properties {
+		lostProperties := append([]int{}, player.Properties...)
+		player.Properties = []int{}
+		for _, property := range lostProperties {
 			g.properties[property].Owner = nil
 			g.properties[property].IsMortgaged = false
 			g.properties[property].Houses = 0
+		}
+		for _, property := range lostProperties {
 			if !g.finished {
 				g.auction(g.properties[property], active_players[g.randomSource.Intn(len(active_players))])
 			}
 		}
 	}
-	player.Properties = []int{}
 	player.CurrentPosition = -1
 	player.Money = -1
 }
