@@ -71,58 +71,72 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 			groupID int
 			err     error
 		}, len(groups))
+		var groupID int = 0
+		for groupID < len(groups) {
+			threads := 1
+			for groupID < len(groups) && threads%cfg.MAX_THREADS != 0 {
+				group := groups[groupID]
+				fmt.Printf("Starting group %d\n", groupID)
+				go startGroup(ctx, groupID, group, e, resultsCh)
 
-		for groupID, group := range groups {
-			go func(groupID int, g []*NEATMonopolyPlayer) {
-				defer func() {
-					if r := recover(); r != nil {
-						resultsCh <- struct {
-							groupID int
-							err     error
-						}{groupID: groupID, err: fmt.Errorf("panic in group %d: %v", groupID, r)}
-					}
-				}()
-				playerGroup, err := NewNEATPlayerGroup(groupID, g)
-				if err != nil {
-					resultsCh <- struct {
-						groupID int
-						err     error
-					}{groupID: groupID, err: fmt.Errorf("error creating player group for group %d: %v", groupID, err)}
-					return
+				threads++
+				groupID++
+			}
+			var err error
+			for i := 0; i+1 < threads; i++ {
+				result := <-resultsCh
+				if result.err != nil {
+					fmt.Printf("[%d] Error in group %d: %v\n", i, result.groupID, result.err)
+					err = fmt.Errorf("error in one of the groups: %v", result.err)
+				} else {
+					fmt.Printf("[%d] Group %d finished successfully\n", i, result.groupID)
 				}
-				logger, err := NewTrainerLogger(fmt.Sprintf("%s/group%d.log", e.outputDir, groupID))
-				if err != nil {
-					resultsCh <- struct {
-						groupID int
-						err     error
-					}{groupID: groupID, err: fmt.Errorf("error creating logger for group %d: %v", groupID, err)}
-					return
-				}
-				game := monopoly.NewGame(ctx, playerGroup, logger, 0)
-				game.Start()
-				resultsCh <- struct {
-					groupID int
-					err     error
-				}{groupID: groupID, err: nil}
-			}(groupID, group)
-		}
-		var err error
-		for i := 0; i < len(groups); i++ {
-			result := <-resultsCh
-			if result.err != nil {
-				fmt.Printf("[%d] Error in group %d: %v\n", i, result.groupID, result.err)
-				err = fmt.Errorf("error in one of the groups: %v", result.err)
-			} else {
-				fmt.Printf("[%d] Group %d finished successfully\n", i, result.groupID)
+			}
+			if err != nil {
+				return err
 			}
 		}
-		if err != nil {
-			return err
-		}
+
 		neat.InfoLog(fmt.Sprintf("\nRound %d finished successfully; epoch %d\n", roundID, epoch.Id))
 	}
 	for _, org := range pop.Organisms {
 		neat.InfoLog(fmt.Sprintf("Organism %d finished with fitness %f\n", org.Genotype.Id, org.Fitness))
 	}
 	return nil
+}
+
+func startGroup(ctx context.Context, groupID int, g []*NEATMonopolyPlayer, e *MonopolyEvaluator, resultsCh chan struct {
+	groupID int
+	err     error
+}) {
+	defer func() {
+		if r := recover(); r != nil {
+			resultsCh <- struct {
+				groupID int
+				err     error
+			}{groupID: groupID, err: fmt.Errorf("panic in group %d: %v", groupID, r)}
+		}
+	}()
+	playerGroup, err := NewNEATPlayerGroup(groupID, g)
+	if err != nil {
+		resultsCh <- struct {
+			groupID int
+			err     error
+		}{groupID: groupID, err: fmt.Errorf("error creating player group for group %d: %v", groupID, err)}
+		return
+	}
+	logger, err := NewTrainerLogger(fmt.Sprintf("%s/group%d.log", e.outputDir, groupID))
+	if err != nil {
+		resultsCh <- struct {
+			groupID int
+			err     error
+		}{groupID: groupID, err: fmt.Errorf("error creating logger for group %d: %v", groupID, err)}
+		return
+	}
+	game := monopoly.NewGame(ctx, playerGroup, logger, 0)
+	game.Start()
+	resultsCh <- struct {
+		groupID int
+		err     error
+	}{groupID: groupID, err: nil}
 }

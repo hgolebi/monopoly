@@ -82,8 +82,12 @@ func (s GameState) String() string {
 			if prop.IsMortgaged {
 				mortgaged = "MORTGAGED"
 			}
-			result += fmt.Sprintf("    %s %d %d %s %s %dHouse\n",
-				owner, prop.FieldIndex, prop.PropertyIndex, formatStr(prop.Name, 10), mortgaged, prop.Houses)
+			houseStr := "------"
+			if prop.Houses > 0 {
+				houseStr = "HOUSES"
+			}
+			result += fmt.Sprintf("    %s %d %s %s %d %s\n",
+				owner, prop.PropertyIndex, formatStr(prop.Name, 10), mortgaged, prop.Houses, houseStr)
 		}
 	}
 	result += "\nPROPERTIES:\n"
@@ -96,8 +100,8 @@ func (s GameState) String() string {
 		if prop.IsMortgaged {
 			mortgaged = "MORTGAGED"
 		}
-		result += fmt.Sprintf("field%d property%d %s %s %s %dHouse %v %s %d$ %d$\n",
-			prop.FieldIndex, prop.PropertyIndex, formatStr(prop.Name, 10), ownerName, mortgaged, prop.Houses, prop.CanBuildHouse, prop.Set, prop.Price, prop.HousePrice)
+		result += fmt.Sprintf("%d %s %s %s %dHouse %v %s %d$ %d$\n",
+			prop.PropertyIndex, formatStr(prop.Name, 10), ownerName, mortgaged, prop.Houses, prop.CanBuildHouse, prop.Set, prop.Price, prop.HousePrice)
 	}
 	result += "\n\n"
 	return result
