@@ -6,7 +6,7 @@ import (
 )
 
 type Logger interface {
-	Log(message string)
+	Log(message string, state GameState)
 	LogState(state GameState)
 }
 
@@ -24,9 +24,10 @@ func (c *ConsoleLogger) Init() {
 	f.Close()
 }
 
-func (c *ConsoleLogger) Log(message string) {
+func (c *ConsoleLogger) Log(message string, state GameState) {
 	// time.Sleep(500 * time.Millisecond)
 	println(message)
+	c.LogState(state)
 }
 
 func (c *ConsoleLogger) LogState(state GameState) {

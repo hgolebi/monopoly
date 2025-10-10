@@ -56,7 +56,6 @@ func formatStr(str string, length int) string {
 func (s GameState) String() string {
 	result := "=============================================================================\n"
 	result += fmt.Sprintf("  ROUND %d | PLAYER %d\n", s.Round, s.CurrentPlayerIdx)
-	result += "=============================================================================\n"
 	result += "\nPLAYERS:\n"
 	for i, p := range s.Players {
 		status := "----"
@@ -103,7 +102,7 @@ func (s GameState) String() string {
 		result += fmt.Sprintf("%d %s %s %s %dHouse %v %s %d$ %d$\n",
 			prop.PropertyIndex, formatStr(prop.Name, 10), ownerName, mortgaged, prop.Houses, prop.CanBuildHouse, prop.Set, prop.Price, prop.HousePrice)
 	}
-	result += "\n\n"
+	result += "=============================================================================\n"
 	return result
 }
 

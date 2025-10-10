@@ -31,7 +31,7 @@ func NewTrainerLogger(outputPath string) (*TrainerLogger, error) {
 	}, nil
 }
 
-func (l *TrainerLogger) Log(message string) {
+func (l *TrainerLogger) Log(message string, state monopoly.GameState) {
 	file, err := os.OpenFile(l.outputPath, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Printf("Error opening log file: %v\n", err)
@@ -41,11 +41,12 @@ func (l *TrainerLogger) Log(message string) {
 	if _, err := file.WriteString(message + "\n"); err != nil {
 		fmt.Printf("Error writing to log file: %v\n", err)
 	}
+	l.LogState(state)
 }
 
-func (l *TrainerLogger) Error(message string) {
+func (l *TrainerLogger) Error(message string, state monopoly.GameState) {
 	newMsg := "!!!!!!!!!! ERROR: " + message
-	l.Log(newMsg)
+	l.Log(newMsg, state)
 }
 
 func (l *TrainerLogger) LogState(state monopoly.GameState) {
@@ -55,7 +56,7 @@ func (l *TrainerLogger) LogState(state monopoly.GameState) {
 		return
 	}
 	defer f.Close()
-	log := fmt.Sprintf("\n\n\n#%d\n%s\n\n\n", l.stateId, state.String())
+	log := fmt.Sprintf("%s", state.String())
 	_, err = f.WriteString(log)
 
 	if err != nil {
