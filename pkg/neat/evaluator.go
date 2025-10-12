@@ -77,7 +77,7 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 			for groupID < len(groups) && threads%cfg.MAX_THREADS != 0 {
 				group := groups[groupID]
 				fmt.Printf("Starting group %d\n", groupID)
-				go startGroup(ctx, groupID, group, e, resultsCh)
+				go startGroup(ctx, roundID, groupID, group, e, resultsCh)
 
 				threads++
 				groupID++
@@ -105,7 +105,7 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 	return nil
 }
 
-func startGroup(ctx context.Context, groupID int, g []*NEATMonopolyPlayer, e *MonopolyEvaluator, resultsCh chan struct {
+func startGroup(ctx context.Context, roundID int, groupID int, g []*NEATMonopolyPlayer, e *MonopolyEvaluator, resultsCh chan struct {
 	groupID int
 	err     error
 }) {
@@ -125,7 +125,7 @@ func startGroup(ctx context.Context, groupID int, g []*NEATMonopolyPlayer, e *Mo
 		}{groupID: groupID, err: fmt.Errorf("error creating player group for group %d: %v", groupID, err)}
 		return
 	}
-	logger, err := NewTrainerLogger(fmt.Sprintf("%s/group%d.log", e.outputDir, groupID))
+	logger, err := NewTrainerLogger(fmt.Sprintf("%s/games/temp/round%d/group%d.log", e.outputDir, roundID, groupID))
 	if err != nil {
 		resultsCh <- struct {
 			groupID int

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"monopoly/pkg/monopoly"
 	"os"
+	"path/filepath"
 )
 
 type TrainerLogger struct {
@@ -19,7 +20,10 @@ func NewTrainerLogger(outputPath string) (*TrainerLogger, error) {
 	} else if !os.IsNotExist(err) {
 		return nil, err
 	}
-
+	dir := filepath.Dir(outputPath)
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		return nil, err
+	}
 	file, err := os.Create(outputPath)
 	if err != nil {
 		return nil, err
@@ -31,7 +35,7 @@ func NewTrainerLogger(outputPath string) (*TrainerLogger, error) {
 	}, nil
 }
 
-func (l *TrainerLogger) Log(message string, state monopoly.GameState) {
+func (l *TrainerLogger) Log(message string) {
 	file, err := os.OpenFile(l.outputPath, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Printf("Error opening log file: %v\n", err)
@@ -41,12 +45,11 @@ func (l *TrainerLogger) Log(message string, state monopoly.GameState) {
 	if _, err := file.WriteString(message + "\n"); err != nil {
 		fmt.Printf("Error writing to log file: %v\n", err)
 	}
-	l.LogState(state)
 }
 
 func (l *TrainerLogger) Error(message string, state monopoly.GameState) {
 	newMsg := "!!!!!!!!!! ERROR: " + message
-	l.Log(newMsg, state)
+	l.LogWithState(newMsg, state)
 }
 
 func (l *TrainerLogger) LogState(state monopoly.GameState) {
@@ -64,4 +67,9 @@ func (l *TrainerLogger) LogState(state monopoly.GameState) {
 		return
 	}
 	l.stateId++
+}
+
+func (l *TrainerLogger) LogWithState(message string, state monopoly.GameState) {
+	l.Log(message)
+	l.LogState(state)
 }
