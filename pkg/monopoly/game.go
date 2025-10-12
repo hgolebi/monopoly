@@ -363,12 +363,11 @@ func (g *Game) movePlayer(count int) {
 	curr_pos := player.CurrentPosition
 	new_pos := curr_pos + count
 	for new_pos > len(g.fields)-1 {
-		player.AddMoney(g.settings.StartPassMoney)
+		g.logger.Log(fmt.Sprintf("%s passed GO and collects %d$", player.Name, g.settings.StartPassMoney))
+		g.addMoney(player, g.settings.StartPassMoney)
 		new_pos = new_pos - len(g.fields)
 	}
-	player.SetPosition(new_pos)
-	field_name := g.fields[new_pos].GetName()
-	g.logger.LogWithState(fmt.Sprintf("%s moves to %s", player.Name, field_name), g.getState())
+	g.setPosition(player, new_pos)
 }
 
 func (g *Game) rollDice() (dice1 int, dice2 int) {
@@ -741,7 +740,7 @@ func (g *Game) chargePlayer(player_id int, amount int, target *Player) {
 		g.resolveStandardAction(player_id, action_details, action_list)
 		if !g.continueRound(player_id) {
 			if target != nil {
-				target.AddMoney(amount)
+				g.addMoney(target, amount) // situation where player has properties to sell but goes bankrupt because of wrong decision. Target should still receive the money
 			}
 			return
 		}
@@ -752,14 +751,15 @@ func (g *Game) chargePlayer(player_id int, amount int, target *Player) {
 func (g *Game) mortgage(player_id int, propertyId int) {
 	property := g.properties[propertyId]
 	player := g.players[player_id]
-	player.AddMoney(property.Price / 2)
+	g.addMoney(player, property.Price/2)
 	property.IsMortgaged = true
+	g.logger.LogWithState(fmt.Sprintf("Player mortgages %s for %d$", property.GetName(), property.Price/2), g.getState())
 }
 
 func (g *Game) sellHouse(player_id int, propertyId int) {
 	property := g.properties[propertyId]
 	player := g.players[player_id]
-	player.AddMoney(property.HousePrice / 2)
+	g.addMoney(player, property.HousePrice/2)
 	property.Houses--
 	g.logger.LogWithState(fmt.Sprintf("Player sells house on %s for %d$", property.GetName(), property.HousePrice/2), g.getState())
 }
@@ -846,8 +846,8 @@ func (g *Game) resolveChanceOrChest(action int) {
 	switch action {
 	case 0: // Player receives money from the bank
 		amount := g.randomSource.Intn(151) + 50 // 50-200
-		player.AddMoney(amount)
-		g.logger.LogWithState(fmt.Sprintf("Player receives %d$ from the bank", amount), g.getState())
+		g.logger.Log(fmt.Sprintf("Player receives %d$ from the bank", amount))
+		g.addMoney(player, amount)
 	case 1: // Player pays money to the bank
 		amount := g.randomSource.Intn(101) + 50 // 50-150
 		g.logger.Log(fmt.Sprintf("Player pays %d$ to the bank", amount))
@@ -875,14 +875,14 @@ func (g *Game) resolveChanceOrChest(action int) {
 		player.JailCards++
 		g.logger.LogWithState(fmt.Sprintf("%s receives a Get Out of Jail Free card", player.Name), g.getState())
 	case 6: // Player moves to GO
-		player.SetPosition(0)
-		player.AddMoney(g.settings.StartPassMoney)
-		g.logger.LogWithState(fmt.Sprintf("%s moves to GO field", player.Name), g.getState())
+		g.logger.Log(fmt.Sprintf("%s moves to GO field", player.Name))
+		g.setPosition(player, 0)
+		g.addMoney(player, g.settings.StartPassMoney)
 	case 7: // Player moves to a specific field
 		field_index := g.randomSource.Intn(len(g.fields))
 		field := g.fields[field_index]
-		player.SetPosition(field_index)
-		g.logger.LogWithState(fmt.Sprintf("%s moves to field %d (%s)", player.Name, field_index, field.GetName()), g.getState())
+		g.logger.Log(fmt.Sprintf("%s moves to field %d (%s)", player.Name, field_index, field.GetName()))
+		g.setPosition(player, field_index)
 		field.Action(g)
 	}
 }
@@ -1030,8 +1030,7 @@ func (g *Game) charge(player *Player, amount int, target *Player) {
 	player.RemoveMoney(amount)
 	g.logger.LogWithState(fmt.Sprintf("%s lost %d$", player.Name, amount), g.getState())
 	if target != nil {
-		target.AddMoney(amount)
-		g.logger.LogWithState(fmt.Sprintf("%s received %d$", target.Name, amount), g.getState())
+		g.addMoney(target, amount)
 	}
 
 }
@@ -1051,7 +1050,7 @@ func (g *Game) bankrupt(player *Player, creditor *Player) {
 	}
 	if creditor != nil {
 		g.logger.LogWithState(fmt.Sprintf("All properties of %s are transferred to %s", player.Name, creditor.Name), g.getState())
-		creditor.AddMoney(max(0, player.Money))
+		g.addMoney(creditor, max(0, player.Money))
 		propertiesCopy := append([]int{}, player.Properties...)
 		for _, property := range propertiesCopy {
 			g.transferProperty(player, creditor, property)
@@ -1085,4 +1084,15 @@ func (g *Game) transferProperty(player *Player, target *Player, property_id int)
 	player.RemoveProperty(property_id)
 	target.AddProperty(property_id)
 	g.logger.LogWithState(fmt.Sprintf("Property %d transfered from %s to %s", property_id, player.Name, target.Name), g.getState())
+}
+
+func (g *Game) addMoney(player *Player, amount int) {
+	player.AddMoney(amount)
+	g.logger.LogWithState(fmt.Sprintf("%s receives %d$", player.Name, amount), g.getState())
+}
+
+func (g *Game) setPosition(player *Player, position int) {
+	player.SetPosition(position)
+	fieldName := g.fields[position].GetName()
+	g.logger.LogWithState(fmt.Sprintf("%s moves to %s", player.Name, fieldName), g.getState())
 }
