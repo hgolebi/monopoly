@@ -864,7 +864,7 @@ func (g *Game) resolveChanceOrChest(action int) {
 		amount := g.randomSource.Intn(11) + 10 // 10-20
 		g.logger.Log(fmt.Sprintf("%s pays %d$ to each player", player.Name, amount))
 		for idx, p := range g.players {
-			if idx == g.currentPlayerIdx && !p.IsBankrupt {
+			if idx != g.currentPlayerIdx && !p.IsBankrupt {
 				g.chargePlayer(g.currentPlayerIdx, amount, p)
 			}
 		}
@@ -988,10 +988,10 @@ func (g *Game) auction(property *Property, first_player_id int) {
 		}
 		bidder := g.players[bidderID]
 		bid_offer := g.io.BiddingDecision(bidderID, g.getState(), property.PropertyIndex, curr_price, auction_winner)
-		g.logger.Log(fmt.Sprintf("Player %s bids %d$", bidder.Name, bid_offer))
+		g.logger.Log(fmt.Sprintf("%s bids %d$", bidder.Name, bid_offer))
 		if bid_offer <= curr_price {
 		} else if bid_offer > bidder.Money {
-			g.logger.Log(fmt.Sprintf("Player %s cannot afford the bid", bidder.Name))
+			g.logger.Log(fmt.Sprintf("%s cannot afford the bid", bidder.Name))
 			g.bankrupt(bidder, nil)
 		} else {
 			curr_price = bid_offer
