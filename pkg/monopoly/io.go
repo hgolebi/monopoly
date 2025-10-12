@@ -64,8 +64,9 @@ func (s GameState) String() string {
 		} else if p.IsJailed {
 			status = "JAIL"
 		}
+		position := p.CurrentPosition
 		result +=
-			fmt.Sprintf("%d %s %s %d$ %dcard\n", i, p.Name, status, p.Money, p.JailCards)
+			fmt.Sprintf("%d %s %s %d$ %dcard position=%d\n", i, p.Name, status, p.Money, p.JailCards, position)
 
 		for _, propId := range p.Properties {
 			prop := s.Properties[propId]
