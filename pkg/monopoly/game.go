@@ -988,12 +988,13 @@ func (g *Game) auction(property *Property, first_player_id int) {
 		}
 		bidder := g.players[bidderID]
 		bid_offer := g.io.BiddingDecision(bidderID, g.getState(), property.PropertyIndex, curr_price, auction_winner)
-		g.logger.Log(fmt.Sprintf("%s bids %d$", bidder.Name, bid_offer))
 		if bid_offer <= curr_price {
+			g.logger.Log(fmt.Sprintf("%s passes", bidder.Name))
 		} else if bid_offer > bidder.Money {
-			g.logger.Log(fmt.Sprintf("%s cannot afford the bid", bidder.Name))
-			g.bankrupt(bidder, nil)
+			g.logger.Log(fmt.Sprintf("%s wants to bid %d$ but cannot afford it", bidder.Name, bid_offer))
+			// g.bankrupt(bidder, nil)
 		} else {
+			g.logger.Log(fmt.Sprintf("%s bids %d$", bidder.Name, bid_offer))
 			curr_price = bid_offer
 			auction_winner = bidderID
 			queue.PushBack(bidderID)
