@@ -77,7 +77,7 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 			for groupID < len(groups) && threads%cfg.MAX_THREADS != 0 {
 				group := groups[groupID]
 				fmt.Printf("Starting group %d\n", groupID)
-				go startGroup(ctx, roundID, groupID, group, e, resultsCh)
+				go startGroup(ctx, roundID, groupID, epoch.Id, group, e, resultsCh)
 
 				threads++
 				groupID++
@@ -108,7 +108,7 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 	return nil
 }
 
-func startGroup(ctx context.Context, roundID int, groupID int, g []*NEATMonopolyPlayer, e *MonopolyEvaluator, resultsCh chan struct {
+func startGroup(ctx context.Context, roundID int, groupID int, epochId int, g []*NEATMonopolyPlayer, e *MonopolyEvaluator, resultsCh chan struct {
 	groupID int
 	err     error
 }) {
@@ -120,6 +120,13 @@ func startGroup(ctx context.Context, roundID int, groupID int, g []*NEATMonopoly
 			}{groupID: groupID, err: fmt.Errorf("panic in group %d: %v", groupID, r)}
 		}
 	}()
+	options, ok := neat.FromContext(ctx)
+	if !ok {
+		resultsCh <- struct {
+			groupID int
+			err     error
+		}{groupID: groupID, err: fmt.Errorf("failed to get options from context")}
+	}
 	playerGroup, err := NewNEATPlayerGroup(groupID, g)
 	if err != nil {
 		resultsCh <- struct {
@@ -128,7 +135,8 @@ func startGroup(ctx context.Context, roundID int, groupID int, g []*NEATMonopoly
 		}{groupID: groupID, err: fmt.Errorf("error creating player group for group %d: %v", groupID, err)}
 		return
 	}
-	logger, err := NewTrainerLogger(fmt.Sprintf("%s/games/temp/round%d/group%d.log", e.outputDir, roundID, groupID))
+
+	logger, err := NewTrainerLogger(fmt.Sprintf("%s/games/temp/round%d/group%d.log", e.outputDir, roundID, groupID), epochId != options.NumGenerations-1)
 	if err != nil {
 		resultsCh <- struct {
 			groupID int

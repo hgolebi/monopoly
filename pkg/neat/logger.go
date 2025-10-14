@@ -8,11 +8,12 @@ import (
 )
 
 type TrainerLogger struct {
+	disabled   bool
 	outputPath string
 	stateId    int64
 }
 
-func NewTrainerLogger(outputPath string) (*TrainerLogger, error) {
+func NewTrainerLogger(outputPath string, disabled bool) (*TrainerLogger, error) {
 	if _, err := os.Stat(outputPath); err == nil {
 		if err := os.Remove(outputPath); err != nil {
 			return nil, fmt.Errorf("failed to remove existing file: %w", err)
@@ -32,11 +33,10 @@ func NewTrainerLogger(outputPath string) (*TrainerLogger, error) {
 	return &TrainerLogger{
 		outputPath: outputPath,
 		stateId:    0,
+		disabled:   disabled,
 	}, nil
 }
-
-func (l *TrainerLogger) Log(message string) {
-	return
+func (l *TrainerLogger) log(message string) {
 	file, err := os.OpenFile(l.outputPath, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Printf("Error opening log file: %v\n", err)
@@ -48,13 +48,19 @@ func (l *TrainerLogger) Log(message string) {
 	}
 }
 
+func (l *TrainerLogger) Log(message string) {
+	if l.disabled {
+		return
+	}
+	l.log(message)
+}
+
 func (l *TrainerLogger) Error(message string, state monopoly.GameState) {
 	newMsg := "!!!!!!!!!! ERROR: " + message
 	l.LogWithState(newMsg, state)
 }
 
 func (l *TrainerLogger) LogState(state monopoly.GameState) {
-	return
 	f, err := os.OpenFile(l.outputPath, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		println("Error opening file:", err.Error())
@@ -72,7 +78,9 @@ func (l *TrainerLogger) LogState(state monopoly.GameState) {
 }
 
 func (l *TrainerLogger) LogWithState(message string, state monopoly.GameState) {
-	return
-	l.Log(message)
+	if l.disabled {
+		return
+	}
+	l.log(message)
 	l.LogState(state)
 }
