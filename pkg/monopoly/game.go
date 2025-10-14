@@ -510,27 +510,27 @@ func (g *Game) resolveStandardAction(player_id int, action_details ActionDetails
 	}
 	switch action_details.Action {
 	case MORTGAGE:
-		g.logger.Log(fmt.Sprintf("%s wants to mortgage %s", player.Name, action_details.PropertyId))
+		g.logger.Log(fmt.Sprintf("%s wants to mortgage %s", player.Name, g.properties[action_details.PropertyId].Name))
 		if !slices.Contains(available.MortgageList, action_details.PropertyId) {
-			g.logger.Log(fmt.Sprintf("%s cannot mortgage %s", player.Name, action_details.PropertyId))
+			g.logger.Log(fmt.Sprintf("%s cannot mortgage %s", player.Name, g.properties[action_details.PropertyId].Name))
 			g.bankrupt(player, nil)
 			return
 		}
 		g.mortgage(player_id, action_details.PropertyId)
 		return
 	case SELLHOUSE:
-		g.logger.Log(fmt.Sprintf("%s wants to sell a house on %s", player.Name, action_details.PropertyId))
+		g.logger.Log(fmt.Sprintf("%s wants to sell a house on %s", player.Name, g.properties[action_details.PropertyId].Name))
 		if !slices.Contains(available.SellHouseList, action_details.PropertyId) {
-			g.logger.Log(fmt.Sprintf("%s cannot sell a house on %s", player.Name, action_details.PropertyId))
+			g.logger.Log(fmt.Sprintf("%s cannot sell a house on %s", player.Name, g.properties[action_details.PropertyId].Name))
 			g.bankrupt(player, nil)
 			return
 		}
 		g.sellHouse(player_id, action_details.PropertyId)
 		return
 	case BUYHOUSE:
-		g.logger.Log(fmt.Sprintf("%s wants to buy a house on %s", player.Name, action_details.PropertyId))
+		g.logger.Log(fmt.Sprintf("%s wants to buy a house on %s", player.Name, g.properties[action_details.PropertyId].Name))
 		if !slices.Contains(available.BuyHouseList, action_details.PropertyId) {
-			g.logger.Log(fmt.Sprintf("%s cannot buy a house on %s", player.Name, action_details.PropertyId))
+			g.logger.Log(fmt.Sprintf("%s cannot buy a house on %s", player.Name, g.properties[action_details.PropertyId].Name))
 			g.bankrupt(player, nil)
 			return
 		}
@@ -544,7 +544,7 @@ func (g *Game) resolveStandardAction(player_id int, action_details ActionDetails
 			return
 		}
 		if !slices.Contains(available.SellPropertyList, action_details.PropertyId) {
-			g.logger.Log(fmt.Sprintf("%s cannot sell %s", player.Name, action_details.PropertyId))
+			g.logger.Log(fmt.Sprintf("%s cannot sell %s", player.Name, g.properties[action_details.PropertyId].Name))
 			g.bankrupt(player, nil)
 			return
 		}
@@ -573,7 +573,7 @@ func (g *Game) resolveStandardAction(player_id int, action_details ActionDetails
 			return
 		}
 		if !slices.Contains(available.BuyPropertyList, action_details.PropertyId) {
-			g.logger.Log(fmt.Sprintf("%s cannot buy %s", player.Name, action_details.PropertyId))
+			g.logger.Log(fmt.Sprintf("%s cannot buy %s", player.Name, g.properties[action_details.PropertyId].Name))
 			g.bankrupt(player, nil)
 			return
 		}
@@ -585,9 +585,9 @@ func (g *Game) resolveStandardAction(player_id int, action_details ActionDetails
 		g.sendBuyOffer(player_id, action_details.PropertyId, action_details.Price)
 		return
 	case BUYOUT:
-		g.logger.Log(fmt.Sprintf("%s wants to buy out %s", player.Name, action_details.PropertyId))
+		g.logger.Log(fmt.Sprintf("%s wants to buy out %s", player.Name, g.properties[action_details.PropertyId].Name))
 		if !slices.Contains(available.BuyOutList, action_details.PropertyId) {
-			g.logger.Log(fmt.Sprintf("%s cannot buy out %s", player.Name, action_details.PropertyId))
+			g.logger.Log(fmt.Sprintf("%s cannot buy out %s", player.Name, g.properties[action_details.PropertyId].Name))
 			g.bankrupt(player, nil)
 			return
 		}
