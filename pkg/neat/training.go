@@ -69,4 +69,8 @@ func TrainNetwork(seed int64, neatOptionsFile string, genomeFile string, outputD
 	}
 	fmt.Println("Experiment completed successfully.")
 	exp.PrintStatistics()
+	best, epoch, ok := exp.BestOrganism(false)
+	if ok {
+		fmt.Printf("Best organism found in epoch %d: ID %d with fitness %f\n", epoch, best.Genotype.Id, best.Fitness)
+	}
 }

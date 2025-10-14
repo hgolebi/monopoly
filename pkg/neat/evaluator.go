@@ -102,6 +102,9 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 	for _, org := range pop.Organisms {
 		neat.InfoLog(fmt.Sprintf("Organism %d finished with fitness %f\n", org.Genotype.Id, org.Fitness))
 	}
+	epoch.FillPopulationStatistics(pop)
+	best := epoch.Champion
+	neat.InfoLog(fmt.Sprintf("Champion of epoch %d is organism %d with fitness %f\n", epoch.Id, best.Genotype.Id, best.Fitness))
 	return nil
 }
 

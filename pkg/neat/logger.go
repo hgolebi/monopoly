@@ -36,6 +36,7 @@ func NewTrainerLogger(outputPath string) (*TrainerLogger, error) {
 }
 
 func (l *TrainerLogger) Log(message string) {
+	return
 	file, err := os.OpenFile(l.outputPath, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Printf("Error opening log file: %v\n", err)
@@ -53,6 +54,7 @@ func (l *TrainerLogger) Error(message string, state monopoly.GameState) {
 }
 
 func (l *TrainerLogger) LogState(state monopoly.GameState) {
+	return
 	f, err := os.OpenFile(l.outputPath, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		println("Error opening file:", err.Error())
@@ -70,6 +72,7 @@ func (l *TrainerLogger) LogState(state monopoly.GameState) {
 }
 
 func (l *TrainerLogger) LogWithState(message string, state monopoly.GameState) {
+	return
 	l.Log(message)
 	l.LogState(state)
 }
