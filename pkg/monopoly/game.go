@@ -753,7 +753,7 @@ func (g *Game) mortgage(player_id int, propertyId int) {
 	player := g.players[player_id]
 	g.addMoney(player, property.Price/2)
 	property.IsMortgaged = true
-	g.logger.LogWithState(fmt.Sprintf("Player mortgages %s for %d$", property.GetName(), property.Price/2), g.getState())
+	g.logger.LogWithState(fmt.Sprintf("%s mortgages %s for %d$", player.Name, property.GetName(), property.Price/2), g.getState())
 }
 
 func (g *Game) sellHouse(player_id int, propertyId int) {
@@ -761,14 +761,15 @@ func (g *Game) sellHouse(player_id int, propertyId int) {
 	player := g.players[player_id]
 	g.addMoney(player, property.HousePrice/2)
 	property.Houses--
-	g.logger.LogWithState(fmt.Sprintf("Player sells house on %s for %d$", property.GetName(), property.HousePrice/2), g.getState())
+	g.logger.LogWithState(fmt.Sprintf("%s sells house on %s for %d$", player.Name, property.GetName(), property.HousePrice/2), g.getState())
 }
 
 func (g *Game) buyHouse(player_id int, propertyId int) {
 	property := g.properties[propertyId]
 	g.chargePlayer(player_id, property.HousePrice, nil)
 	property.Houses++
-	g.logger.LogWithState(fmt.Sprintf("Player buys house on %s for %d$", property.GetName(), property.HousePrice), g.getState())
+	player := g.players[player_id]
+	g.logger.LogWithState(fmt.Sprintf("%s buys house on %s for %d$", player.Name, property.GetName(), property.HousePrice), g.getState())
 }
 
 func (g *Game) sendSellOffer(player_id int, target_id int, property_id int, price int) {
@@ -776,7 +777,7 @@ func (g *Game) sendSellOffer(player_id int, target_id int, property_id int, pric
 	seller := g.players[player_id]
 	buyer := g.players[target_id]
 	property := g.properties[property_id]
-	g.logger.Log(fmt.Sprintf("Player offers to sell %s to %s for %d$", property.GetName(), buyer.Name, price))
+	g.logger.Log(fmt.Sprintf("%s offers to sell %s to %s for %d$", seller.Name, property.GetName(), buyer.Name, price))
 	accepted := g.io.BuyFromPlayerDecision(target_id, g.getState(), property_id, price)
 	if accepted {
 		g.logger.Log(fmt.Sprintf("%s accepted the sell offer", buyer.Name))
@@ -797,7 +798,7 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, price int) {
 	g.buy_offer_tries++
 	buyer := g.players[player_id]
 	property := g.properties[property_id]
-	g.logger.Log(fmt.Sprintf("Player offers to buy %s for %d$", property.GetName(), price))
+	g.logger.Log(fmt.Sprintf("%s offers to buy %s for %d$", buyer.Name, property.GetName(), price))
 	seller := property.Owner
 	if seller == nil {
 		g.logger.Log(fmt.Sprintf("Property %s is not owned by anyone", property.GetName()))
@@ -825,7 +826,8 @@ func (g *Game) buyOut(player_id int, propertyId int) {
 	price := int(float64(property.Price) * 1.1)
 	g.chargePlayer(player_id, price, nil)
 	property.IsMortgaged = false
-	g.logger.LogWithState(fmt.Sprintf("Player buys out %s for %d$", property.GetName(), price), g.getState())
+	player := g.players[player_id]
+	g.logger.LogWithState(fmt.Sprintf("%s buys out %s for %d$", player.Name, property.GetName(), price), g.getState())
 }
 
 func (g *Game) doForNoActionField() {}
@@ -846,11 +848,11 @@ func (g *Game) resolveChanceOrChest(action int) {
 	switch action {
 	case 0: // Player receives money from the bank
 		amount := g.randomSource.Intn(151) + 50 // 50-200
-		g.logger.Log(fmt.Sprintf("Player receives %d$ from the bank", amount))
+		g.logger.Log(fmt.Sprintf("%s receives %d$ from the bank", player.Name, amount))
 		g.addMoney(player, amount)
 	case 1: // Player pays money to the bank
 		amount := g.randomSource.Intn(101) + 50 // 50-150
-		g.logger.Log(fmt.Sprintf("Player pays %d$ to the bank", amount))
+		g.logger.Log(fmt.Sprintf("%s pays %d$ to the bank", player.Name, amount))
 		g.chargePlayer(g.currentPlayerIdx, amount, nil)
 	case 2: // Each player pays money to the current player
 		amount := g.randomSource.Intn(11) + 10 // 10-20
@@ -898,7 +900,7 @@ func (g *Game) doForGoToJailField() {
 func (g *Game) doForProperty(p *Property) {
 	player := g.getCurrPlayer()
 	if p.Owner == player {
-		g.logger.Log(fmt.Sprintf("Property already owned by player"))
+		g.logger.Log(fmt.Sprintf("Property already owned by %s", player.Name))
 		return
 	}
 
@@ -910,17 +912,17 @@ func (g *Game) doForProperty(p *Property) {
 	}
 
 	if player.Money < p.Price {
-		g.logger.Log(fmt.Sprintf("Player cannot afford the property"))
+		g.logger.Log(fmt.Sprintf("%s cannot afford the property", player.Name))
 		g.auction(p, g.currentPlayerIdx)
 		return
 	}
 	wantToBuy := g.io.BuyDecision(g.currentPlayerIdx, g.getState(), p.PropertyIndex)
 	if !wantToBuy {
-		g.logger.Log(fmt.Sprintf("Player does not want to buy the property"))
+		g.logger.Log(fmt.Sprintf("%s does not want to buy the property", player.Name))
 		g.auction(p, g.currentPlayerIdx)
 		return
 	}
-	g.logger.Log(fmt.Sprintf("Player buys the property"))
+	g.logger.Log(fmt.Sprintf("%s buys the property", player.Name))
 	g.charge(player, p.Price, nil)
 	g.addProperty(player, p.PropertyIndex)
 
@@ -1072,7 +1074,7 @@ func (g *Game) bankrupt(player *Player, creditor *Player) {
 	}
 	player.CurrentPosition = -1
 	player.Money = -1
-	g.logger.LogWithState(fmt.Sprintf("Player %s is out of the game", player.Name), g.getState())
+	g.logger.LogWithState(fmt.Sprintf("%s is out of the game", player.Name), g.getState())
 
 }
 
