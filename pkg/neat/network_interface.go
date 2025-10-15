@@ -144,74 +144,46 @@ var propertyInputs = map[int]map[string]int{
 }
 
 var playerInputs = map[int]map[string]int{
-	0: {
-		"IS_ALIVE":   78,
-		"IS_JAILED":  79,
-		"POSITION":   80,
-		"MONEY":      81,
-		"JAIL_CARDS": 82,
-	},
 	1: {
-		"IS_ALIVE":   83,
-		"IS_JAILED":  84,
-		"POSITION":   85,
-		"MONEY":      86,
-		"JAIL_CARDS": 87,
+		"IS_ALIVE": 78,
+		"MONEY":    79,
 	},
 	2: {
-		"IS_ALIVE":   88,
-		"IS_JAILED":  89,
-		"POSITION":   90,
-		"MONEY":      91,
-		"JAIL_CARDS": 92,
+		"IS_ALIVE": 80,
+		"MONEY":    81,
 	},
 	3: {
-		"IS_ALIVE":   93,
-		"IS_JAILED":  94,
-		"POSITION":   95,
-		"MONEY":      96,
-		"JAIL_CARDS": 97,
+		"IS_ALIVE": 82,
+		"MONEY":    83,
 	},
 }
 
 // Inputs dedicated to the player making the decision, information is redundant
 var currPlayerInputs = map[string]int{
-	"IS_ALIVE":   98,
-	"IS_JAILED":  99,
-	"POSITION":   100,
-	"MONEY":      101,
-	"JAIL_CARDS": 102,
+	"IS_ALIVE":   84,
+	"IS_JAILED":  85,
+	"POSITION":   86,
+	"MONEY":      87,
+	"JAIL_CARDS": 88,
 }
 
 var baseInputs = map[string]int{
-	"PLAYER_ID":        103,
-	"CURR_PLAYER":      104,
-	"ROUND":            105, // Current round number
-	"DECISION_CONTEXT": 106, // Current decision context, for example bidding decision, buying decision
-	"PROPERTY_ID":      107, // In case of property-related decisions like bidding
-	"PRICE":            108, // In case of price-related decisions; normalized to 0.0 - 1.0, where 1.0 is MAX_MONEY
-	"CURR_BID":         109, // In case of bidding
-	"CURR_BID_WINNER":  110, // In case of bidding
-	"CHARGE":           111, // In case of charge that would result in player going bankrupt
-	"SELL_OFFER_TRIES": 112, // In case of standard actions
-	"BUY_OFFER_TRIES":  113, // In case of standard actions
-	"STD_ACTIONS_USED": 114, // Number of standard actions used in the current turn
+	"DECISION_CONTEXT": 89, // Current decision context, for example bidding decision, buying decision
+	"PROPERTY_ID":      90, // In case of property-related decisions like bidding
+	"PRICE":            91, // In case of price-related decisions; normalized to 0.0 - 1.0, where 1.0 is MAX_MONEY
+	"CURR_BID":         92, // In case of bidding
+	"CURR_BID_WINNER":  93, // In case of bidding
+	"CHARGE":           94, // In case of charge that would result in player going bankrupt
 }
 
 var availableStdActionInputs = map[monopoly.StdAction]int{
-	monopoly.NOACTION:  115,
-	monopoly.MORTGAGE:  116,
-	monopoly.BUYOUT:    117,
-	monopoly.SELLOFFER: 118,
-	monopoly.BUYOFFER:  119,
-	monopoly.BUYHOUSE:  120,
-	monopoly.SELLHOUSE: 121,
-}
-
-var availableJailActionInputs = map[monopoly.JailAction]int{
-	monopoly.ROLL_DICE: 122,
-	monopoly.BAIL:      123,
-	monopoly.CARD:      124,
+	monopoly.NOACTION:  95,
+	monopoly.MORTGAGE:  96,
+	monopoly.BUYOUT:    97,
+	monopoly.SELLOFFER: 98,
+	monopoly.BUYOFFER:  99,
+	monopoly.BUYHOUSE:  100,
+	monopoly.SELLHOUSE: 101,
 }
 
 type DecisionContext int
@@ -231,27 +203,21 @@ var outputs = map[string]int{
 	"BUY_FROM_PLAYER": 2, // yes / no
 	"SELL_TO_PLAYER":  3, // yes / no
 
-	// jail actions; highest score is the result (if applicable)
-	"JAIL_ROLL_DICE": 4,
-	"JAIL_BAIL":      5,
-	"JAIL_CARD":      6,
-
 	// standard actions; highest score is the result (if applicable)
-	"NO_ACTION":  7,
-	"MORTGAGE":   8,
-	"BUYOUT":     9,
-	"SELL_OFFER": 10,
-	"BUY_OFFER":  11,
-	"BUY_HOUSE":  12,
-	"SELL_HOUSE": 13,
+	"NO_ACTION":  4,
+	"MORTGAGE":   5,
+	"BUYOUT":     6,
+	"SELL_OFFER": 7,
+	"BUY_OFFER":  8,
+	"BUY_HOUSE":  9,
+	"SELL_HOUSE": 10,
 
-	// in case of player-related actions; highest score is the result (if applicable)
-	"PLAYER_1": 14,
-	"PLAYER_2": 15,
-	"PLAYER_3": 16,
-	"PLAYER_4": 17,
+	// in case of sell offer; if player is included in the offer;
+	"PLAYER_1": 11, // yes / no
+	"PLAYER_2": 12, // yes / no
+	"PLAYER_3": 13, // yes / no
 
-	"PRICE": 18, // in case of price-related actions; normalized to 0.0 - 1.0, where 1.0 is MAX_MONEY
+	"PRICE": 14, // in case of price-related actions; normalized to 0.0 - 1.0, where 1.0 is MAX_MONEY
 }
 
 func GetStdActionOutputValues(output []float64) map[monopoly.StdAction]float64 {
@@ -269,10 +235,9 @@ func GetStdActionOutputValues(output []float64) map[monopoly.StdAction]float64 {
 
 func GetPlayerOutputValues(output []float64) map[int]float64 {
 	return map[int]float64{
-		0: output[outputs["PLAYER_1"]],
-		1: output[outputs["PLAYER_2"]],
-		2: output[outputs["PLAYER_3"]],
-		3: output[outputs["PLAYER_4"]],
+		1: output[outputs["PLAYER_1"]],
+		2: output[outputs["PLAYER_2"]],
+		3: output[outputs["PLAYER_3"]],
 	}
 }
 
@@ -281,47 +246,37 @@ func GetPriceOutputValue(output []float64) int {
 	return int(math.Round(out * float64(cfg.MAX_MONEY)))
 }
 
-func GetJailOutputValues(output []float64) map[monopoly.JailAction]float64 {
-	return map[monopoly.JailAction]float64{
-		monopoly.ROLL_DICE: output[outputs["JAIL_ROLL_DICE"]],
-		monopoly.BAIL:      output[outputs["JAIL_BAIL"]],
-		monopoly.CARD:      output[outputs["JAIL_CARD"]],
-	}
-}
-
 type MonopolySensors []float64
 
 func NewMonopolySensors() MonopolySensors {
-	return make([]float64, 125)
+	return make([]float64, 102)
 }
 
 func (s MonopolySensors) LoadState(state monopoly.GameState, playerID int) {
-	for idx, player := range state.Players {
-		s.loadPlayerState(idx, player)
-		if idx == playerID {
+	id := 0
+	for index, player := range state.Players {
+		if index == playerID {
 			s.loadCurrentPlayerState(player)
+		} else {
+			s.loadPlayerState(id, player)
+			id++
 		}
 	}
 	for idx, property := range state.Properties {
-		s.loadPropertyState(idx, property)
+		s.loadPropertyState(idx, property, playerID)
 	}
-	s[baseInputs["PLAYER_ID"]] = normalize(playerID, 0, cfg.LAST_PLAYER_ID, true)
-	s[baseInputs["CURR_PLAYER"]] = normalize(state.CurrentPlayerIdx, 0, cfg.LAST_PLAYER_ID, true)
-	s[baseInputs["ROUND"]] = normalize(state.Round, 0, cfg.MAX_ROUNDS, false)
 }
 
-func (s MonopolySensors) loadPlayerState(playerId int, player *monopoly.Player) {
-	s[playerInputs[playerId]["IS_ALIVE"]] = fromBool(!player.IsBankrupt)
-	s[playerInputs[playerId]["IS_JAILED"]] = fromBool(player.IsJailed)
-	s[playerInputs[playerId]["POSITION"]] = normalize(player.CurrentPosition, 0, cfg.LAST_FIELD_ID, false)
-	s[playerInputs[playerId]["MONEY"]] = normalize(player.Money, 0, cfg.MAX_MONEY, false)
-	s[playerInputs[playerId]["JAIL_CARDS"]] = normalize(player.JailCards, 0, cfg.MAX_JAIL_CARDS, false)
+func (s MonopolySensors) loadPlayerState(id int, player *monopoly.Player) {
+	// id is not the same as in game
+	s[playerInputs[id]["IS_ALIVE"]] = fromBool(!player.IsBankrupt)
+	s[playerInputs[id]["MONEY"]] = normalize(player.Money, 0, cfg.MAX_MONEY, false)
 }
 
-func (s MonopolySensors) loadPropertyState(propertyId int, property *monopoly.Property) {
+func (s MonopolySensors) loadPropertyState(propertyId int, property *monopoly.Property, currPlayerId int) {
 	s[propertyInputs[propertyId]["IS_MORTGAGED"]] = fromBool(property.IsMortgaged)
 	if property.Owner != nil {
-		s[propertyInputs[propertyId]["OWNER"]] = normalize(property.Owner.ID, 0, cfg.LAST_PLAYER_ID, true)
+		s[propertyInputs[propertyId]["OWNER"]] = normalize(getNewPlayerId(property.Owner.ID, currPlayerId), 0, cfg.LAST_PLAYER_ID, true)
 	}
 	if property.CanBuildHouse {
 		s[propertyInputs[propertyId]["HOUSES"]] = normalize(property.Houses, 0, cfg.MAX_HOUSES, false)
@@ -348,36 +303,18 @@ func (s MonopolySensors) LoadPrice(price int) {
 	s[baseInputs["PRICE"]] = normalize(price, 0, cfg.MAX_MONEY, false)
 }
 
-func (s MonopolySensors) LoadBiddingInputs(currentBid int, currentBidWinner int) {
+func (s MonopolySensors) LoadBiddingInputs(currentBid int, currentBidWinner int, currPlayerId int) {
 	s[baseInputs["CURR_BID"]] = normalize(currentBid, 0, cfg.MAX_MONEY, false)
-	s[baseInputs["CURR_BID_WINNER"]] = normalize(currentBidWinner, 0, cfg.LAST_PLAYER_ID, true)
+	s[baseInputs["CURR_BID_WINNER"]] = normalize(getNewPlayerId(currentBidWinner, currPlayerId), 0, cfg.LAST_PLAYER_ID, true)
 }
 
 func (s MonopolySensors) LoadCharge(charge int) {
 	s[baseInputs["CHARGE"]] = normalize(charge, 0, cfg.MAX_MONEY, false)
 }
 
-func (s MonopolySensors) LoadSellOfferTries(tries int) {
-	s[baseInputs["SELL_OFFER_TRIES"]] = normalize(tries, 0, cfg.MAX_OFFER_TRIES, false)
-}
-
-func (s MonopolySensors) LoadBuyOfferTries(tries int) {
-	s[baseInputs["BUY_OFFER_TRIES"]] = normalize(tries, 0, cfg.MAX_OFFER_TRIES, false)
-}
-
-func (s MonopolySensors) LoadStdActionsUsed(used int) {
-	s[baseInputs["STD_ACTIONS_USED"]] = normalize(used, 0, cfg.MAX_STD_ACTIONS, false)
-}
-
 func (s MonopolySensors) LoadAvailableStdActions(actions []monopoly.StdAction) {
 	for _, action := range actions {
 		s[availableStdActionInputs[action]] = 1.0
-	}
-}
-
-func (s MonopolySensors) LoadAvailableJailActions(actions []monopoly.JailAction) {
-	for _, action := range actions {
-		s[availableJailActionInputs[action]] = 1.0
 	}
 }
 
@@ -406,4 +343,24 @@ func normalize(value int, min int, max int, shift bool) float64 {
 		return 1.0
 	}
 	return normalizedVal
+}
+
+func getNewPlayerId(original int, currPlayerId int) int {
+	if original == currPlayerId {
+		return 0
+	}
+	if original < currPlayerId {
+		return original + 1
+	}
+	return original
+}
+
+func getOriginalPlayerId(newId int, currPlayerId int) int {
+	if newId == 0 {
+		return currPlayerId
+	}
+	if newId <= currPlayerId {
+		return newId - 1
+	}
+	return newId
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"monopoly/pkg/monopoly"
+	"slices"
 
 	"github.com/yaricom/goNEAT/v4/neat"
 	"github.com/yaricom/goNEAT/v4/neat/genetics"
@@ -60,8 +61,6 @@ func (p *NEATMonopolyPlayer) GetStdAction(player int, state monopoly.GameState, 
 	sensors := NewMonopolySensors()
 	sensors.LoadState(state, player)
 	sensors.LoadDecisionContext(STD_ACTION)
-	sensors.LoadSellOfferTries(state.SellOfferTries)
-	sensors.LoadBuyOfferTries(state.BuyOfferTries)
 	if state.Charge > 0 {
 		sensors.LoadCharge(state.Charge)
 
@@ -89,7 +88,7 @@ func (p *NEATMonopolyPlayer) GetStdAction(player int, state monopoly.GameState, 
 			for playerId, value := range playerOutputs {
 				if value > highest && !state.Players[playerId].IsBankrupt && playerId != player {
 					highest = value
-					result.PlayerId = playerId
+					result.PlayerId = getOriginalPlayerId(playerId, player)
 				}
 			}
 		}
@@ -102,21 +101,19 @@ func (p *NEATMonopolyPlayer) GetStdAction(player int, state monopoly.GameState, 
 }
 
 func (p *NEATMonopolyPlayer) GetJailAction(player int, state monopoly.GameState, available []monopoly.JailAction) monopoly.JailAction {
-	sensors := NewMonopolySensors()
-	sensors.LoadState(state, player)
-	sensors.LoadDecisionContext(JAIL_DECISION)
-	sensors.LoadAvailableJailActions(available)
-	outputList := p.GetDecision(sensors)
-	jailOutputs := GetJailOutputValues(outputList)
-	highest := 0.0
-	result := monopoly.ROLL_DICE
-	for _, action := range available {
-		if jailOutputs[action] > highest {
-			highest = jailOutputs[action]
-			result = action
+	if !slices.Contains(available, monopoly.ROLL_DICE) {
+		if slices.Contains(available, monopoly.CARD) {
+			return monopoly.CARD
 		}
+		return monopoly.BAIL
 	}
-	return result
+	if state.Round > 20 {
+		return monopoly.ROLL_DICE
+	}
+	if slices.Contains(available, monopoly.CARD) {
+		return monopoly.CARD
+	}
+	return monopoly.BAIL
 }
 
 func (p *NEATMonopolyPlayer) BuyDecision(player int, state monopoly.GameState, propertyId int) bool {
@@ -156,7 +153,7 @@ func (p *NEATMonopolyPlayer) BiddingDecision(player int, state monopoly.GameStat
 	sensors.LoadState(state, player)
 	sensors.LoadDecisionContext(BIDDING_DECISION)
 	sensors.LoadPropertyId(propertyId)
-	sensors.LoadBiddingInputs(currentPrice, currentWinner)
+	sensors.LoadBiddingInputs(currentPrice, currentWinner, player)
 	outputList := p.GetDecision(sensors)
 	decision := outputList[outputs["BIDDING_DECISION"]] > 0.5
 	if !decision {
