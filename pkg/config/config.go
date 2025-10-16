@@ -8,7 +8,7 @@ const (
 	JAIL_BAIL        = 50
 	MAX_HOUSES       = 5
 	MIN_PRICE        = 10
-	MAX_OFFER_TRIES  = 3
+	MAX_OFFER_TRIES  = 1
 	MAX_PLAYERS      = 4
 	MAX_STD_ACTIONS  = 5
 
