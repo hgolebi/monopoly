@@ -122,7 +122,6 @@ func (p *NEATMonopolyPlayer) BuyDecision(player int, state monopoly.GameState, p
 	sensors.LoadPropertyId(propertyId)
 	sensors.LoadPrice(state.Properties[propertyId].Price)
 	outputList := p.GetDecision(sensors)
-	fmt.Println("BUY_DECISION:, ", outputList[outputs["BUY_DECISION"]])
 	return outputList[outputs["BUY_DECISION"]] > 0.5
 }
 
