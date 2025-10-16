@@ -18,12 +18,12 @@ mutdiff_coeff:  3.0
 # This global tells compatibility threshold under which two Genomes are considered the same species
 compat_threshold:  3.0
 # How much does age matter? Gives a fitness boost up to some young age (niching). If it is 1, then young species get no fitness boost.
-age_significance:  1.0
+age_significance:  1.5
 # Percent of average fitness for survival, how many get to reproduce based on survival_thresh * pop_size
 survival_thresh:  0.2
 
 # Probabilities of a non-mating reproduction
-mutate_only_prob:  0.25
+mutate_only_prob:  0.1
 # Probability of genome trait mutation
 mutate_random_trait_prob:  0.1
 # Probability  of link trait mutation
@@ -31,15 +31,15 @@ mutate_link_trait_prob:  0.1
 # Probability of node trait mutation
 mutate_node_trait_prob:  0.1
 # Probability of link weight value mutation
-mutate_link_weights_prob:  0.9
+mutate_link_weights_prob:  0.2
 # Probability of enabling/disabling of specific link/gene
-mutate_toggle_enable_prob:  0.2
+mutate_toggle_enable_prob:  0.05
 # Probability of finding the first disabled gene and re-enabling it
 mutate_gene_reenable_prob:  0.1
 # Probability of adding new node
-mutate_add_node_prob:  0.3
+mutate_add_node_prob:  0.01
 # Probability of adding new link between nodes
-mutate_add_link_prob:  0.3
+mutate_add_link_prob:  0.05
 # Probability of making connections from disconnected sensors (input, bias type neurons)
 mutate_connect_sensors: 0.1
 
@@ -77,7 +77,7 @@ print_every:  0
 # The number of runs to average over in an experiment
 num_runs:  1
 # The number of epochs (generations) to execute training
-num_generations: 200
+num_generations: 400
 
 # The epoch's executor type to apply [sequential, parallel]
 epoch_executor: sequential
