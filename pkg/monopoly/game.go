@@ -543,13 +543,9 @@ func (g *Game) resolveStandardAction(player_id int, action_details ActionDetails
 			g.bankrupt(player, nil)
 			return
 		}
+		g.sell_offer_tries++
 		if !slices.Contains(available.SellPropertyList, action_details.PropertyId) {
 			g.logger.Log(fmt.Sprintf("%s cannot sell %s", player.Name, g.properties[action_details.PropertyId].Name))
-			g.bankrupt(player, nil)
-			return
-		}
-		if action_details.PlayerId == player_id || g.players[action_details.PlayerId].IsBankrupt {
-			g.logger.Log(fmt.Sprintf("%s cannot make a sell offer to %s", player.Name, g.players[action_details.PlayerId].Name))
 			g.bankrupt(player, nil)
 			return
 		}
@@ -558,12 +554,29 @@ func (g *Game) resolveStandardAction(player_id int, action_details ActionDetails
 			g.bankrupt(player, nil)
 			return
 		}
-		if action_details.Price > g.players[action_details.PlayerId].Money {
-			g.logger.Log(fmt.Sprintf("%s cannot afford the sell offer price: %d$", g.players[action_details.PlayerId].Name, action_details.Price))
-			g.sell_offer_tries++
+		players := []int{}
+		for _, pID := range action_details.Players {
+			p := g.players[pID]
+			if pID == player_id {
+				g.logger.Log(fmt.Sprintf("%s cannot make a sell offer to themselves", player.Name))
+				g.bankrupt(player, nil)
+				return
+			}
+			if p.IsBankrupt {
+				g.logger.Log(fmt.Sprintf("%s cannot make a sell offer to bankrupt player %s", player.Name, p.Name))
+				continue
+			}
+			if p.Money < action_details.Price {
+				g.logger.Log(fmt.Sprintf("%s cannot make a sell offer to %s, cannot afford it", player.Name, p.Name))
+				continue
+			}
+			players = append(players, pID)
+		}
+		if len(players) == 0 {
+			g.logger.Log(fmt.Sprintf("%s cannot make a sell offer, no valid players to offer to", player.Name))
 			return
 		}
-		g.sendSellOffer(player_id, action_details.PlayerId, action_details.PropertyId, action_details.Price)
+		g.sendSellOffer(player_id, players, action_details.PropertyId, action_details.Price)
 		return
 	case BUYOFFER:
 		g.logger.Log(fmt.Sprintf("%s chose to make a buy offer", player.Name))
@@ -772,24 +785,25 @@ func (g *Game) buyHouse(player_id int, propertyId int) {
 	g.logger.LogWithState(fmt.Sprintf("%s buys house on %s for %d$", player.Name, property.GetName(), property.HousePrice), g.getState())
 }
 
-func (g *Game) sendSellOffer(player_id int, target_id int, property_id int, price int) {
+func (g *Game) sendSellOffer(player_id int, targets []int, property_id int, price int) {
 	g.sell_offer_tries++
 	seller := g.players[player_id]
-	buyer := g.players[target_id]
-	property := g.properties[property_id]
-	g.logger.Log(fmt.Sprintf("%s offers to sell %s to %s for %d$", seller.Name, property.GetName(), buyer.Name, price))
-	accepted := g.io.BuyFromPlayerDecision(target_id, g.getState(), property_id, price)
-	if accepted {
-		g.logger.Log(fmt.Sprintf("%s accepted the sell offer", buyer.Name))
-		if buyer.Money < price {
-			g.logger.Log(fmt.Sprintf("%s cannot afford the property", buyer.Name))
-			g.bankrupt(buyer, nil)
+	g.randomSource.Shuffle(len(targets), func(i, j int) {
+		targets[i], targets[j] = targets[j], targets[i]
+	})
+	for _, target_id := range targets {
+		buyer := g.players[target_id]
+		property := g.properties[property_id]
+		g.logger.Log(fmt.Sprintf("%s offers to sell %s to %s for %d$", seller.Name, property.GetName(), buyer.Name, price))
+		accepted := g.io.BuyFromPlayerDecision(target_id, g.getState(), property_id, price)
+		if accepted {
+			g.logger.Log(fmt.Sprintf("%s accepted the sell offer", buyer.Name))
+			g.charge(buyer, price, seller)
+			g.transferProperty(seller, buyer, property_id)
 			return
+		} else {
+			g.logger.Log(fmt.Sprintf("%s rejected the sell offer", buyer.Name))
 		}
-		g.charge(buyer, price, seller)
-		g.transferProperty(seller, buyer, property_id)
-	} else {
-		g.logger.Log(fmt.Sprintf("%s rejected the sell offer", buyer.Name))
 	}
 
 }

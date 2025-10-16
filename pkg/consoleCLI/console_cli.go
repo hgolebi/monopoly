@@ -49,7 +49,7 @@ func (c *ConsoleCLI) GetStdAction(player int, state monopoly.GameState, availabl
 			response.PropertyId = chooseProperty(availableActions.BuyOutList)
 		case monopoly.SELLOFFER:
 			response.PropertyId = chooseProperty(availableActions.SellPropertyList)
-			response.PlayerId = choosePlayer(state.Players, player)
+			response.Players = []int{} // change later
 			response.Price = choosePrice()
 		case monopoly.BUYOFFER:
 			response.PropertyId = chooseProperty(availableActions.BuyPropertyList)

@@ -121,7 +121,7 @@ type ActionDetails struct {
 	Action     StdAction
 	PropertyId int
 	Price      int
-	PlayerId   int
+	Players    []int
 }
 
 type FinishOption int

@@ -84,11 +84,10 @@ func (p *NEATMonopolyPlayer) GetStdAction(player int, state monopoly.GameState, 
 			result.Price = GetPriceOutputValue(outputList)
 
 			playerOutputs := GetPlayerOutputValues(outputList)
-			var highest float64 = 0.0
-			for playerId, value := range playerOutputs {
-				if value > highest && !state.Players[playerId].IsBankrupt && playerId != player {
-					highest = value
-					result.PlayerId = getOriginalPlayerId(playerId, player)
+			var players []int
+			for pID, val := range playerOutputs {
+				if val > 0.5 {
+					players = append(players, getOriginalPlayerId(pID, player))
 				}
 			}
 		}
@@ -123,6 +122,7 @@ func (p *NEATMonopolyPlayer) BuyDecision(player int, state monopoly.GameState, p
 	sensors.LoadPropertyId(propertyId)
 	sensors.LoadPrice(state.Properties[propertyId].Price)
 	outputList := p.GetDecision(sensors)
+	fmt.Println("BUY_DECISION:, ", outputList[outputs["BUY_DECISION"]])
 	return outputList[outputs["BUY_DECISION"]] > 0.5
 }
 
