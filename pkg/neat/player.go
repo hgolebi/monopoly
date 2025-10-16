@@ -84,10 +84,10 @@ func (p *NEATMonopolyPlayer) GetStdAction(player int, state monopoly.GameState, 
 			result.Price = GetPriceOutputValue(outputList)
 
 			playerOutputs := GetPlayerOutputValues(outputList)
-			var players []int
+			result.Players = []int{}
 			for pID, val := range playerOutputs {
 				if val > 0.5 {
-					players = append(players, getOriginalPlayerId(pID, player))
+					result.Players = append(result.Players, getOriginalPlayerId(pID, player))
 				}
 			}
 		}
