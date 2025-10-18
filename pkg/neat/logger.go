@@ -21,21 +21,31 @@ func NewTrainerLogger(outputPath string, disabled bool) (*TrainerLogger, error) 
 	} else if !os.IsNotExist(err) {
 		return nil, err
 	}
-	dir := filepath.Dir(outputPath)
-	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		return nil, err
+	if !disabled {
+		if err := createFile(outputPath); err != nil {
+			return nil, fmt.Errorf("failed to create log file: %w", err)
+		}
 	}
-	file, err := os.Create(outputPath)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
 	return &TrainerLogger{
 		outputPath: outputPath,
 		stateId:    0,
 		disabled:   disabled,
 	}, nil
 }
+
+func createFile(outputPath string) error {
+	dir := filepath.Dir(outputPath)
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		return err
+	}
+	file, err := os.Create(outputPath)
+	if err != nil {
+		return err
+	}
+	file.Close()
+	return nil
+}
+
 func (l *TrainerLogger) log(message string) {
 	file, err := os.OpenFile(l.outputPath, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
@@ -56,8 +66,15 @@ func (l *TrainerLogger) Log(message string) {
 }
 
 func (l *TrainerLogger) Error(message string, state monopoly.GameState) {
+	if l.disabled {
+		err := createFile(l.outputPath)
+		if err != nil {
+			fmt.Printf("Error creating log file: %v\n", err)
+		}
+	}
 	newMsg := "!!!!!!!!!! ERROR: " + message
-	l.LogWithState(newMsg, state)
+	l.log(newMsg)
+	l.LogState(state)
 }
 
 func (l *TrainerLogger) LogState(state monopoly.GameState) {

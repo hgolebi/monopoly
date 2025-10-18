@@ -9,6 +9,7 @@ type Logger interface {
 	Log(message string)
 	LogWithState(message string, state GameState)
 	LogState(state GameState)
+	Error(message string, state GameState)
 }
 
 type ConsoleLogger struct {
@@ -50,4 +51,9 @@ func (c *ConsoleLogger) LogState(state GameState) {
 func (c *ConsoleLogger) LogWithState(message string, state GameState) {
 	c.Log(message)
 	c.LogState(state)
+}
+
+func (c *ConsoleLogger) Error(message string, state GameState) {
+	newMsg := "!!!!!!!!!! ERROR: " + message
+	c.LogWithState(newMsg, state)
 }

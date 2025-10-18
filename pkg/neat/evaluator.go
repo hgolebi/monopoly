@@ -36,6 +36,11 @@ func NewMonopolyEvaluator(outputDir string, groupSize int) *MonopolyEvaluator {
 }
 
 func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetics.Population, epoch *experiment.Generation) error {
+	options, ok := neat.FromContext(ctx)
+	if !ok {
+		return fmt.Errorf("failed to get options from context")
+	}
+
 	var players []*NEATMonopolyPlayer
 	for i, org := range pop.Organisms {
 		org.Fitness = 0
@@ -84,9 +89,12 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 		neat.InfoLog(fmt.Sprintf("Organism %d finished with fitness %f\n", org.Genotype.Id, org.Fitness))
 	}
 	epoch.FillPopulationStatistics(pop)
-	if _, err := utils.WritePopulationPlain(e.outputDir, pop, epoch); err != nil {
-		neat.ErrorLog(fmt.Sprintf("Failed to dump population, reason: %s\n", err))
-		return err
+
+	if (epoch.Id+1)%cfg.PRINT_EVERY == 0 || epoch.Id == options.NumGenerations-1 {
+		if _, err := utils.WritePopulationPlain(e.outputDir, pop, epoch); err != nil {
+			neat.ErrorLog(fmt.Sprintf("Failed to dump population, reason: %s\n", err))
+			return err
+		}
 	}
 	best := epoch.Champion
 	neat.InfoLog(fmt.Sprintf("Champion of epoch %d is organism %d with fitness %f\n", epoch.Id, best.Genotype.Id, best.Fitness))
@@ -120,10 +128,9 @@ func startGame(ctx context.Context, rd RoundDetails, g []*NEATMonopolyPlayer, ou
 		}{gameID: rd.Game, err: fmt.Errorf("error creating player group for group %d: %v", rd.Group, err)}
 		return
 	}
-	disable_logs := rd.Epoch != options.NumGenerations-1
-	disable_logs = true
+	enable_log := rd.PlayersCount == 4 && (rd.Epoch == options.NumGenerations-1 || (rd.Epoch+1)%cfg.PRINT_EVERY == 0)
 	logger, err := NewTrainerLogger(fmt.Sprintf("%s/games/epoch%d/round1of%d/group%d/game%d.log",
-		outputDir, rd.Epoch, rd.PlayersCount, rd.Group, rd.Game), disable_logs)
+		outputDir, rd.Epoch, rd.PlayersCount, rd.Group, rd.Game), !enable_log)
 	if err != nil {
 		resultsCh <- struct {
 			gameID int

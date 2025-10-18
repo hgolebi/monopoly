@@ -229,7 +229,7 @@ func (g *Game) getCurrPlayer() *Player {
 func (g *Game) Start() {
 	defer func() {
 		if r := recover(); r != nil {
-			g.logger.LogWithState(fmt.Sprintf("Game ended with an error: %v", r), g.getState())
+			g.logger.Error(fmt.Sprintf("Game ended with an error: %v", r), g.getState())
 			panic(r)
 		}
 	}()
