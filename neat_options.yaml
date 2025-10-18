@@ -66,7 +66,7 @@ recur_only_prob:  0.1
 # The number of babies to stolen off to the champions
 babies_stolen:  0
 # The population size as a number of organisms
-pop_size:  100
+pop_size:  256
 # Age when Species starts to be penalized
 dropoff_age:  15
 # Number of tries mutate_add_link will attempt to find an open link
@@ -77,7 +77,7 @@ print_every:  0
 # The number of runs to average over in an experiment
 num_runs:  1
 # The number of epochs (generations) to execute training
-num_generations: 400
+num_generations: 100
 
 # The epoch's executor type to apply [sequential, parallel]
 epoch_executor: sequential

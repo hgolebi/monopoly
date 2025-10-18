@@ -15,6 +15,7 @@ type NEATMonopolyPlayer struct {
 	network   *network.Network
 	organism  *genetics.Organism
 	max_depth int
+	score     int
 }
 
 func NewNEATMonopolyPlayer(organism *genetics.Organism) (*NEATMonopolyPlayer, error) {
@@ -35,6 +36,7 @@ func NewNEATMonopolyPlayer(organism *genetics.Organism) (*NEATMonopolyPlayer, er
 		network:   network,
 		organism:  organism,
 		max_depth: max_depth,
+		score:     0,
 	}, nil
 }
 

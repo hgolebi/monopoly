@@ -100,27 +100,29 @@ func (t *NEATPlayerGroup) Finish(f monopoly.FinishOption, winner int, state mono
 				second_place = i
 			}
 			if player.RoundWhenBankrupted <= cfg.PUNISHMENT_FIRST_THRESHOLD {
-				t.players[player.ID].organism.Fitness += cfg.HIGHEST_PUNISHMENT
+				t.players[player.ID].score += cfg.HIGHEST_PUNISHMENT
 			} else if player.RoundWhenBankrupted <= cfg.PUNISHMENT_SECOND_THRESHOLD {
-				t.players[player.ID].organism.Fitness += cfg.SECOND_HIGHEST_PUNISHMENT
+				t.players[player.ID].score += cfg.SECOND_HIGHEST_PUNISHMENT
 			} else {
-				t.players[player.ID].organism.Fitness += float64(cfg.MAX_ROUNDS - player.RoundWhenBankrupted)
+				t.players[player.ID].score += cfg.MAX_ROUNDS - player.RoundWhenBankrupted
 			}
 		}
 	}
 
 	switch f {
 	case monopoly.ROUND_LIMIT:
-		t.players[winner].organism.Fitness += cfg.ROUND_LIMIT_WINNER_SCORE
+		t.players[winner].score += cfg.ROUND_LIMIT_WINNER_SCORE
 	case monopoly.WIN:
 		for _, propertyId := range state.Players[winner].Properties {
 			property := state.Properties[propertyId]
-			t.players[winner].organism.Fitness += float64(cfg.POINT_PER_PROPERTY)
-			t.players[winner].organism.Fitness += float64(cfg.POINTS_PER_HOUSE * property.Houses)
+			if !property.IsMortgaged {
+				t.players[winner].score += cfg.POINT_PER_PROPERTY
+				t.players[winner].score += cfg.POINTS_PER_HOUSE * property.Houses
+			}
 		}
-		t.players[winner].organism.Fitness += cfg.FIRST_PLACE_SCORE
+		t.players[winner].score += cfg.FIRST_PLACE_SCORE
 		if second_place != -1 {
-			t.players[second_place].organism.Fitness += cfg.SECOND_PLACE_SCORE
+			t.players[second_place].score += cfg.SECOND_PLACE_SCORE
 		}
 	}
 }

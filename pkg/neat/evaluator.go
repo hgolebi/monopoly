@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"slices"
 	"time"
 
 	cfg "monopoly/pkg/config"
@@ -20,6 +21,13 @@ type MonopolyEvaluator struct {
 	groupSize int
 }
 
+type RoundDetails struct {
+	Epoch        int
+	PlayersCount int
+	Group        int
+	Game         int
+}
+
 func NewMonopolyEvaluator(outputDir string, groupSize int) *MonopolyEvaluator {
 	return &MonopolyEvaluator{
 		outputDir: outputDir,
@@ -28,10 +36,6 @@ func NewMonopolyEvaluator(outputDir string, groupSize int) *MonopolyEvaluator {
 }
 
 func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetics.Population, epoch *experiment.Generation) error {
-	if _, err := utils.WritePopulationPlain(e.outputDir, pop, epoch); err != nil {
-		neat.ErrorLog(fmt.Sprintf("Failed to dump population, reason: %s\n", err))
-		return err
-	}
 	var players []*NEATMonopolyPlayer
 	for i, org := range pop.Organisms {
 		org.Fitness = 0
@@ -41,24 +45,21 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 		}
 		players = append(players, org)
 	}
-	// epochDir := fmt.Sprintf("%s/epoch%d", e.outputDir, epoch.Id)
-	// if err := os.MkdirAll(epochDir, os.ModePerm); err != nil {
-	// 	return fmt.Errorf("error creating epoch directory: %v", err)
-	// }
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for roundID := range cfg.GAMES_PER_EPOCH {
-		// roundDir := fmt.Sprintf("%s/epoch%d/round%d", e.outputDir, epoch.Id, roundID)
-		// if err := os.MkdirAll(roundDir, os.ModePerm); err != nil {
-		// 	return fmt.Errorf("error creating round directory: %v", err)
-		// }
-		neat.InfoLog(fmt.Sprintf("\nStarting round %d; epoch %d\n", roundID, epoch.Id))
+	var rd = RoundDetails{
+		Epoch: epoch.Id,
+	}
+
+	for len(players) > 1 {
+		rd.PlayersCount = len(players)
+		neat.InfoLog(fmt.Sprintf("Starting round 1/%d\n", rd.PlayersCount))
+
 		rng.Shuffle(len(players), func(i, j int) {
 			players[i], players[j] = players[j], players[i]
 		})
 
 		var groups [][]*NEATMonopolyPlayer
-
 		for i := 0; i < len(players); i += e.groupSize {
 			end := i + e.groupSize
 			if end > len(players) {
@@ -67,87 +68,106 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 			groups = append(groups, players[i:end])
 		}
 
-		resultsCh := make(chan struct {
-			groupID int
-			err     error
-		}, len(groups))
-		var groupID int = 0
-		for groupID < len(groups) {
-			threads := 1
-			for groupID < len(groups) && threads%cfg.MAX_THREADS != 0 {
-				group := groups[groupID]
-				fmt.Printf("Starting group %d\n", groupID)
-				go startGroup(ctx, roundID, groupID, epoch.Id, group, e, resultsCh)
-
-				threads++
-				groupID++
-			}
-			var err error
-			for i := 0; i+1 < threads; i++ {
-				result := <-resultsCh
-				if result.err != nil {
-					fmt.Printf("[%d] Error in group %d: %v\n", i, result.groupID, result.err)
-					err = fmt.Errorf("error in one of the groups: %v", result.err)
-				} else {
-					fmt.Printf("[%d] Group %d finished successfully\n", i, result.groupID)
-				}
-			}
+		players = []*NEATMonopolyPlayer{}
+		for groupID, group := range groups {
+			rd.Group = groupID
+			winner, err := startGroup(ctx, rd, group, e.outputDir)
 			if err != nil {
-				return err
+				neat.ErrorLog(fmt.Sprintf("Error in round 1/%d group %d: %v\n", rd.PlayersCount, groupID, err))
+				return fmt.Errorf("error in round 1/%d group %d: %v", rd.PlayersCount, groupID, err)
 			}
+			players = append(players, winner)
 		}
-
-		neat.InfoLog(fmt.Sprintf("\nRound %d finished successfully; epoch %d\n", roundID, epoch.Id))
+		neat.InfoLog(fmt.Sprintf("\nRound 1/%d finished successfully; epoch %d\n", rd.PlayersCount, epoch.Id))
 	}
 	for _, org := range pop.Organisms {
 		neat.InfoLog(fmt.Sprintf("Organism %d finished with fitness %f\n", org.Genotype.Id, org.Fitness))
 	}
 	epoch.FillPopulationStatistics(pop)
+	if _, err := utils.WritePopulationPlain(e.outputDir, pop, epoch); err != nil {
+		neat.ErrorLog(fmt.Sprintf("Failed to dump population, reason: %s\n", err))
+		return err
+	}
 	best := epoch.Champion
 	neat.InfoLog(fmt.Sprintf("Champion of epoch %d is organism %d with fitness %f\n", epoch.Id, best.Genotype.Id, best.Fitness))
 	return nil
 }
 
-func startGroup(ctx context.Context, roundID int, groupID int, epochId int, g []*NEATMonopolyPlayer, e *MonopolyEvaluator, resultsCh chan struct {
-	groupID int
-	err     error
+func startGame(ctx context.Context, rd RoundDetails, g []*NEATMonopolyPlayer, outputDir string, resultsCh chan struct {
+	gameID int
+	err    error
 }) {
 	defer func() {
 		if r := recover(); r != nil {
 			resultsCh <- struct {
-				groupID int
-				err     error
-			}{groupID: groupID, err: fmt.Errorf("panic in group %d: %v", groupID, r)}
+				gameID int
+				err    error
+			}{gameID: rd.Game, err: fmt.Errorf("panic in group %d: %v", rd.Group, r)}
 		}
 	}()
 	options, ok := neat.FromContext(ctx)
 	if !ok {
 		resultsCh <- struct {
-			groupID int
-			err     error
-		}{groupID: groupID, err: fmt.Errorf("failed to get options from context")}
+			gameID int
+			err    error
+		}{gameID: rd.Game, err: fmt.Errorf("failed to get options from context")}
 	}
-	playerGroup, err := NewNEATPlayerGroup(groupID, g)
+	playerGroup, err := NewNEATPlayerGroup(rd.Group, g)
 	if err != nil {
 		resultsCh <- struct {
-			groupID int
-			err     error
-		}{groupID: groupID, err: fmt.Errorf("error creating player group for group %d: %v", groupID, err)}
+			gameID int
+			err    error
+		}{gameID: rd.Game, err: fmt.Errorf("error creating player group for group %d: %v", rd.Group, err)}
 		return
 	}
-
-	logger, err := NewTrainerLogger(fmt.Sprintf("%s/games/temp/round%d/group%d.log", e.outputDir, roundID, groupID), epochId != options.NumGenerations-1)
+	disable_logs := rd.Epoch != options.NumGenerations-1
+	disable_logs = true
+	logger, err := NewTrainerLogger(fmt.Sprintf("%s/games/epoch%d/round1of%d/group%d/game%d.log",
+		outputDir, rd.Epoch, rd.PlayersCount, rd.Group, rd.Game), disable_logs)
 	if err != nil {
 		resultsCh <- struct {
-			groupID int
-			err     error
-		}{groupID: groupID, err: fmt.Errorf("error creating logger for group %d: %v", groupID, err)}
+			gameID int
+			err    error
+		}{gameID: rd.Game, err: fmt.Errorf("error creating logger for group %d: %v", rd.Group, err)}
 		return
 	}
 	game := monopoly.NewGame(ctx, playerGroup, logger, 0)
 	game.Start()
 	resultsCh <- struct {
-		groupID int
-		err     error
-	}{groupID: groupID, err: nil}
+		gameID int
+		err    error
+	}{gameID: rd.Game, err: nil}
+}
+
+func startGroup(ctx context.Context, round RoundDetails, group []*NEATMonopolyPlayer, outputDir string) (champion *NEATMonopolyPlayer, err error) {
+	neat.InfoLog(fmt.Sprintf("Group %d\n", round.Group))
+	resultsCh := make(chan struct {
+		gameID int
+		err    error
+	}, cfg.GAMES_PER_EPOCH)
+	groupCopy := make([]*NEATMonopolyPlayer, len(group))
+	copy(groupCopy, group)
+	for g := range cfg.GAMES_PER_EPOCH {
+		groupCopy = append(groupCopy[1:], groupCopy[0]) // rotate players
+		round.Game = g
+		go startGame(ctx, round, groupCopy, outputDir, resultsCh)
+	}
+	for range cfg.GAMES_PER_EPOCH {
+		result := <-resultsCh
+		if result.err != nil {
+			neat.ErrorLog(fmt.Sprintf("Error in game %d of group %d: %v\n", result.gameID, round.Group, result.err))
+			err = fmt.Errorf("error in game %d of group %d: %v", result.gameID, round.Group, result.err)
+		}
+	}
+	if err != nil {
+		return
+	}
+	slices.SortFunc(groupCopy, func(a, b *NEATMonopolyPlayer) int {
+		return a.score - b.score
+	})
+	for i, player := range groupCopy {
+		player.organism.Fitness += float64(i + 1)
+		player.score = 0
+	}
+	return groupCopy[len(groupCopy)-1], nil
 }
