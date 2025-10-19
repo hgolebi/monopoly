@@ -16,26 +16,26 @@ const (
 	LAST_FIELD_ID    = 39
 	LAST_PROPERTY_ID = 27
 	MAX_MONEY        = 2000
-	MAX_JAIL_CARDS   = 20
+	MAX_JAIL_CARDS   = 10
 	LAST_PLAYER_ID   = MAX_PLAYERS - 1
 )
 
 // Evaluator settings
 const (
 	PUNISHMENT_FIRST_THRESHOLD  = 10 // if player bankrupts before this round he will receive HIGHEST_PUNISHMENT
-	PUNISHMENT_SECOND_THRESHOLD = 20 // if player bankrupts before this round he will receive SECOND_HIGHEST_PUNISHMENT
+	PUNISHMENT_SECOND_THRESHOLD = 15 // if player bankrupts before this round he will receive SECOND_HIGHEST_PUNISHMENT
 	HIGHEST_PUNISHMENT          = -60
 	SECOND_HIGHEST_PUNISHMENT   = -30
 	SECOND_PLACE_SCORE          = 20
 	FIRST_PLACE_SCORE           = 100
-	ROUND_LIMIT_WINNER_SCORE    = 5  // if player wins the game by reaching the round limit he will receive this score
-	POINT_PER_PROPERTY          = 10 // points for each property owned by the player. Only for winner
-	POINTS_PER_HOUSE            = 20 // points for each house on the property. Only for winner
+	ROUND_LIMIT_WINNER_SCORE    = 5 // if player wins the game by reaching the round limit he will receive this score
+	POINT_PER_PROPERTY          = 1 // points for each property owned by the player. Only for winner
+	POINTS_PER_HOUSE            = 3 // points for each house on the property. Only for winner
 
-	GAMES_PER_EPOCH = 8   // number of games every organism has to play during one epoch
-	GROUP_SIZE      = 4   // number of players in each game
-	MAX_THREADS     = 100 // maximum number of threads used to evaluate organisms
-	PRINT_EVERY     = 100 // saves logs and population to files every N epochs
+	GAMES_PER_EPOCH = 8    // number of games every organism has to play during one epoch
+	GROUP_SIZE      = 4    // number of players in each game
+	MAX_THREADS     = 100  // maximum number of threads used to evaluate organisms
+	PRINT_EVERY     = 1000 // saves logs and population to files every N epochs
 )
 
 type GameSettings struct {
