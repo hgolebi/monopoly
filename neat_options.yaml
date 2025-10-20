@@ -20,7 +20,7 @@ compat_threshold:  3.0
 # How much does age matter? Gives a fitness boost up to some young age (niching). If it is 1, then young species get no fitness boost.
 age_significance:  1.5
 # Percent of average fitness for survival, how many get to reproduce based on survival_thresh * pop_size
-survival_thresh:  0.2
+survival_thresh:  0.25
 
 # Probabilities of a non-mating reproduction
 mutate_only_prob:  0.1
@@ -77,7 +77,7 @@ print_every:  0
 # The number of runs to average over in an experiment
 num_runs:  1
 # The number of epochs (generations) to execute training
-num_generations: 100
+num_generations: 10000
 
 # The epoch's executor type to apply [sequential, parallel]
 epoch_executor: sequential
