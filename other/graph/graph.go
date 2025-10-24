@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -10,10 +11,12 @@ import (
 
 func main() {
 	// Retrieve the genome file path from command line arguments
+	filePath := "C:\\Users\\Hubert\\Desktop\\genomes\\gen_2999"
 	if len(os.Args) < 2 {
-		log.Fatal("Usage: go run graph.go <genome_file_path>")
+		fmt.Println("Usage: go run graph.go <genome_file_path>")
+	} else {
+		filePath = os.Args[1]
 	}
-	filePath := os.Args[1]
 	useDotFormat := false
 	if len(os.Args) > 2 && os.Args[2] == "--dot" {
 		useDotFormat = true
@@ -52,4 +55,7 @@ func main() {
 			log.Fatal("Failed to write file:", err)
 		}
 	}
+	fmt.Printf("Number of nodes: %d\n", len(startGenome.Nodes))
+	fmt.Printf("Number of genes: %d\n", len(startGenome.Genes))
+	fmt.Printf("Number of control genes: %d\n", len(startGenome.ControlGenes))
 }
