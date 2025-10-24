@@ -58,7 +58,7 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 
 	for len(players) > 1 {
 		rd.PlayersCount = len(players)
-		neat.InfoLog(fmt.Sprintf("Starting round 1/%d\n", rd.PlayersCount))
+		// neat.InfoLog(fmt.Sprintf("Starting round 1/%d\n", rd.PlayersCount))
 
 		rng.Shuffle(len(players), func(i, j int) {
 			players[i], players[j] = players[j], players[i]
@@ -83,10 +83,10 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 			}
 			players = append(players, winner)
 		}
-		neat.InfoLog(fmt.Sprintf("\nRound 1/%d finished successfully; epoch %d\n", rd.PlayersCount, epoch.Id))
+		// neat.InfoLog(fmt.Sprintf("\nRound 1/%d finished successfully; epoch %d\n", rd.PlayersCount, epoch.Id))
 	}
 	for _, org := range pop.Organisms {
-		neat.InfoLog(fmt.Sprintf("Organism %d finished with fitness %f\n", org.Genotype.Id, org.Fitness))
+		neat.DebugLog(fmt.Sprintf("Organism %d finished with fitness %f\n", org.Genotype.Id, org.Fitness))
 	}
 	epoch.FillPopulationStatistics(pop)
 
@@ -97,6 +97,8 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 		}
 	}
 	best := epoch.Champion
+	numberOfSpecies := len(pop.Species)
+	neat.InfoLog(fmt.Sprintf("Spieces count: %d\n", numberOfSpecies))
 	neat.InfoLog(fmt.Sprintf("Champion of epoch %d is organism %d with fitness %f\n", epoch.Id, best.Genotype.Id, best.Fitness))
 	return nil
 }
@@ -128,7 +130,8 @@ func startGame(ctx context.Context, rd RoundDetails, g []*NEATMonopolyPlayer, ou
 		}{gameID: rd.Game, err: fmt.Errorf("error creating player group for group %d: %v", rd.Group, err)}
 		return
 	}
-	enable_log := rd.PlayersCount == 4 && (rd.Epoch == options.NumGenerations-1 || (rd.Epoch+1)%cfg.PRINT_EVERY == 0)
+	enable_log := false
+	enable_log = rd.PlayersCount == 4 && (rd.Epoch == options.NumGenerations-1 || (rd.Epoch+1)%cfg.PRINT_EVERY == 0)
 	logger, err := NewTrainerLogger(fmt.Sprintf("%s/games/epoch%d/round1of%d/group%d/game%d.log",
 		outputDir, rd.Epoch, rd.PlayersCount, rd.Group, rd.Game), !enable_log)
 	if err != nil {
@@ -147,7 +150,7 @@ func startGame(ctx context.Context, rd RoundDetails, g []*NEATMonopolyPlayer, ou
 }
 
 func startGroup(ctx context.Context, round RoundDetails, group []*NEATMonopolyPlayer, outputDir string) (champion *NEATMonopolyPlayer, err error) {
-	neat.InfoLog(fmt.Sprintf("Group %d\n", round.Group))
+	// neat.InfoLog(fmt.Sprintf("Group %d\n", round.Group))
 	resultsCh := make(chan struct {
 		gameID int
 		err    error

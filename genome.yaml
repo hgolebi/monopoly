@@ -137,27 +137,27 @@ genome:
 
   genes:
       # minimal connections from DECISION_CONTEXT to all outputs
-    - { src_id: 89, tgt_id: 102, weight: 0.0, trait_id: 1, innov_num: 1,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 89, tgt_id: 103, weight: 0.0, trait_id: 1, innov_num: 2,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 89, tgt_id: 104, weight: 0.0, trait_id: 1, innov_num: 3,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 89, tgt_id: 105, weight: 0.0, trait_id: 1, innov_num: 4,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 89, tgt_id: 106, weight: 0.0, trait_id: 1, innov_num: 5,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 89, tgt_id: 107, weight: 0.0, trait_id: 1, innov_num: 6,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 89, tgt_id: 108, weight: 0.0, trait_id: 1, innov_num: 7,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 89, tgt_id: 109, weight: 0.0, trait_id: 1, innov_num: 8,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 89, tgt_id: 110, weight: 0.0, trait_id: 1, innov_num: 9,  mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 89, tgt_id: 111, weight: 0.0, trait_id: 1, innov_num: 10, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 89, tgt_id: 112, weight: 0.0, trait_id: 1, innov_num: 11, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 89, tgt_id: 113, weight: 0.0, trait_id: 1, innov_num: 12, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 89, tgt_id: 114, weight: 0.0, trait_id: 1, innov_num: 13, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 89, tgt_id: 115, weight: 0.0, trait_id: 1, innov_num: 14, mut_num: 0, recurrent: false, enabled: true }
-    - { src_id: 89, tgt_id: 116, weight: 0.0, trait_id: 1, innov_num: 15, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 89, tgt_id: 102, weight: 0.0, trait_id: 0, innov_num: 1,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 89, tgt_id: 103, weight: 0.0, trait_id: 0, innov_num: 2,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 89, tgt_id: 104, weight: 0.0, trait_id: 0, innov_num: 3,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 89, tgt_id: 105, weight: 0.0, trait_id: 0, innov_num: 4,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 89, tgt_id: 106, weight: 0.0, trait_id: 0, innov_num: 5,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 89, tgt_id: 107, weight: 0.0, trait_id: 0, innov_num: 6,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 89, tgt_id: 108, weight: 0.0, trait_id: 0, innov_num: 7,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 89, tgt_id: 109, weight: 0.0, trait_id: 0, innov_num: 8,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 89, tgt_id: 110, weight: 0.0, trait_id: 0, innov_num: 9,  mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 89, tgt_id: 111, weight: 0.0, trait_id: 0, innov_num: 10, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 89, tgt_id: 112, weight: 0.0, trait_id: 0, innov_num: 11, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 89, tgt_id: 113, weight: 0.0, trait_id: 0, innov_num: 12, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 89, tgt_id: 114, weight: 0.0, trait_id: 0, innov_num: 13, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 89, tgt_id: 115, weight: 0.0, trait_id: 0, innov_num: 14, mut_num: 0, recurrent: false, enabled: true }
+    - { src_id: 89, tgt_id: 116, weight: 0.0, trait_id: 0, innov_num: 15, mut_num: 0, recurrent: false, enabled: true }
 
     # STD_ACTION inputs to corresponding action outputs
-    - { src_id: 95, tgt_id: 106, weight: 0.0, trait_id: 1, innov_num: 16, mut_num: 0, recurrent: false, enabled: true }  # NOACTION -> NO_ACTION
-    - { src_id: 96, tgt_id: 107, weight: 0.0, trait_id: 1, innov_num: 17, mut_num: 0, recurrent: false, enabled: true }  # MORTGAGE -> MORTGAGE
-    - { src_id: 97, tgt_id: 108, weight: 0.0, trait_id: 1, innov_num: 18, mut_num: 0, recurrent: false, enabled: true }  # BUYOUT -> BUYOUT
-    - { src_id: 98, tgt_id: 109, weight: 0.0, trait_id: 1, innov_num: 19, mut_num: 0, recurrent: false, enabled: true }  # SELLOFFER -> SELL_OFFER
-    - { src_id: 99, tgt_id: 110, weight: 0.0, trait_id: 1, innov_num: 20, mut_num: 0, recurrent: false, enabled: true }  # BUYOFFER -> BUY_OFFER
-    - { src_id: 100, tgt_id: 111, weight: 0.0, trait_id: 1, innov_num: 21, mut_num: 0, recurrent: false, enabled: true } # BUYHOUSE -> BUY_HOUSE
-    - { src_id: 101, tgt_id: 112, weight: 0.0, trait_id: 1, innov_num: 22, mut_num: 0, recurrent: false, enabled: true } # SELLHOUSE -> SELL_HOUSE
+    - { src_id: 95, tgt_id: 106, weight: 0.0, trait_id: 0, innov_num: 16, mut_num: 0, recurrent: false, enabled: true }  # NOACTION -> NO_ACTION
+    - { src_id: 96, tgt_id: 107, weight: 0.0, trait_id: 0, innov_num: 17, mut_num: 0, recurrent: false, enabled: true }  # MORTGAGE -> MORTGAGE
+    - { src_id: 97, tgt_id: 108, weight: 0.0, trait_id: 0, innov_num: 18, mut_num: 0, recurrent: false, enabled: true }  # BUYOUT -> BUYOUT
+    - { src_id: 98, tgt_id: 109, weight: 0.0, trait_id: 0, innov_num: 19, mut_num: 0, recurrent: false, enabled: true }  # SELLOFFER -> SELL_OFFER
+    - { src_id: 99, tgt_id: 110, weight: 0.0, trait_id: 0, innov_num: 20, mut_num: 0, recurrent: false, enabled: true }  # BUYOFFER -> BUY_OFFER
+    - { src_id: 100, tgt_id: 111, weight: 0.0, trait_id: 0, innov_num: 21, mut_num: 0, recurrent: false, enabled: true } # BUYHOUSE -> BUY_HOUSE
+    - { src_id: 101, tgt_id: 112, weight: 0.0, trait_id: 0, innov_num: 22, mut_num: 0, recurrent: false, enabled: true } # SELLHOUSE -> SELL_HOUSE

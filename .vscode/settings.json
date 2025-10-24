@@ -1,9 +1,15 @@
 {
     "editor.foldingStrategy": "auto",
     "explicitFolding.rules": {
-        "*": {
+        "*": [
+        {
             "beginRegex": "====*",
             "endRegex": "====*"
+        },
+        {
+            "beginRegex": "genomestart.*",
+            "endRegex": "genomeend.*"
         }
+    ]
     },
 }
