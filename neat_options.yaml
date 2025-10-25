@@ -11,19 +11,19 @@ weight_mut_power:  1.0
 # See the Compatibility method in the Genome class for more info
 # They can be thought of as the importance of disjoint Genes, excess Genes, and parametric difference between Genes of
 # the same function, respectively.
-disjoint_coeff:  2.0
-excess_coeff:  4.0
+disjoint_coeff:  3.0
+excess_coeff:  3.0
 mutdiff_coeff:  0.5
 
 # This global tells compatibility threshold under which two Genomes are considered the same species
-compat_threshold:  8.1
+compat_threshold:  7.5
 # How much does age matter? Gives a fitness boost up to some young age (niching). If it is 1, then young species get no fitness boost.
 age_significance:  1.0
 # Percent of average fitness for survival, how many get to reproduce based on survival_thresh * pop_size
-survival_thresh:  0.2
+survival_thresh:  0.1
 
 # Probabilities of a non-mating reproduction
-mutate_only_prob:  0.1
+mutate_only_prob:  0.15
 # Probability of genome trait mutation
 mutate_random_trait_prob:  0.0
 # Probability  of link trait mutation
@@ -33,15 +33,15 @@ mutate_node_trait_prob:  0.0
 # Probability of link weight value mutation
 mutate_link_weights_prob:  0.01
 # Probability of enabling/disabling of specific link/gene
-mutate_toggle_enable_prob:  0.005
+mutate_toggle_enable_prob:  0.01
 # Probability of finding the first disabled gene and re-enabling it
 mutate_gene_reenable_prob:  0.01
 # Probability of adding new node
-mutate_add_node_prob:  0.005
+mutate_add_node_prob:  0.01
 # Probability of adding new link between nodes
-mutate_add_link_prob:  0.007
+mutate_add_link_prob:  0.15
 # Probability of making connections from disconnected sensors (input, bias type neurons)
-mutate_connect_sensors: 0.0
+mutate_connect_sensors: 0.02
 
 # Probability of mating between different species
 interspecies_mate_rate:  0.01
@@ -58,7 +58,7 @@ mate_multipoint_avg_prob:  0.9
 mate_singlepoint_prob:  0.0
 
 # Probability of mating without mutation
-mate_only_prob:  0.2
+mate_only_prob:  0.1
 
 # Probability of forcing selection of ONLY links that are naturally recurrent
 recur_only_prob:  0.0
@@ -68,7 +68,7 @@ babies_stolen:  0
 # The population size as a number of organisms
 pop_size:  64
 # Age when Species starts to be penalized
-dropoff_age:  300
+dropoff_age:  9999999999
 # Number of tries mutate_add_link will attempt to find an open link
 newlink_tries:  20
 # Tells to print population to file every n generations

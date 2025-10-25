@@ -102,6 +102,7 @@ func (e *MonopolyEvaluator) TournamentGenerationEvaluate(ctx context.Context, po
 	numberOfSpecies := len(pop.Species)
 	neat.InfoLog(fmt.Sprintf("Spieces count: %d\n", numberOfSpecies))
 	neat.InfoLog(fmt.Sprintf("Champion of epoch %d is organism %d with fitness %f\n", epoch.Id, best.Genotype.Id, best.Fitness))
+	neat.InfoLog(fmt.Sprintf("Number of nodes: %d, number of connections: %d\n", len(best.Genotype.Nodes), len(best.Genotype.Genes)))
 	return nil
 }
 
