@@ -197,10 +197,6 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 		return fmt.Errorf("failed to get options from context")
 	}
 
-	if _, err := utils.WritePopulationPlain(e.outputDir, pop, epoch); err != nil {
-		neat.ErrorLog(fmt.Sprintf("Failed to dump population, reason: %s\n", err))
-		return err
-	}
 	var players []*NEATMonopolyPlayer
 	for i, org := range pop.Organisms {
 		org.Fitness = 0
@@ -227,7 +223,9 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 			}
 			groups = append(groups, players[i:end])
 		}
-		dumpGroupAssignments(e.outputDir, epoch.Id, roundID, groups)
+		if roundID == 0 && (epoch.Id == options.NumGenerations-1 || (epoch.Id+1)%cfg.PRINT_EVERY == 0) {
+			dumpGroupAssignments(e.outputDir, epoch.Id, roundID, groups)
+		}
 		resultsCh := make(chan struct {
 			groupID int
 			err     error
@@ -279,6 +277,8 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 	numberOfSpecies := len(pop.Species)
 	neat.InfoLog(fmt.Sprintf("Spieces count: %d\n", numberOfSpecies))
 	neat.InfoLog(fmt.Sprintf("Champion of epoch %d is organism %d with fitness %f\n", epoch.Id, best.Genotype.Id, best.Fitness))
+	neat.InfoLog(fmt.Sprintf("Number of nodes: %d, number of connections: %d\n", len(best.Genotype.Nodes), len(best.Genotype.Genes)))
+
 	// freeze of 0.5sec
 	// time.Sleep(500 * time.Millisecond)
 	return nil
