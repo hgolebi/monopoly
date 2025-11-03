@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"monopoly/pkg/monopoly"
 	"slices"
+	"sync"
 
 	"github.com/yaricom/goNEAT/v4/neat"
 	"github.com/yaricom/goNEAT/v4/neat/genetics"
@@ -16,6 +17,7 @@ type NEATMonopolyPlayer struct {
 	organism  *genetics.Organism
 	max_depth int
 	score     int
+	mutex     sync.Mutex
 }
 
 func NewNEATMonopolyPlayer(organism *genetics.Organism) (*NEATMonopolyPlayer, error) {
@@ -194,4 +196,10 @@ func transformAvailableActionsList(actions monopoly.FullActionList) map[int][]mo
 		}
 	}
 	return propertyActions
+}
+
+func (p *NEATMonopolyPlayer) AddScore(points int) {
+	p.mutex.Lock()
+	p.score += points
+	p.mutex.Unlock()
 }

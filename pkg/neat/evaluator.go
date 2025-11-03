@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sync"
 	"time"
 
 	cfg "monopoly/pkg/config"
@@ -189,6 +190,7 @@ type GroupDetails struct {
 	Epoch   int
 	Round   int
 	GroupID int
+	Players []*NEATMonopolyPlayer
 }
 
 func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetics.Population, epoch *experiment.Generation) error {
@@ -205,6 +207,13 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 			return fmt.Errorf("error creating NEATMonopolyPlayer for organism %d: %v", i, err)
 		}
 		players = append(players, org)
+	}
+
+	jobsCh := make(chan GroupDetails, 100)
+	var wg sync.WaitGroup
+	for i := 0; i < cfg.MAX_THREADS; i++ {
+		wg.Add(1)
+		go startWorker(ctx, i, jobsCh, &wg, e.outputDir)
 	}
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -226,42 +235,22 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 		if roundID == 0 && (epoch.Id == options.NumGenerations-1 || (epoch.Id+1)%cfg.PRINT_EVERY == 0) {
 			dumpGroupAssignments(e.outputDir, epoch.Id, roundID, groups)
 		}
-		resultsCh := make(chan struct {
-			groupID int
-			err     error
-		}, len(groups))
-		var groupID int = 0
-		for groupID < len(groups) {
-			threads := 1
-			for groupID < len(groups) && threads%cfg.MAX_THREADS != 0 {
-				group := groups[groupID]
-				// fmt.Printf("Starting group %d\n", groupID)
-				groupDetails := GroupDetails{
-					Epoch:   epoch.Id,
-					Round:   roundID,
-					GroupID: groupID,
-				}
-				go startGroup(ctx, groupDetails, group, e.outputDir, resultsCh)
-
-				threads++
-				groupID++
+		for groupID, group := range groups {
+			gd := GroupDetails{
+				Epoch:   epoch.Id,
+				Round:   roundID,
+				GroupID: groupID,
+				Players: group,
 			}
-			var err error
-			for i := 0; i+1 < threads; i++ {
-				result := <-resultsCh
-				if result.err != nil {
-					fmt.Printf("[%d] Error in group %d: %v\n", i, result.groupID, result.err)
-					err = fmt.Errorf("error in one of the groups: %v", result.err)
-				} else {
-					// fmt.Printf("[%d] Group %d finished successfully\n", i, result.groupID)
-				}
-			}
-			if err != nil {
-				return err
-			}
+			jobsCh <- gd
 		}
-
 		// neat.InfoLog(fmt.Sprintf("\nRound %d finished successfully; epoch %d\n", roundID, epoch.Id))
+	}
+	close(jobsCh)
+	wg.Wait()
+	for _, player := range players {
+		player.organism.Fitness += float64(player.score)
+		player.score = 0
 	}
 	// for _, org := range pop.Organisms {
 	// 	neat.InfoLog(fmt.Sprintf("Organism %d finished with fitness %f\n", org.Genotype.Id, org.Fitness))
@@ -284,32 +273,30 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 	return nil
 }
 
-func startGroup(ctx context.Context, gd GroupDetails, g []*NEATMonopolyPlayer, outputDir string, resultsCh chan struct {
-	groupID int
-	err     error
-}) {
-	defer func() {
-		if r := recover(); r != nil {
-			resultsCh <- struct {
-				groupID int
-				err     error
-			}{groupID: gd.GroupID, err: fmt.Errorf("panic in group %d: %v", gd.GroupID, r)}
+func startWorker(ctx context.Context, id int, jobsCh <-chan GroupDetails, wg *sync.WaitGroup, outputDir string) {
+	defer wg.Done()
+	// neat.InfoLog(fmt.Sprintf("Worker %d started\n", id))
+	for gd := range jobsCh {
+		// neat.InfoLog(fmt.Sprintf("Worker %d processing group %d (round %d)\n", id, gd.GroupID, gd.Round))
+		if err := startGroup(ctx, gd, outputDir); err != nil {
+			neat.ErrorLog(err.Error())
+			continue
 		}
-	}()
+	}
+}
+
+func startGroup(ctx context.Context, gd GroupDetails, outputDir string) error {
 	options, ok := neat.FromContext(ctx)
 	if !ok {
-		resultsCh <- struct {
-			groupID int
-			err     error
-		}{groupID: gd.GroupID, err: fmt.Errorf("failed to get options from context")}
+		return fmt.Errorf("Error in group %d (round %d): %s", gd.GroupID, gd.Round, "failed to get options from context")
 	}
-	playerGroup, err := NewNEATPlayerGroup(gd.GroupID, g)
+	playerGroup, err := NewNEATPlayerGroup(gd.GroupID, gd.Players)
 	if err != nil {
-		resultsCh <- struct {
-			groupID int
-			err     error
-		}{groupID: gd.GroupID, err: fmt.Errorf("error creating player group for group %d: %v", gd.GroupID, err)}
-		return
+		return fmt.Errorf("Error in group %d (round %d): %v", gd.GroupID, gd.Round, err)
+	}
+	playerGroup, err = NewNEATPlayerGroup(gd.GroupID, gd.Players)
+	if err != nil {
+		return fmt.Errorf("Error in group %d (round %d): %v", gd.GroupID, gd.Round, err)
 	}
 	enable_log := false
 	if gd.Epoch == options.NumGenerations-1 {
@@ -320,23 +307,11 @@ func startGroup(ctx context.Context, gd GroupDetails, g []*NEATMonopolyPlayer, o
 	logger, err := NewTrainerLogger(fmt.Sprintf("%s/games/epoch%d/round%d/group%d",
 		outputDir, gd.Epoch, gd.Round, gd.GroupID), !enable_log)
 	if err != nil {
-		resultsCh <- struct {
-			groupID int
-			err     error
-		}{groupID: gd.GroupID, err: fmt.Errorf("error creating logger for group %d: %v", gd.GroupID, err)}
-		return
+		return fmt.Errorf("Error in group %d (round %d): %v", gd.GroupID, gd.Round, err)
 	}
 	game := monopoly.NewGame(ctx, playerGroup, logger, 0)
 	game.Start()
-	for _, player := range g {
-		// fmt.Printf("Player %d score: %d\n", player.organism.Genotype.Id, player.score)
-		player.organism.Fitness += float64(player.score)
-		player.score = 0
-	}
-	resultsCh <- struct {
-		groupID int
-		err     error
-	}{groupID: gd.GroupID, err: nil}
+	return nil
 }
 
 func dumpGroupAssignments(outputDir string, epoch int, round int, groups [][]*NEATMonopolyPlayer) {

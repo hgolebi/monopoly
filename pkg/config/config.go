@@ -32,10 +32,10 @@ const (
 	POINT_PER_PROPERTY          = 10 // points for each property owned by the player. Only for winner
 	POINTS_PER_HOUSE            = 20 // points for each house on the property. Only for winner
 
-	GAMES_PER_EPOCH = 15  // number of games every organism has to play during one epoch
-	GROUP_SIZE      = 4   // number of players in each game
-	MAX_THREADS     = 100 // maximum number of threads used to evaluate organisms
-	PRINT_EVERY     = 1   // saves logs and population to files every N epochs
+	GAMES_PER_EPOCH = 15 // number of games every organism has to play during one epoch
+	GROUP_SIZE      = 4  // number of players in each game
+	MAX_THREADS     = 12 // maximum number of threads used to evaluate organisms
+	PRINT_EVERY     = 1  // saves logs and population to files every N epochs
 )
 
 type GameSettings struct {
