@@ -87,6 +87,12 @@ func (t *NEATPlayerGroup) BiddingDecision(player int, state monopoly.GameState, 
 }
 
 func (t *NEATPlayerGroup) Finish(f monopoly.FinishOption, winner int, state monopoly.GameState) {
+	pointsMap := map[int]int{
+		0: 0,
+		1: 0,
+		2: 0,
+		3: 0,
+	}
 	if t.gameFinished {
 		return
 	}
@@ -100,29 +106,32 @@ func (t *NEATPlayerGroup) Finish(f monopoly.FinishOption, winner int, state mono
 				second_place = i
 			}
 			if player.RoundWhenBankrupted <= cfg.PUNISHMENT_FIRST_THRESHOLD {
-				t.players[player.ID].AddScore(cfg.HIGHEST_PUNISHMENT)
+				pointsMap[player.ID] += cfg.HIGHEST_PUNISHMENT
 			} else if player.RoundWhenBankrupted <= cfg.PUNISHMENT_SECOND_THRESHOLD {
-				t.players[player.ID].AddScore(cfg.SECOND_HIGHEST_PUNISHMENT)
+				pointsMap[player.ID] += cfg.SECOND_HIGHEST_PUNISHMENT
 			} else {
-				t.players[player.ID].AddScore(cfg.MAX_ROUNDS - player.RoundWhenBankrupted)
+				pointsMap[player.ID] += cfg.MAX_ROUNDS - player.RoundWhenBankrupted
 			}
 		}
 	}
 
 	switch f {
 	case monopoly.ROUND_LIMIT:
-		t.players[winner].AddScore(cfg.ROUND_LIMIT_WINNER_SCORE)
+		pointsMap[winner] += cfg.ROUND_LIMIT_WINNER_SCORE
 	case monopoly.WIN:
 		for _, propertyId := range state.Players[winner].Properties {
 			property := state.Properties[propertyId]
 			if !property.IsMortgaged {
-				t.players[winner].AddScore(cfg.POINT_PER_PROPERTY)
-				t.players[winner].AddScore(cfg.POINTS_PER_HOUSE * property.Houses)
+				pointsMap[winner] += cfg.POINT_PER_PROPERTY
+				pointsMap[winner] += cfg.POINTS_PER_HOUSE * property.Houses
 			}
 		}
-		t.players[winner].AddScore(cfg.FIRST_PLACE_SCORE)
+		pointsMap[winner] += cfg.FIRST_PLACE_SCORE
 		if second_place != -1 {
-			t.players[second_place].AddScore(cfg.SECOND_PLACE_SCORE)
+			pointsMap[second_place] += cfg.SECOND_PLACE_SCORE
 		}
+	}
+	for i, p := range t.players {
+		p.AddScore(pointsMap[i])
 	}
 }

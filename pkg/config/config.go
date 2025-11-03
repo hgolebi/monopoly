@@ -34,7 +34,7 @@ const (
 
 	GAMES_PER_EPOCH = 15 // number of games every organism has to play during one epoch
 	GROUP_SIZE      = 4  // number of players in each game
-	MAX_THREADS     = 12 // maximum number of threads used to evaluate organisms
+	MAX_THREADS     = 16 // maximum number of threads used to evaluate organisms
 	PRINT_EVERY     = 1  // saves logs and population to files every N epochs
 )
 
