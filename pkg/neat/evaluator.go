@@ -310,7 +310,7 @@ func startWorker(ctx context.Context, id int, jobsCh <-chan GroupDetails, wg *sy
 	defer wg.Done()
 	// neat.InfoLog(fmt.Sprintf("Worker %d started\n", id))
 	for gd := range jobsCh {
-		neat.InfoLog(fmt.Sprintf("Worker %d processing group %d (round %d)\n", id, gd.GroupID, gd.Round))
+		// neat.InfoLog(fmt.Sprintf("Worker %d processing group %d (round %d)\n", id, gd.GroupID, gd.Round))
 		if err := startGroup(ctx, gd, outputDir); err != nil {
 			neat.ErrorLog(err.Error())
 			continue
