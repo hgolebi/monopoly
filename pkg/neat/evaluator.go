@@ -310,7 +310,7 @@ func startWorker(ctx context.Context, id int, jobsCh <-chan GroupDetails, wg *sy
 	defer wg.Done()
 	// neat.InfoLog(fmt.Sprintf("Worker %d started\n", id))
 	for gd := range jobsCh {
-		// neat.InfoLog(fmt.Sprintf("Worker %d processing group %d (round %d)\n", id, gd.GroupID, gd.Round))
+		neat.InfoLog(fmt.Sprintf("Worker %d processing group %d (round %d)\n", id, gd.GroupID, gd.Round))
 		if err := startGroup(ctx, gd, outputDir); err != nil {
 			neat.ErrorLog(err.Error())
 			continue
@@ -333,7 +333,7 @@ func startGroup(ctx context.Context, gd GroupDetails, outputDir string) error {
 	}
 	enable_log := false
 	if gd.Epoch == options.NumGenerations-1 {
-		enable_log = true
+		enable_log = gd.Round < 10
 	} else if (gd.Epoch+1)%cfg.PRINT_EVERY == 0 {
 		enable_log = gd.Round == 0
 	}
