@@ -559,8 +559,7 @@ func (g *Game) resolveStandardAction(player_id int, action_details ActionDetails
 			p := g.players[pID]
 			if pID == player_id {
 				g.logger.Log(fmt.Sprintf("%s cannot make a sell offer to themselves", player.Name))
-				g.bankrupt(player, nil)
-				return
+				continue
 			}
 			if p.IsBankrupt {
 				g.logger.Log(fmt.Sprintf("%s cannot make a sell offer to bankrupt player %s", player.Name, p.Name))
