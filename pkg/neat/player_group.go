@@ -8,11 +8,11 @@ import (
 
 type NEATPlayerGroup struct {
 	Id           int
-	players      []*NEATMonopolyPlayer
+	players      []MonopolyPlayer
 	gameFinished bool
 }
 
-func NewNEATPlayerGroup(id int, players []*NEATMonopolyPlayer) (*NEATPlayerGroup, error) {
+func NewNEATPlayerGroup(id int, players []MonopolyPlayer) (*NEATPlayerGroup, error) {
 	if len(players) <= 0 || len(players) > 4 {
 		errorMsg := fmt.Sprintf("Invalid number of players: %d. Expected between 1 and 4.", len(players))
 		return nil, fmt.Errorf(errorMsg)
@@ -27,7 +27,7 @@ func NewNEATPlayerGroup(id int, players []*NEATMonopolyPlayer) (*NEATPlayerGroup
 func (t *NEATPlayerGroup) Init() []string {
 	player_names := make([]string, len(t.players))
 	for i, player := range t.players {
-		player_names[i] = fmt.Sprintf("Bot%d", player.organism.Genotype.Id)
+		player_names[i] = player.GetName()
 	}
 	return player_names
 }

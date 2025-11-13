@@ -192,7 +192,7 @@ type GroupDetails struct {
 	Epoch   int
 	Round   int
 	GroupID int
-	Players []*NEATMonopolyPlayer
+	Players []MonopolyPlayer
 }
 
 func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetics.Population, epoch *experiment.Generation) error {
@@ -201,7 +201,7 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 		return fmt.Errorf("failed to get options from context")
 	}
 
-	var players []*NEATMonopolyPlayer
+	var players []MonopolyPlayer
 	if e.lastChampion == nil {
 		org, err := NewNEATMonopolyPlayer(pop.Organisms[0])
 		if err != nil {
@@ -238,7 +238,7 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 			players[i], players[j] = players[j], players[i]
 		})
 
-		var groups [][]*NEATMonopolyPlayer
+		var groups [][]MonopolyPlayer
 
 		for i := 0; i < len(players); i += e.groupSize {
 			end := i + e.groupSize
@@ -271,14 +271,18 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 		lastChampScore = 1.0
 	} else {
 		lastChampFitness = e.lastChampFitness
-		lastChampScore = float64(players[0].score) / cfg.GAMES_PER_EPOCH
+		lastChampScore = float64(players[0].GetScore()) / cfg.GAMES_PER_EPOCH
 	}
 
 	highestScore := 0.0
 	for _, player := range players[1:] {
-		score := float64(player.score) / cfg.GAMES_PER_EPOCH
+		org := player.GetOrganism()
+		if org == nil {
+			continue
+		}
+		score := float64(player.GetScore()) / cfg.GAMES_PER_EPOCH
 		distance := score - lastChampScore
-		player.organism.Fitness += lastChampFitness + distance/100.0
+		org.Fitness += lastChampFitness + distance/100.0
 		highestScore = math.Max(highestScore, score)
 	}
 	// for _, org := range pop.Organisms {
@@ -347,7 +351,7 @@ func startGroup(ctx context.Context, gd GroupDetails, outputDir string) error {
 	return nil
 }
 
-func dumpGroupAssignments(outputDir string, epoch int, round int, groups [][]*NEATMonopolyPlayer) {
+func dumpGroupAssignments(outputDir string, epoch int, round int, groups [][]MonopolyPlayer) {
 	filePath := fmt.Sprintf("%s/games/epoch%d/round%d/group_assignments.txt", outputDir, epoch, round)
 	dir := filepath.Dir(filePath)
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
@@ -364,8 +368,8 @@ func dumpGroupAssignments(outputDir string, epoch int, round int, groups [][]*NE
 	for i, group := range groups {
 		fmt.Fprintf(file, "Group %d: ", i)
 		for _, player := range group {
-			fmt.Fprintf(file, "\tPlayer %d", player.organism.Genotype.Id)
-			players[player.organism.Genotype.Id] = i
+			fmt.Fprintf(file, "\tPlayer %d", player.GetId())
+			players[player.GetId()] = i
 		}
 		fmt.Fprintln(file)
 	}

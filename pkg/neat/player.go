@@ -12,6 +12,20 @@ import (
 	"github.com/yaricom/goNEAT/v4/neat/network"
 )
 
+type MonopolyPlayer interface {
+	GetStdAction(player int, state monopoly.GameState, availableActions monopoly.FullActionList) monopoly.ActionDetails
+	GetJailAction(player int, state monopoly.GameState, available []monopoly.JailAction) monopoly.JailAction
+	BuyDecision(player int, state monopoly.GameState, propertyId int) bool
+	BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, price int) bool
+	SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, price int) bool
+	BiddingDecision(player int, state monopoly.GameState, propertyId int, currentPrice int, currentWinner int) int
+	AddScore(points int)
+	GetName() string
+	GetId() int
+	GetScore() int
+	GetOrganism() *genetics.Organism
+}
+
 type NEATMonopolyPlayer struct {
 	network   *network.Network
 	organism  *genetics.Organism
@@ -40,6 +54,24 @@ func NewNEATMonopolyPlayer(organism *genetics.Organism) (*NEATMonopolyPlayer, er
 		max_depth: max_depth,
 		score:     0,
 	}, nil
+}
+
+func (p *NEATMonopolyPlayer) GetName() string {
+	return fmt.Sprintf("Bot%d", p.organism.Genotype.Id)
+}
+
+func (p *NEATMonopolyPlayer) GetId() int {
+	return p.organism.Genotype.Id
+}
+
+func (p *NEATMonopolyPlayer) GetScore() int {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	return p.score
+}
+
+func (p *NEATMonopolyPlayer) GetOrganism() *genetics.Organism {
+	return p.organism
 }
 
 func (p *NEATMonopolyPlayer) GetDecision(input []float64) []float64 {
