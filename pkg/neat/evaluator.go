@@ -3,7 +3,6 @@ package neatnetwork
 import (
 	"context"
 	"fmt"
-	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -75,12 +74,14 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 			players[i], players[j] = players[j], players[i]
 		})
 		var groups [][]MonopolyPlayer
-		for i := 0; i < len(players); i += e.groupSize {
-			end := i + e.groupSize
-			if end > len(players) {
-				end = len(players)
-			}
-			groups = append(groups, players[i:end])
+		for i := 0; i < len(players); i += (e.groupSize - 1) {
+			end := min(i+e.groupSize-1, len(players))
+			group := players[i:end]
+			group = append(group, &SimplePlayerBot{})
+			rng.Shuffle(len(group), func(i, j int) {
+				group[i], group[j] = group[j], group[i]
+			})
+			groups = append(groups, group)
 		}
 		if roundID == 0 && (epoch.Id == options.NumGenerations-1 || (epoch.Id+1)%cfg.PRINT_EVERY == 0) {
 			dumpGroupAssignments(e.outputDir, epoch.Id, roundID, groups)
@@ -199,19 +200,20 @@ func dumpGroupAssignments(outputDir string, epoch int, round int, groups [][]Mon
 
 func (e *MonopolyEvaluator) createPlayersFromPopulation(pop *genetics.Population) ([]MonopolyPlayer, error) {
 	var players []MonopolyPlayer
-	if e.lastChampion == nil {
-		org, err := NewNEATMonopolyPlayer(pop.Organisms[0])
-		if err != nil {
-			return nil, fmt.Errorf("error creating NEATMonopolyPlayer for last champion (duplication): %v", err)
-		}
-		players = append(players, org)
-	} else {
-		org, err := NewNEATMonopolyPlayer(e.lastChampion)
-		if err != nil {
-			return nil, fmt.Errorf("error creating NEATMonopolyPlayer for last champion: %v", err)
-		}
-		players = append(players, org)
-	}
+	// if e.lastChampion == nil {
+	// 	org, err := NewNEATMonopolyPlayer(pop.Organisms[0])
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("error creating NEATMonopolyPlayer for last champion (duplication): %v", err)
+	// 	}
+	// 	players = append(players, org)
+	// } else {
+	// 	org, err := NewNEATMonopolyPlayer(e.lastChampion)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("error creating NEATMonopolyPlayer for last champion: %v", err)
+	// 	}
+	// 	players = append(players, org)
+	// }
+
 	for i, org := range pop.Organisms {
 		org.Fitness = 0
 		org, err := NewNEATMonopolyPlayer(org)
@@ -224,25 +226,33 @@ func (e *MonopolyEvaluator) createPlayersFromPopulation(pop *genetics.Population
 }
 
 func (e *MonopolyEvaluator) calculateFitness(players []MonopolyPlayer) {
-	var lastChampFitness float64
-	var lastChampScore float64
-	if e.lastChampion == nil {
-		lastChampFitness = 1.0
-		lastChampScore = 1.0
-	} else {
-		lastChampFitness = e.lastChampFitness
-		lastChampScore = float64(players[0].GetScore()) / cfg.GAMES_PER_EPOCH
-	}
+	// var lastChampFitness float64
+	// var lastChampScore float64
+	// if e.lastChampion == nil {
+	// 	lastChampFitness = 1.0
+	// 	lastChampScore = 1.0
+	// } else {
+	// 	lastChampFitness = e.lastChampFitness
+	// 	lastChampScore = float64(players[0].GetScore()) / cfg.GAMES_PER_EPOCH
+	// }
 
-	highestScore := 0.0
-	for _, player := range players[1:] {
+	// highestScore := 0.0
+	// for _, player := range players[1:] {
+	// 	org := player.GetOrganism()
+	// 	if org == nil {
+	// 		continue
+	// 	}
+	// 	score := float64(player.GetScore()) / cfg.GAMES_PER_EPOCH
+	// 	distance := score - lastChampScore
+	// 	org.Fitness += lastChampFitness + distance/100.0
+	// 	highestScore = math.Max(highestScore, score)
+	// }
+
+	for _, player := range players {
 		org := player.GetOrganism()
 		if org == nil {
 			continue
 		}
-		score := float64(player.GetScore()) / cfg.GAMES_PER_EPOCH
-		distance := score - lastChampScore
-		org.Fitness += lastChampFitness + distance/100.0
-		highestScore = math.Max(highestScore, score)
+		org.Fitness += float64(player.GetScore()) / cfg.GAMES_PER_EPOCH
 	}
 }

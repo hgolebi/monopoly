@@ -5,11 +5,14 @@ import (
 	"monopoly/pkg/config"
 	"monopoly/pkg/monopoly"
 	"slices"
+	"sync"
 
 	"github.com/yaricom/goNEAT/v4/neat/genetics"
 )
 
 type SimplePlayerBot struct {
+	score int
+	mutex sync.Mutex
 }
 
 func (bot *SimplePlayerBot) GetName() string {
@@ -19,12 +22,18 @@ func (bot *SimplePlayerBot) GetId() int {
 	return -1
 }
 func (bot *SimplePlayerBot) GetScore() int {
-	return 0
+	bot.mutex.Lock()
+	defer bot.mutex.Unlock()
+	return bot.score
 }
 func (bot *SimplePlayerBot) GetOrganism() *genetics.Organism {
 	return nil
 }
-func (bot *SimplePlayerBot) AddScore(points int) {}
+func (bot *SimplePlayerBot) AddScore(points int) {
+	bot.mutex.Lock()
+	bot.score += points
+	bot.mutex.Unlock()
+}
 
 func (bot *SimplePlayerBot) GetStdAction(player int, state monopoly.GameState, availableActions monopoly.FullActionList) monopoly.ActionDetails {
 	retValue := monopoly.ActionDetails{}
@@ -82,8 +91,8 @@ func (bot *SimplePlayerBot) GetStdAction(player int, state monopoly.GameState, a
 		}
 	}
 
-	if need_money {
-		unwantedProperties := findUnwantedProperties(state, player)
+	unwantedProperties := findUnwantedProperties(state, player)
+	if need_money && len(unwantedProperties) > 0 {
 		randIdx := rand.IntN(len(unwantedProperties))
 		propertyId := unwantedProperties[randIdx]
 

@@ -3,16 +3,16 @@ package monopoly
 import "fmt"
 
 type Player struct {
-	ID                  int
-	Name                string
-	Money               int
-	Properties          []int
-	CurrentPosition     int
-	IsBankrupt          bool
-	IsJailed            bool
-	JailCards           int
-	RoundsInJail        int
-	RoundWhenBankrupted int
+	ID              int
+	Name            string
+	Money           int
+	Properties      []int
+	CurrentPosition int
+	IsBankrupt      bool
+	IsJailed        bool
+	JailCards       int
+	RoundsInJail    int
+	RoundsPlayed    int
 }
 
 func NewPlayer(id int, name string, money int) *Player {

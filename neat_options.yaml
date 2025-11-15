@@ -33,9 +33,9 @@ mutate_node_trait_prob:  0.0
 # Probability of link weight value mutation
 mutate_link_weights_prob:  0.1
 # Probability of enabling/disabling of specific link/gene
-mutate_toggle_enable_prob:  0.01
+mutate_toggle_enable_prob:  0.1
 # Probability of finding the first disabled gene and re-enabling it
-mutate_gene_reenable_prob:  0.01
+mutate_gene_reenable_prob:  0.05
 # Probability of adding new node
 mutate_add_node_prob:  0.01
 # Probability of adding new link between nodes
@@ -66,9 +66,9 @@ recur_only_prob:  0.0
 # The number of babies to stolen off to the champions
 babies_stolen:  0
 # The population size as a number of organisms
-pop_size:  255
+pop_size:  60
 # Age when Species starts to be penalized
-dropoff_age:  15
+dropoff_age:  50
 # Number of tries mutate_add_link will attempt to find an open link
 newlink_tries:  20
 # Tells to print population to file every n generations
@@ -77,7 +77,7 @@ print_every:  0
 # The number of runs to average over in an experiment
 num_runs:  1
 # The number of epochs (generations) to execute training
-num_generations: 100
+num_generations: 1000
 
 # The epoch's executor type to apply [sequential, parallel]
 epoch_executor: sequential
