@@ -1,6 +1,7 @@
 package neatnetwork
 
 import (
+	"fmt"
 	"math/rand/v2"
 	"monopoly/pkg/config"
 	"monopoly/pkg/monopoly"
@@ -83,6 +84,14 @@ func (bot *SimplePlayerBot) GetStdAction(player int, state monopoly.GameState, a
 					retValue.Action = monopoly.BUYOFFER
 					retValue.PropertyId = propertyId
 					retValue.Price = price
+					if retValue.Price > 1000 {
+						fmt.Println("PRICE HIGH !!!!!!!!!!!!!!!!")
+						fmt.Printf("PropertyID: %d, Name: %s\n", propertyId, state.Properties[propertyId].Name)
+						fmt.Printf("Offer: %d\n", retValue.Price)
+						fmt.Printf("Property price: %d\n", state.Properties[propertyId].Price)
+						fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+						panic("High price offer")
+					}
 					return retValue
 				} else {
 					need_money = true
@@ -103,6 +112,14 @@ func (bot *SimplePlayerBot) GetStdAction(player int, state monopoly.GameState, a
 			property := state.Properties[propertyId]
 			retValue.Price = int(float64(property.Price) * 1.5)
 			retValue.Players = []int{0, 1, 2, 3}
+			if retValue.Price > 1000 {
+				fmt.Println("PRICE HIGH !!!!!!!!!!!!!!!!")
+				fmt.Printf("PropertyID: %d, Name: %s\n", propertyId, state.Properties[propertyId].Name)
+				fmt.Printf("Offer: %d\n", retValue.Price)
+				fmt.Printf("Property price: %d\n", state.Properties[propertyId].Price)
+				fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+				panic("High price offer")
+			}
 			return retValue
 		}
 

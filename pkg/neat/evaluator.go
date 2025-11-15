@@ -76,8 +76,10 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 		var groups [][]MonopolyPlayer
 		for i := 0; i < len(players); i += (e.groupSize - 1) {
 			end := min(i+e.groupSize-1, len(players))
-			group := players[i:end]
-			group = append(group, &SimplePlayerBot{})
+			// Create a new slice for the group to avoid modifying the underlying 'players' slice
+			group := make([]MonopolyPlayer, 0, e.groupSize)
+			group = append(group, players[i:end]...)
+			group = append(group, new(SimplePlayerBot))
 			rng.Shuffle(len(group), func(i, j int) {
 				group[i], group[j] = group[j], group[i]
 			})
@@ -89,6 +91,7 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 
 		// create job for every group
 		for groupID, group := range groups {
+
 			gd := GroupDetails{
 				Epoch:   epoch.Id,
 				Round:   roundID,
@@ -120,12 +123,12 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 			return err
 		}
 	} else {
-		// dump only champion
-		genomeFile := fmt.Sprintf("gen_%d_champion", epoch.Id)
-		if _, err := utils.WriteGenomePlain(genomeFile, e.outputDir, best, epoch); err != nil {
-			neat.ErrorLog(fmt.Sprintf("Failed to dump champion organism, reason: %s\n", err))
-			return err
-		}
+		// // dump only champion
+		// genomeFile := fmt.Sprintf("gen_%d_champion", epoch.Id)
+		// if _, err := utils.WriteGenomePlain(genomeFile, e.outputDir, best, epoch); err != nil {
+		// 	neat.ErrorLog(fmt.Sprintf("Failed to dump champion organism, reason: %s\n", err))
+		// 	return err
+		// }
 	}
 	return nil
 }
@@ -143,6 +146,7 @@ func startWorker(ctx context.Context, id int, jobsCh <-chan GroupDetails, wg *sy
 }
 
 func startGroup(ctx context.Context, gd GroupDetails, outputDir string) error {
+	neat.DebugLog(fmt.Sprintf("Starting group %d (round %d)\n", gd.GroupID, gd.Round))
 	options, ok := neat.FromContext(ctx)
 	if !ok {
 		return fmt.Errorf("Error in group %d (round %d): %s", gd.GroupID, gd.Round, "failed to get options from context")
@@ -196,6 +200,7 @@ func dumpGroupAssignments(outputDir string, epoch int, round int, groups [][]Mon
 	for i := 0; i < len(players); i++ {
 		fmt.Fprintf(file, "Player %d: Group %d\n", i, players[i])
 	}
+
 }
 
 func (e *MonopolyEvaluator) createPlayersFromPopulation(pop *genetics.Population) ([]MonopolyPlayer, error) {
