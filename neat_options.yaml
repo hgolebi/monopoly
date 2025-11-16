@@ -77,7 +77,7 @@ print_every:  0
 # The number of runs to average over in an experiment
 num_runs:  1
 # The number of epochs (generations) to execute training
-num_generations: 1000
+num_generations: 10000
 
 # The epoch's executor type to apply [sequential, parallel]
 epoch_executor: sequential
