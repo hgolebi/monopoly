@@ -27,8 +27,8 @@ const (
 	// HIGHEST_PUNISHMENT          = 0
 	// SECOND_HIGHEST_PUNISHMENT   = 0
 	ROUND_SCORE         = 1 // points for each round survived for non-winner players
-	FIRST_PLACE_SCORE   = 100
-	POINTS_PER_PROPERTY = 1 // points for each property owned by the player. Added only for players that survived till the round limit
+	FIRST_PLACE_SCORE   = 300
+	POINTS_PER_PROPERTY = 3 // points for each property owned by the player. Added only for players that survived till the round limit
 	// SECOND_PLACE_SCORE          = 0
 	// ROUND_LIMIT_WINNER_SCORE    = 0 // if player wins the game by reaching the round limit he will receive this score
 	// POINTS_PER_HOUSE            = 0 // points for each house on the property. Only for winner

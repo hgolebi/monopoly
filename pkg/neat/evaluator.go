@@ -123,12 +123,18 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 			return err
 		}
 	} else {
-		// // dump only champion
-		// genomeFile := fmt.Sprintf("gen_%d_champion", epoch.Id)
-		// if _, err := utils.WriteGenomePlain(genomeFile, e.outputDir, best, epoch); err != nil {
-		// 	neat.ErrorLog(fmt.Sprintf("Failed to dump champion organism, reason: %s\n", err))
-		// 	return err
-		// }
+		// dump only champion
+		genomeFile := fmt.Sprintf("gen_%d_champion", epoch.Id)
+		if _, err := utils.WriteGenomePlain(genomeFile, e.outputDir, best, epoch); err != nil {
+			neat.ErrorLog(fmt.Sprintf("Failed to dump champion organism, reason: %s\n", err))
+			return err
+		}
+	}
+
+	// add line to champions.txt with champion info
+	if err := appendChampionInfo(e.outputDir, best, epoch.Id); err != nil {
+		neat.ErrorLog(fmt.Sprintf("Failed to append champion info, reason: %s\n", err))
+		return err
 	}
 	return nil
 }
@@ -260,4 +266,19 @@ func (e *MonopolyEvaluator) calculateFitness(players []MonopolyPlayer) {
 		}
 		org.Fitness += float64(player.GetScore()) / cfg.GAMES_PER_EPOCH
 	}
+}
+
+func appendChampionInfo(outputDir string, champion *genetics.Organism, epoch int) error {
+	filePath := fmt.Sprintf("%s/champions.txt", outputDir)
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open champions file: %v", err)
+	}
+	defer file.Close()
+	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	line := fmt.Sprintf("%s EPOCH %d, Organism ID: %d, Fitness: %f\n", timestamp, epoch, champion.Genotype.Id, champion.Fitness)
+	if _, err := file.WriteString(line); err != nil {
+		return fmt.Errorf("failed to write to champions file: %v", err)
+	}
+	return nil
 }

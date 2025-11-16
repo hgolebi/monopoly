@@ -223,12 +223,12 @@ var outputs = map[string]int{
 func GetStdActionOutputValues(output []float64) map[monopoly.StdAction]float64 {
 	return map[monopoly.StdAction]float64{
 		monopoly.NOACTION:  output[outputs["NO_ACTION"]],
-		monopoly.MORTGAGE:  output[outputs["MORTGAGE"]],
+		monopoly.MORTGAGE:  activation(output[outputs["MORTGAGE"]]),
 		monopoly.BUYOUT:    output[outputs["BUYOUT"]],
-		monopoly.SELLOFFER: output[outputs["SELL_OFFER"]],
-		monopoly.BUYOFFER:  output[outputs["BUY_OFFER"]],
+		monopoly.SELLOFFER: activation(output[outputs["SELL_OFFER"]]),
+		monopoly.BUYOFFER:  activation(output[outputs["BUY_OFFER"]]),
 		monopoly.BUYHOUSE:  output[outputs["BUY_HOUSE"]],
-		monopoly.SELLHOUSE: output[outputs["SELL_HOUSE"]],
+		monopoly.SELLHOUSE: activation(output[outputs["SELL_HOUSE"]]),
 	}
 
 }
@@ -363,4 +363,9 @@ func getOriginalPlayerId(newId int, currPlayerId int) int {
 		return newId - 1
 	}
 	return newId
+}
+
+func activation(x float64) float64 {
+	// f(x) = x*(1-((1-x)/(0.8))^2)
+	return x * (1 - math.Pow((1-x)/0.8, 2))
 }
