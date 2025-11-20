@@ -153,11 +153,16 @@ func (t *NEATPlayerGroup) Finish(f monopoly.FinishOption, winner int, state mono
 		pointsMap[i] += cfg.ROUND_SCORE * player.RoundsPlayed
 		// fmt.Printf("Max properties: %d", player.MaxProperties)
 		pointsMap[i] += player.MaxProperties * cfg.POINTS_PER_PROPERTY
+		pointsMap[i] += player.MaxHouses * cfg.POINTS_PER_HOUSE
+		if !player.IsBankrupt {
+			pointsMap[i] += cfg.ALIVE_BONUS
+		}
 	}
 	if f == monopoly.WIN {
 		pointsMap[winner] = cfg.FIRST_PLACE_SCORE
 	}
 	for i, p := range t.players {
 		p.AddScore(pointsMap[i])
+		// fmt.Printf("Player %s scored %d points: Properties=%d, Houses=%d, Rounds=%d\n", p.GetName(), pointsMap[i], state.Players[i].MaxProperties, state.Players[i].MaxHouses, state.Players[i].RoundsPlayed)
 	}
 }

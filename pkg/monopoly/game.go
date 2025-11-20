@@ -782,7 +782,18 @@ func (g *Game) buyHouse(player_id int, propertyId int) {
 	g.chargePlayer(player_id, property.HousePrice, nil)
 	property.Houses++
 	player := g.players[player_id]
+	player.SetMaxHouses(g.getHouseCount(player_id))
 	g.logger.LogWithState(fmt.Sprintf("%s buys house on %s for %d$", player.Name, property.GetName(), property.HousePrice), g.getState())
+}
+
+func (g *Game) getHouseCount(player_id int) int {
+	player := g.players[player_id]
+	total_houses := 0
+	for _, propertyId := range player.Properties {
+		property := g.properties[propertyId]
+		total_houses += property.Houses
+	}
+	return total_houses
 }
 
 func (g *Game) sendSellOffer(player_id int, targets []int, property_id int, price int) {

@@ -14,6 +14,7 @@ type Player struct {
 	RoundsInJail    int
 	RoundsPlayed    int
 	MaxProperties   int
+	MaxHouses       int
 }
 
 func NewPlayer(id int, name string, money int) *Player {
@@ -71,4 +72,10 @@ func (p *Player) RemoveProperty(propertyIndex int) {
 		}
 	}
 	panic(fmt.Sprintf("Property %d not owned by player %s", propertyIndex, p.Name))
+}
+
+func (p *Player) SetMaxHouses(currentCount int) {
+	if currentCount > p.MaxHouses {
+		p.MaxHouses = currentCount
+	}
 }
