@@ -25,7 +25,7 @@ func runConsoleMonopoly() {
 
 func trainNEATNetwork() {
 	neatOptionsFile := "neat_options.yaml"
-	neatGenomeFile := "genome.yaml"
+	neatGenomeFile := "genome"
 	outputDir := "output"
 	neatnetwork.TrainNetwork(0, neatOptionsFile, neatGenomeFile, outputDir)
 }

@@ -31,15 +31,15 @@ mutate_link_trait_prob:  0.0
 # Probability of node trait mutation
 mutate_node_trait_prob:  0.0
 # Probability of link weight value mutation
-mutate_link_weights_prob:  0.1
+mutate_link_weights_prob:  0.3
 # Probability of enabling/disabling of specific link/gene
 mutate_toggle_enable_prob:  0.1
 # Probability of finding the first disabled gene and re-enabling it
 mutate_gene_reenable_prob:  0.05
 # Probability of adding new node
-mutate_add_node_prob:  0.01
+mutate_add_node_prob:  0.015
 # Probability of adding new link between nodes
-mutate_add_link_prob:  0.2
+mutate_add_link_prob:  0.3
 # Probability of making connections from disconnected sensors (input, bias type neurons)
 mutate_connect_sensors: 0.001
 
@@ -66,7 +66,7 @@ recur_only_prob:  0.0
 # The number of babies to stolen off to the champions
 babies_stolen:  0
 # The population size as a number of organisms
-pop_size:  60
+pop_size:  120
 # Age when Species starts to be penalized
 dropoff_age:  100
 # Number of tries mutate_add_link will attempt to find an open link
