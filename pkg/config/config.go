@@ -27,17 +27,17 @@ const (
 	// HIGHEST_PUNISHMENT          = 0
 	// SECOND_HIGHEST_PUNISHMENT   = 0
 	ROUND_SCORE         = 1 // points for each round survived for non-winner players
-	FIRST_PLACE_SCORE   = 1000
+	FIRST_PLACE_SCORE   = 2000
 	POINTS_PER_PROPERTY = 3  // points for each property owned by the player.
 	POINTS_PER_HOUSE    = 10 // points for each house owned by the player.
 	ALIVE_BONUS         = 50 // bonus points for not going bankrupt
 	// SECOND_PLACE_SCORE          = 0
 	// ROUND_LIMIT_WINNER_SCORE    = 0 // if player wins the game by reaching the round limit he will receive this score
 
-	GAMES_PER_EPOCH = 100 // number of games every organism has to play during one epoch
-	GROUP_SIZE      = 4   // number of players in each game
-	MAX_THREADS     = 200 // maximum number of threads used to evaluate organisms
-	PRINT_EVERY     = 100 // saves logs and population to files every N epochs
+	GAMES_PER_EPOCH = 1000 // number of games every organism has to play during one epoch
+	GROUP_SIZE      = 4    // number of players in each game
+	MAX_THREADS     = 200  // maximum number of threads used to evaluate organisms
+	PRINT_EVERY     = 50   // saves logs and population to files every N epochs
 )
 
 type GameSettings struct {

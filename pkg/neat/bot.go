@@ -14,6 +14,8 @@ import (
 type SimplePlayerBot struct {
 	score int
 	mutex sync.Mutex
+	wins  int
+	draws int
 }
 
 func (bot *SimplePlayerBot) GetName() string {
@@ -34,6 +36,30 @@ func (bot *SimplePlayerBot) AddScore(points int) {
 	bot.mutex.Lock()
 	bot.score += points
 	bot.mutex.Unlock()
+}
+
+func (bot *SimplePlayerBot) AddWin() {
+	bot.mutex.Lock()
+	bot.wins++
+	bot.mutex.Unlock()
+}
+
+func (bot *SimplePlayerBot) AddDraw() {
+	bot.mutex.Lock()
+	bot.draws++
+	bot.mutex.Unlock()
+}
+
+func (bot *SimplePlayerBot) GetWins() int {
+	bot.mutex.Lock()
+	defer bot.mutex.Unlock()
+	return bot.wins
+}
+
+func (bot *SimplePlayerBot) GetDraws() int {
+	bot.mutex.Lock()
+	defer bot.mutex.Unlock()
+	return bot.draws
 }
 
 func (bot *SimplePlayerBot) GetStdAction(player int, state monopoly.GameState, availableActions monopoly.FullActionList) monopoly.ActionDetails {
@@ -211,10 +237,10 @@ func (bot *SimplePlayerBot) BiddingDecision(player int, state monopoly.GameState
 	}
 	isKeyProperty := slices.Contains(findKeyProperties(state, player), propertyId)
 	if isKeyProperty {
-		return currentPrice + 10
+		return currentPrice + 20
 	}
 	if currentPrice < state.Properties[propertyId].Price {
-		return currentPrice + 1
+		return currentPrice + 10
 	}
 	return 0
 }

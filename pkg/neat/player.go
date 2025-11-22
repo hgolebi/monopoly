@@ -20,6 +20,10 @@ type MonopolyPlayer interface {
 	SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, price int) bool
 	BiddingDecision(player int, state monopoly.GameState, propertyId int, currentPrice int, currentWinner int) int
 	AddScore(points int)
+	AddWin()
+	AddDraw()
+	GetWins() int
+	GetDraws() int
 	GetName() string
 	GetId() int
 	GetScore() int
@@ -32,6 +36,8 @@ type NEATMonopolyPlayer struct {
 	max_depth int
 	score     int
 	mutex     sync.Mutex
+	wins      int
+	draws     int
 }
 
 func NewNEATMonopolyPlayer(organism *genetics.Organism) (*NEATMonopolyPlayer, error) {
@@ -206,7 +212,7 @@ func (p *NEATMonopolyPlayer) BiddingDecision(player int, state monopoly.GameStat
 	if !decision {
 		return 0.0
 	}
-	return GetPriceOutputValue(outputList)
+	return currentPrice + 10
 }
 
 func transformAvailableActionsList(actions monopoly.FullActionList) map[int][]monopoly.StdAction {
@@ -246,4 +252,27 @@ func (p *NEATMonopolyPlayer) AddScore(points int) {
 	p.mutex.Lock()
 	p.score += points
 	p.mutex.Unlock()
+}
+
+func (p *NEATMonopolyPlayer) AddWin() {
+	p.mutex.Lock()
+	p.wins++
+	p.mutex.Unlock()
+}
+
+func (p *NEATMonopolyPlayer) AddDraw() {
+	p.mutex.Lock()
+	p.draws++
+	p.mutex.Unlock()
+}
+
+func (p *NEATMonopolyPlayer) GetWins() int {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	return p.wins
+}
+func (p *NEATMonopolyPlayer) GetDraws() int {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	return p.draws
 }

@@ -104,17 +104,17 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 	close(jobsCh)
 	wg.Wait()
 
-	e.calculateFitness(players)
+	bestPlayer := e.calculateFitness(players)
+	bestOrg := bestPlayer.GetOrganism()
 	epoch.FillPopulationStatistics(pop)
-	best := epoch.Champion
 	numberOfSpecies := len(pop.Species)
-	e.lastChampion = best
-	e.lastChampFitness = best.Fitness
+	// e.lastChampion = best.GetOrganism()
+	// e.lastChampFitness = e.lastChampion.Fitness
 
 	// log info
 	neat.InfoLog(fmt.Sprintf("Species count: %d\n", numberOfSpecies))
-	neat.InfoLog(fmt.Sprintf("Champion of epoch %d is organism %d\n with fitness: %f", epoch.Id, best.Genotype.Id, best.Fitness))
-	neat.InfoLog(fmt.Sprintf("Number of nodes: %d, number of connections: %d\n", len(best.Genotype.Nodes), len(best.Genotype.Genes)))
+	neat.InfoLog(fmt.Sprintf("Champion of epoch %d is organism %d\n with fitness: %f (wins: %d, draws: %d)", epoch.Id, bestOrg.Genotype.Id, bestOrg.Fitness, bestPlayer.GetWins(), bestPlayer.GetDraws()))
+	neat.InfoLog(fmt.Sprintf("Number of nodes: %d, number of connections: %d\n", len(bestOrg.Genotype.Nodes), len(bestOrg.Genotype.Genes)))
 
 	// dump population
 	if (epoch.Id+1)%cfg.PRINT_EVERY == 0 || epoch.Id == options.NumGenerations-1 {
@@ -125,14 +125,14 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 	} else {
 		// dump only champion
 		genomeFile := fmt.Sprintf("gen_%d_champion", epoch.Id)
-		if _, err := utils.WriteGenomePlain(genomeFile, e.outputDir, best, epoch); err != nil {
+		if _, err := utils.WriteGenomePlain(genomeFile, e.outputDir, bestOrg, epoch); err != nil {
 			neat.ErrorLog(fmt.Sprintf("Failed to dump champion organism, reason: %s\n", err))
 			return err
 		}
 	}
 
 	// add line to champions.txt with champion info
-	if err := appendChampionInfo(e.outputDir, best, epoch.Id); err != nil {
+	if err := appendChampionInfo(e.outputDir, bestOrg, epoch.Id); err != nil {
 		neat.ErrorLog(fmt.Sprintf("Failed to append champion info, reason: %s\n", err))
 		return err
 	}
@@ -236,36 +236,20 @@ func (e *MonopolyEvaluator) createPlayersFromPopulation(pop *genetics.Population
 	return players, nil
 }
 
-func (e *MonopolyEvaluator) calculateFitness(players []MonopolyPlayer) {
-	// var lastChampFitness float64
-	// var lastChampScore float64
-	// if e.lastChampion == nil {
-	// 	lastChampFitness = 1.0
-	// 	lastChampScore = 1.0
-	// } else {
-	// 	lastChampFitness = e.lastChampFitness
-	// 	lastChampScore = float64(players[0].GetScore()) / cfg.GAMES_PER_EPOCH
-	// }
-
-	// highestScore := 0.0
-	// for _, player := range players[1:] {
-	// 	org := player.GetOrganism()
-	// 	if org == nil {
-	// 		continue
-	// 	}
-	// 	score := float64(player.GetScore()) / cfg.GAMES_PER_EPOCH
-	// 	distance := score - lastChampScore
-	// 	org.Fitness += lastChampFitness + distance/100.0
-	// 	highestScore = math.Max(highestScore, score)
-	// }
-
+func (e *MonopolyEvaluator) calculateFitness(players []MonopolyPlayer) (best MonopolyPlayer) {
+	highestFitness := 0.0
 	for _, player := range players {
 		org := player.GetOrganism()
 		if org == nil {
 			continue
 		}
 		org.Fitness += float64(player.GetScore()) / cfg.GAMES_PER_EPOCH
+		if org.Fitness > highestFitness {
+			highestFitness = org.Fitness
+			best = player
+		}
 	}
+	return best
 }
 
 func appendChampionInfo(outputDir string, champion *genetics.Organism, epoch int) error {

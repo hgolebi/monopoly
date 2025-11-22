@@ -160,6 +160,14 @@ func (t *NEATPlayerGroup) Finish(f monopoly.FinishOption, winner int, state mono
 	}
 	if f == monopoly.WIN {
 		pointsMap[winner] = cfg.FIRST_PLACE_SCORE
+		t.players[winner].AddWin()
+	}
+	if f == monopoly.ROUND_LIMIT {
+		for i, p := range state.Players {
+			if !p.IsBankrupt {
+				t.players[i].AddDraw()
+			}
+		}
 	}
 	for i, p := range t.players {
 		p.AddScore(pointsMap[i])
