@@ -132,7 +132,7 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 	}
 
 	// add line to champions.txt with champion info
-	if err := appendChampionInfo(e.outputDir, bestOrg, epoch.Id); err != nil {
+	if err := appendChampionInfo(e.outputDir, bestPlayer, epoch.Id); err != nil {
 		neat.ErrorLog(fmt.Sprintf("Failed to append champion info, reason: %s\n", err))
 		return err
 	}
@@ -252,7 +252,7 @@ func (e *MonopolyEvaluator) calculateFitness(players []MonopolyPlayer) (best Mon
 	return best
 }
 
-func appendChampionInfo(outputDir string, champion *genetics.Organism, epoch int) error {
+func appendChampionInfo(outputDir string, champion MonopolyPlayer, epoch int) error {
 	filePath := fmt.Sprintf("%s/champions.txt", outputDir)
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -260,7 +260,8 @@ func appendChampionInfo(outputDir string, champion *genetics.Organism, epoch int
 	}
 	defer file.Close()
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
-	line := fmt.Sprintf("%s EPOCH %d, Organism ID: %d, Fitness: %f\n", timestamp, epoch, champion.Genotype.Id, champion.Fitness)
+	org := champion.GetOrganism()
+	line := fmt.Sprintf("%s EPOCH %d, Organism ID: %d, Fitness: %f\n (wins: %d, draws: %d)", timestamp, epoch, org.Genotype.Id, org.Fitness, champion.GetWins(), champion.GetDraws())
 	if _, err := file.WriteString(line); err != nil {
 		return fmt.Errorf("failed to write to champions file: %v", err)
 	}
