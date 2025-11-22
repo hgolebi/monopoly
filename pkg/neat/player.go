@@ -107,10 +107,17 @@ func (p *NEATMonopolyPlayer) GetStdAction(player int, state monopoly.GameState, 
 	for propertyId, availableActions := range propertyActions {
 		sensors.LoadAvailableStdActions(availableActions)
 		sensors.LoadPropertyId(propertyId)
+		sensors.LoadPrice(state.Properties[propertyId].Price)
 		outputList := p.GetDecision(sensors)
 		stdActionOutValues := GetStdActionOutputValues(outputList)
 		var highest float64 = 0.0
 		for _, action := range availableActions {
+			if state.Charge <= 0 && action == monopoly.SELLHOUSE {
+				continue
+			}
+			if state.Charge <= 0 && state.Players[player].Money > 200 && (action == monopoly.MORTGAGE || action == monopoly.SELLOFFER) {
+				continue
+			}
 			if stdActionOutValues[action] > highest {
 				highest = stdActionOutValues[action]
 				result.Action = action
@@ -126,6 +133,10 @@ func (p *NEATMonopolyPlayer) GetStdAction(player int, state monopoly.GameState, 
 					result.Players = append(result.Players, getOriginalPlayerId(pID, player))
 				}
 			}
+		}
+		if result.Action == monopoly.SELLOFFER && result.Price == 0 {
+			result.Action = monopoly.NOACTION
+			return result
 		}
 		if result.Action != monopoly.NOACTION {
 			result.PropertyId = propertyId
@@ -188,6 +199,7 @@ func (p *NEATMonopolyPlayer) BiddingDecision(player int, state monopoly.GameStat
 	sensors.LoadState(state, player)
 	sensors.LoadDecisionContext(BIDDING_DECISION)
 	sensors.LoadPropertyId(propertyId)
+	sensors.LoadPrice(state.Properties[propertyId].Price)
 	sensors.LoadBiddingInputs(currentPrice, currentWinner, player)
 	outputList := p.GetDecision(sensors)
 	decision := outputList[outputs["BIDDING_DECISION"]] > 0.5

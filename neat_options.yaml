@@ -16,7 +16,7 @@ excess_coeff:  3.0
 mutdiff_coeff:  0.5
 
 # This global tells compatibility threshold under which two Genomes are considered the same species
-compat_threshold:  16.0
+compat_threshold:  4.0
 # How much does age matter? Gives a fitness boost up to some young age (niching). If it is 1, then young species get no fitness boost.
 age_significance:  1.0
 # Percent of average fitness for survival, how many get to reproduce based on survival_thresh * pop_size
@@ -37,11 +37,11 @@ mutate_toggle_enable_prob:  0.1
 # Probability of finding the first disabled gene and re-enabling it
 mutate_gene_reenable_prob:  0.05
 # Probability of adding new node
-mutate_add_node_prob:  0.015
+mutate_add_node_prob:  0.02
 # Probability of adding new link between nodes
-mutate_add_link_prob:  0.3
+mutate_add_link_prob:  0.01
 # Probability of making connections from disconnected sensors (input, bias type neurons)
-mutate_connect_sensors: 0.001
+mutate_connect_sensors: 0.000
 
 # Probability of mating between different species
 interspecies_mate_rate:  0.01
@@ -68,7 +68,7 @@ babies_stolen:  0
 # The population size as a number of organisms
 pop_size:  120
 # Age when Species starts to be penalized
-dropoff_age:  100
+dropoff_age:  15
 # Number of tries mutate_add_link will attempt to find an open link
 newlink_tries:  20
 # Tells to print population to file every n generations

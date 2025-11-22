@@ -34,10 +34,10 @@ const (
 	// SECOND_PLACE_SCORE          = 0
 	// ROUND_LIMIT_WINNER_SCORE    = 0 // if player wins the game by reaching the round limit he will receive this score
 
-	GAMES_PER_EPOCH = 2000 // number of games every organism has to play during one epoch
-	GROUP_SIZE      = 4    // number of players in each game
-	MAX_THREADS     = 200  // maximum number of threads used to evaluate organisms
-	PRINT_EVERY     = 100  // saves logs and population to files every N epochs
+	GAMES_PER_EPOCH = 100 // number of games every organism has to play during one epoch
+	GROUP_SIZE      = 4   // number of players in each game
+	MAX_THREADS     = 200 // maximum number of threads used to evaluate organisms
+	PRINT_EVERY     = 100 // saves logs and population to files every N epochs
 )
 
 type GameSettings struct {
