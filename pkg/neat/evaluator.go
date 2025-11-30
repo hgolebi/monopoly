@@ -30,12 +30,17 @@ type MonopolyEvaluator struct {
 	groupSize        int
 	lastChampion     *genetics.Organism
 	lastChampFitness float64
+	rng              *rand.Rand
 }
 
-func NewMonopolyEvaluator(outputDir string, groupSize int) *MonopolyEvaluator {
+func NewMonopolyEvaluator(outputDir string, groupSize int, rng *rand.Rand) *MonopolyEvaluator {
+	if rng == nil {
+		rng = rand.New(rand.NewSource(time.Now().UnixNano()))
+	}
 	return &MonopolyEvaluator{
 		outputDir: outputDir,
 		groupSize: groupSize,
+		rng:       rng,
 	}
 }
 
@@ -47,7 +52,7 @@ type GroupDetails struct {
 }
 
 func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetics.Population, epoch *experiment.Generation) error {
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
 	options, ok := neat.FromContext(ctx)
 	if !ok {
 		return fmt.Errorf("failed to get options from context")
@@ -62,7 +67,7 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 	// start workers
 	jobsCh := make(chan GroupDetails, 100)
 	var wg sync.WaitGroup
-	for i := 0; i < cfg.MAX_THREADS; i++ {
+	for i := range cfg.MAX_THREADS {
 		wg.Add(1)
 		go startWorker(ctx, i, jobsCh, &wg, e.outputDir)
 	}
@@ -70,21 +75,13 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 	// starting rounds
 	for roundID := range cfg.GAMES_PER_EPOCH {
 		// prepare groups
-		rng.Shuffle(len(players), func(i, j int) {
-			players[i], players[j] = players[j], players[i]
-		})
 		var groups [][]MonopolyPlayer
-		for i := 0; i < len(players); i += (e.groupSize - 1) {
-			end := min(i+e.groupSize-1, len(players))
-			// Create a new slice for the group to avoid modifying the underlying 'players' slice
-			group := make([]MonopolyPlayer, 0, e.groupSize)
-			group = append(group, players[i:end]...)
-			group = append(group, new(SimplePlayerBot))
-			rng.Shuffle(len(group), func(i, j int) {
-				group[i], group[j] = group[j], group[i]
-			})
-			groups = append(groups, group)
+		if cfg.INCLUDE_HEURISTIC_BOT {
+			groups = e.prepareGroupsWithHeuristicBot(players, e.groupSize)
+		} else {
+			groups = e.prepareGroups(players, e.groupSize)
 		}
+
 		if roundID == 0 && (epoch.Id == options.NumGenerations-1 || (epoch.Id+1)%cfg.PRINT_EVERY == 0) {
 			dumpGroupAssignments(e.outputDir, epoch.Id, roundID, groups)
 		}
@@ -149,6 +146,38 @@ func startWorker(ctx context.Context, id int, jobsCh <-chan GroupDetails, wg *sy
 			continue
 		}
 	}
+}
+
+func (e *MonopolyEvaluator) prepareGroups(players []MonopolyPlayer, groupSize int) [][]MonopolyPlayer {
+	e.rng.Shuffle(len(players), func(i, j int) {
+		players[i], players[j] = players[j], players[i]
+	})
+	var groups [][]MonopolyPlayer
+	for i := 0; i < len(players); i += (e.groupSize) {
+		end := min(i+e.groupSize, len(players))
+		group := make([]MonopolyPlayer, 0, e.groupSize)
+		group = append(group, players[i:end]...)
+		groups = append(groups, group)
+	}
+	return groups
+}
+
+func (e *MonopolyEvaluator) prepareGroupsWithHeuristicBot(players []MonopolyPlayer, groupSize int) [][]MonopolyPlayer {
+	e.rng.Shuffle(len(players), func(i, j int) {
+		players[i], players[j] = players[j], players[i]
+	})
+	var groups [][]MonopolyPlayer
+	for i := 0; i < len(players); i += (e.groupSize - 1) {
+		end := min(i+e.groupSize-1, len(players))
+		group := make([]MonopolyPlayer, 0, e.groupSize)
+		group = append(group, players[i:end]...)
+		group = append(group, new(SimplePlayerBot))
+		e.rng.Shuffle(len(group), func(i, j int) {
+			group[i], group[j] = group[j], group[i]
+		})
+		groups = append(groups, group)
+	}
+	return groups
 }
 
 func startGroup(ctx context.Context, gd GroupDetails, outputDir string) error {

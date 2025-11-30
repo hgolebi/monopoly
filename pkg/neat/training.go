@@ -16,7 +16,7 @@ import (
 )
 
 func TrainNetwork(seed int64, neatOptionsFile string, genomeFile string, outputDir string) {
-	rand.Seed(seed)
+	rng := rand.New(rand.NewSource(seed))
 	neatOptions, err := neat.ReadNeatOptionsFromFile(neatOptionsFile)
 	if err != nil {
 		log.Fatal("Failed to load NEAT options:", err)
@@ -39,7 +39,7 @@ func TrainNetwork(seed int64, neatOptionsFile string, genomeFile string, outputD
 		Trials:   make(experiment.Trials, neatOptions.NumRuns),
 		RandSeed: seed,
 	}
-	evaluator := NewMonopolyEvaluator(outputDir, cfg.GROUP_SIZE)
+	evaluator := NewMonopolyEvaluator(outputDir, cfg.GROUP_SIZE, rng)
 	errChan := make(chan error)
 	ctx, cancel := context.WithCancel(context.Background())
 
