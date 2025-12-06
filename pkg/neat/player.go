@@ -28,6 +28,7 @@ type MonopolyPlayer interface {
 	GetId() int
 	GetScore() int
 	GetOrganism() *genetics.Organism
+	ResetScore()
 }
 
 type NEATMonopolyPlayer struct {
@@ -275,4 +276,10 @@ func (p *NEATMonopolyPlayer) GetDraws() int {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	return p.draws
+}
+
+func (p *NEATMonopolyPlayer) ResetScore() {
+	p.mutex.Lock()
+	p.score = 0
+	p.mutex.Unlock()
 }

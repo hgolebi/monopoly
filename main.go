@@ -43,8 +43,8 @@ func trainNEATNetwork() {
 }
 
 func main() {
-	// trainNEATNetwork()
-	runConsoleMonopoly()
+	trainNEATNetwork()
+	// runConsoleMonopoly()
 }
 
 func loadNEATPlayer() *neatnetwork.NEATMonopolyPlayer {

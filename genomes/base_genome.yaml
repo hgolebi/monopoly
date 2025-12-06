@@ -104,7 +104,7 @@ genome:
     # Base inputs (IDs 89-94)
     - { id: 89, trait_id: 0, type: INPT, activation: NullActivation }  # DECISION_CONTEXT
     - { id: 90, trait_id: 0, type: INPT, activation: NullActivation }  # PROPERTY_ID
-    - { id: 91, trait_id: 0, type: INPT, activation: NullActivation }  # PRIC91E
+    - { id: 91, trait_id: 0, type: INPT, activation: NullActivation }  # PRICE
     - { id: 92, trait_id: 0, type: INPT, activation: NullActivation }  # CURR_BID
     - { id: 93, trait_id: 0, type: INPT, activation: NullActivation }  # CURR_BID_WINNER
     - { id: 94, trait_id: 0, type: INPT, activation: NullActivation }  # CHARGE

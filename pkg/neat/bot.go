@@ -245,6 +245,12 @@ func (bot *SimplePlayerBot) BiddingDecision(player int, state monopoly.GameState
 	return 0
 }
 
+func (bot *SimplePlayerBot) ResetScore() {
+	bot.mutex.Lock()
+	bot.score = 0
+	bot.mutex.Unlock()
+}
+
 func findKeyProperties(state monopoly.GameState, playerId int) []int {
 	_, missing := getSetMaps(state, playerId)
 	keyProperties := []int{}

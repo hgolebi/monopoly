@@ -34,7 +34,8 @@ const (
 	// SECOND_PLACE_SCORE          = 0
 	// ROUND_LIMIT_WINNER_SCORE    = 0 // if player wins the game by reaching the round limit he will receive this score
 
-	INCLUDE_HEURISTIC_BOT = false // whether to include a heuristic bot in the games played during evaluation
+	TOURNAMENT_TYPE       = "bracket" // "single_round" or "bracket"
+	INCLUDE_HEURISTIC_BOT = false     // whether to include a heuristic bot in the games played during evaluation
 
 	GAMES_PER_EPOCH = 1000 // number of games every organism has to play during one epoch
 	GROUP_SIZE      = 4    // number of players in each game
