@@ -27,6 +27,7 @@ func (c *ConsoleLogger) Init() {
 }
 
 func (c *ConsoleLogger) Log(message string) {
+	// time.Sleep(1500 * time.Millisecond)
 	println(message)
 }
 

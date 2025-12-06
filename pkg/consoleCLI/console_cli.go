@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"monopoly/pkg/monopoly"
+	"monopoly/pkg/server"
 	"net"
 
 	"github.com/eiannone/keyboard"
@@ -49,7 +50,7 @@ func (c *ConsoleCLI) GetStdAction(player int, state monopoly.GameState, availabl
 			response.PropertyId = chooseProperty(availableActions.BuyOutList)
 		case monopoly.SELLOFFER:
 			response.PropertyId = chooseProperty(availableActions.SellPropertyList)
-			response.Players = []int{} // change later
+			response.Players = choosePlayers(state.Players, state.CurrentPlayerIdx)
 			response.Price = choosePrice()
 		case monopoly.BUYOFFER:
 			response.PropertyId = chooseProperty(availableActions.BuyPropertyList)
@@ -102,7 +103,7 @@ func chooseProperty(properties []int) int {
 	}
 }
 
-func choosePlayer(players []*monopoly.Player, currPlayerIdx int) int {
+func choosePlayers(players []*monopoly.Player, currPlayerIdx int) []int {
 	for {
 		var availablePlayers []int
 		for idx, player := range players {
@@ -110,22 +111,45 @@ func choosePlayer(players []*monopoly.Player, currPlayerIdx int) int {
 				availablePlayers = append(availablePlayers, idx)
 			}
 		}
-		fmt.Println("Choose player (index):")
+		fmt.Println("Select players:")
 		for idx, player_id := range availablePlayers {
 			fmt.Printf("%d. %s\n", idx+1, players[player_id].Name)
 		}
-		char, key, err := keyboard.GetKey()
-		if err != nil {
-			log.Fatal(err)
+		fmt.Println("Press Enter to confirm selection")
+		chosenPlayersMap := map[int]bool{}
+		for _, player_id := range availablePlayers {
+			chosenPlayersMap[player_id] = false
 		}
-		if key == keyboard.KeyEsc {
-			panic("User quit the game")
+		fmt.Println("Chosen players: []")
+		for {
+			char, key, err := keyboard.GetKey()
+			if err != nil {
+				log.Fatal(err)
+			}
+			if key == keyboard.KeyEsc {
+				panic("User quit the game")
+			}
+			chosen_number := int(char - '1')
+			if chosen_number >= 0 && chosen_number < len(availablePlayers) {
+				currDecision := chosenPlayersMap[availablePlayers[chosen_number]]
+				chosenPlayersMap[availablePlayers[chosen_number]] = !currDecision
+				if !currDecision {
+					fmt.Printf("Player %s added\n", players[availablePlayers[chosen_number]].Name)
+				} else {
+					fmt.Printf("Player %s removed\n", players[availablePlayers[chosen_number]].Name)
+				}
+			}
+			var chosenPlayers []int
+			for player_id, selected := range chosenPlayersMap {
+				if selected {
+					chosenPlayers = append(chosenPlayers, player_id)
+				}
+			}
+			fmt.Println("Chosen players: ", chosenPlayers)
+			if key == keyboard.KeyEnter {
+				return chosenPlayers
+			}
 		}
-		chosen_number := int(char - '1')
-		if chosen_number >= 0 && chosen_number < len(availablePlayers) {
-			return availablePlayers[chosen_number]
-		}
-		fmt.Println("Invalid character. Try again.")
 	}
 }
 
@@ -292,24 +316,24 @@ func StartClient() {
 	}
 	fmt.Printf("Connected to server with ID: %d\n", c.ID)
 	for {
-		var req monopoly.ActionRequest
+		var req server.ActionRequest
 		if err := decoder.Decode(&req); err != nil {
 			fmt.Println("Failed to decode request")
 			panic(err)
 		}
 		var resp interface{}
 		switch req.Type {
-		case monopoly.GetStdAction:
+		case server.GetStdAction:
 			resp = c.GetStdAction(req.PlayerId, req.State, req.StdActionList)
-		case monopoly.GetJailAction:
+		case server.GetJailAction:
 			resp = c.GetJailAction(req.PlayerId, req.State, req.JailActionList)
-		case monopoly.BuyDecision:
+		case server.BuyDecision:
 			resp = c.BuyDecision(req.PlayerId, req.State, req.PropertyId)
-		case monopoly.BuyFromPlayerDecision:
+		case server.BuyFromPlayerDecision:
 			resp = c.BuyFromPlayerDecision(req.PlayerId, req.State, req.PropertyId, req.Price)
-		case monopoly.SellToPlayerDecision:
+		case server.SellToPlayerDecision:
 			resp = c.SellToPlayerDecision(req.PlayerId, req.State, req.PropertyId, req.Price)
-		case monopoly.BiddingDecision:
+		case server.BiddingDecision:
 			resp = c.BiddingDecision(req.PlayerId, req.State, req.PropertyId, req.Price)
 
 		default:

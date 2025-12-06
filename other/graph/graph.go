@@ -11,7 +11,7 @@ import (
 
 func main() {
 	// Retrieve the genome file path from command line arguments
-	filePath := "C:\\Users\\Hubert\\Desktop\\genomes\\gen_2999"
+	filePath := ".\\genomes\\trained"
 	if len(os.Args) < 2 {
 		fmt.Println("Usage: go run graph.go <genome_file_path>")
 	} else {
