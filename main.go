@@ -3,11 +3,15 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
+	"math/rand"
+	"monopoly/pkg/config"
 	"monopoly/pkg/consoleCLI"
 	"monopoly/pkg/monopoly"
 	neatnetwork "monopoly/pkg/neat"
 	"monopoly/pkg/server"
+	"time"
 
 	"github.com/yaricom/goNEAT/v4/neat"
 	"github.com/yaricom/goNEAT/v4/neat/genetics"
@@ -20,11 +24,12 @@ func runConsoleMonopoly() {
 		consoleCLI.StartClient()
 		return
 	}
+	filePath := ".\\genomes\\trained"
 	neat.InitLogger("debug")
 	bots := []server.PlayerIO{
-		loadNEATPlayer(),
-		loadNEATPlayer(),
-		loadNEATPlayer(),
+		loadNEATPlayer(filePath),
+		loadNEATPlayer(filePath),
+		loadNEATPlayer(filePath),
 	}
 	io := server.NewConsoleServer(1, bots)
 	logger := monopoly.ConsoleLogger{}
@@ -45,10 +50,11 @@ func trainNEATNetwork() {
 func main() {
 	trainNEATNetwork()
 	// runConsoleMonopoly()
+	// runBotMatch()
 }
 
-func loadNEATPlayer() *neatnetwork.NEATMonopolyPlayer {
-	filePath := ".\\genomes\\trained"
+func loadNEATPlayer(filePath string) *neatnetwork.NEATMonopolyPlayer {
+
 	// if len(os.Args) < 2 {
 	// 	fmt.Println("Usage: go run graph.go <genome_file_path>")
 	// } else {
@@ -71,4 +77,35 @@ func loadNEATPlayer() *neatnetwork.NEATMonopolyPlayer {
 		log.Fatal("Failed to create NEAT player from organism:", err)
 	}
 	return bot
+}
+
+func runBotMatch() {
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	e := neatnetwork.NewMonopolyEvaluator("experiment", 4, rng)
+
+	bot1 := loadNEATPlayer(".\\genomes\\trained")
+	bot2 := loadNEATPlayer(".\\genomes\\100_wins")
+	bot3 := loadNEATPlayer(".\\genomes\\draw_machine")
+	bot4 := loadNEATPlayer(".\\genomes\\bracket133")
+	// bot5 := neatnetwork.SimplePlayerBot{}
+
+	players := []neatnetwork.MonopolyPlayer{bot1, bot2, bot3, bot4}
+
+	neatOptionsFile := "neat_options.yaml"
+	neatOptions, err := neat.ReadNeatOptionsFromFile(neatOptionsFile)
+	if err != nil {
+		log.Fatal("Failed to load NEAT options:", err)
+	}
+	ctx := neat.NewContext(context.Background(), neatOptions)
+	err = e.PlayRound(ctx, players, -1)
+	if err != nil {
+		panic(fmt.Sprintf("Error during bot match: %v", err))
+	}
+
+	fmt.Printf("Games played: %d\n", config.GAMES_PER_EPOCH)
+	fmt.Printf("Trained: AvgScore=%d Wins=%d Draws=%d\n", bot1.GetScore()/config.GAMES_PER_EPOCH, bot1.GetWins(), bot1.GetDraws())
+	fmt.Printf("100_wins: AvgScore=%d Wins=%d Draws=%d\n", bot2.GetScore()/config.GAMES_PER_EPOCH, bot2.GetWins(), bot2.GetDraws())
+	fmt.Printf("draw_machine: AvgScore=%d Wins=%d Draws=%d\n", bot3.GetScore()/config.GAMES_PER_EPOCH, bot3.GetWins(), bot3.GetDraws())
+	fmt.Printf("bracket133: AvgScore=%d Wins=%d Draws=%d\n", bot4.GetScore()/config.GAMES_PER_EPOCH, bot4.GetWins(), bot4.GetDraws())
+	// fmt.Printf("SimpleBot: AvgScore=%d Wins=%d Draws=%d\n", bot5.GetScore()/config.GAMES_PER_EPOCH, bot5.GetWins(), bot5.GetDraws())
 }

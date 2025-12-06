@@ -3,6 +3,7 @@ package neatnetwork
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -108,7 +109,7 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 }
 
 func (e *MonopolyEvaluator) singleRoundTournament(ctx context.Context, players []MonopolyPlayer, epoch *experiment.Generation) error {
-	err := e.playRound(ctx, players, epoch)
+	err := e.PlayRound(ctx, players, epoch.Id)
 	if err != nil {
 		return fmt.Errorf("failed to play round: %v", err)
 	}
@@ -139,7 +140,7 @@ func (e *MonopolyEvaluator) bracketTournament(ctx context.Context, players []Mon
 			player.ResetScore()
 		}
 		neat.InfoLog(fmt.Sprintf("Starting round %d with %d players\n", round, len(playersLeft)))
-		err := e.playRound(ctx, playersLeft, epoch)
+		err := e.PlayRound(ctx, playersLeft, epoch.Id)
 		if err != nil {
 			return fmt.Errorf("failed to play round %d: %v", round, err)
 		}
@@ -147,8 +148,9 @@ func (e *MonopolyEvaluator) bracketTournament(ctx context.Context, players []Mon
 		slices.SortFunc(playersLeft, func(a, b MonopolyPlayer) int {
 			return a.GetScore() - b.GetScore()
 		})
-		orderedPlayers = append(orderedPlayers, playersLeft[:3*len(playersLeft)/4]...)
-		playersLeft = playersLeft[3*len(playersLeft)/4:]
+		border := int(math.Round(4.0 / 5.0 * float64(len(playersLeft))))
+		orderedPlayers = append(orderedPlayers, playersLeft[:border]...)
+		playersLeft = playersLeft[border:]
 		round++
 	}
 	orderedPlayers = append(orderedPlayers, playersLeft...)
@@ -170,7 +172,7 @@ func (e *MonopolyEvaluator) bracketTournament(ctx context.Context, players []Mon
 	return nil
 }
 
-func (e *MonopolyEvaluator) playRound(ctx context.Context, players []MonopolyPlayer, epoch *experiment.Generation) error {
+func (e *MonopolyEvaluator) PlayRound(ctx context.Context, players []MonopolyPlayer, epoch int) error {
 	options, ok := neat.FromContext(ctx)
 	if !ok {
 		return fmt.Errorf("failed to get options from context")
@@ -193,15 +195,15 @@ func (e *MonopolyEvaluator) playRound(ctx context.Context, players []MonopolyPla
 			groups = e.prepareGroups(players, e.groupSize)
 		}
 
-		if roundID == 0 && (epoch.Id == options.NumGenerations-1 || (epoch.Id+1)%cfg.PRINT_EVERY == 0) {
-			dumpGroupAssignments(e.outputDir, epoch.Id, roundID, groups)
+		if roundID == 0 && (epoch == options.NumGenerations-1 || (epoch+1)%cfg.PRINT_EVERY == 0) {
+			dumpGroupAssignments(e.outputDir, epoch, roundID, groups)
 		}
 
 		// create job for every group
 		for groupID, group := range groups {
 
 			gd := GroupDetails{
-				Epoch:   epoch.Id,
+				Epoch:   epoch,
 				Round:   roundID,
 				GroupID: groupID,
 				Players: group,
