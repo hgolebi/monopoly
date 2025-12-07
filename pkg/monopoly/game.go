@@ -557,6 +557,9 @@ func (g *Game) resolveStandardAction(player_id int, action_details ActionDetails
 		}
 		players := []int{}
 		for _, pID := range action_details.Players {
+			if pID < 0 || pID >= len(g.players) {
+				continue
+			}
 			p := g.players[pID]
 			if pID == player_id {
 				g.logger.Log(fmt.Sprintf("%s cannot make a sell offer to themselves", player.Name))

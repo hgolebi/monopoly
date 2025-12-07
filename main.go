@@ -48,9 +48,9 @@ func trainNEATNetwork() {
 }
 
 func main() {
-	trainNEATNetwork()
+	// trainNEATNetwork()
 	// runConsoleMonopoly()
-	// runBotMatch()
+	runBotMatch()
 }
 
 func loadNEATPlayer(filePath string) *neatnetwork.NEATMonopolyPlayer {
@@ -81,15 +81,21 @@ func loadNEATPlayer(filePath string) *neatnetwork.NEATMonopolyPlayer {
 
 func runBotMatch() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	e := neatnetwork.NewMonopolyEvaluator("experiment", 4, rng)
+	e := neatnetwork.NewMonopolyEvaluator("experiment", config.GROUP_SIZE, rng)
 
-	bot1 := loadNEATPlayer(".\\genomes\\trained")
-	bot2 := loadNEATPlayer(".\\genomes\\100_wins")
-	bot3 := loadNEATPlayer(".\\genomes\\draw_machine")
-	bot4 := loadNEATPlayer(".\\genomes\\bracket133")
-	// bot5 := neatnetwork.SimplePlayerBot{}
+	bot1_name := "first_good"
+	bot2_name := "bracket_with_bot767"
+	bot3_name := "bracket133"
+	bot4_name := "bracket796"
 
-	players := []neatnetwork.MonopolyPlayer{bot1, bot2, bot3, bot4}
+	bot1 := loadNEATPlayer(".\\genomes\\" + bot1_name)
+	bot2 := loadNEATPlayer(".\\genomes\\" + bot2_name)
+	bot3 := loadNEATPlayer(".\\genomes\\" + bot3_name)
+	bot4 := loadNEATPlayer(".\\genomes\\" + bot4_name)
+
+	simpleBot := neatnetwork.SimplePlayerBot{}
+
+	players := []neatnetwork.MonopolyPlayer{bot2, bot3, &simpleBot}
 
 	neatOptionsFile := "neat_options.yaml"
 	neatOptions, err := neat.ReadNeatOptionsFromFile(neatOptionsFile)
@@ -103,9 +109,10 @@ func runBotMatch() {
 	}
 
 	fmt.Printf("Games played: %d\n", config.GAMES_PER_EPOCH)
-	fmt.Printf("Trained: AvgScore=%d Wins=%d Draws=%d\n", bot1.GetScore()/config.GAMES_PER_EPOCH, bot1.GetWins(), bot1.GetDraws())
-	fmt.Printf("100_wins: AvgScore=%d Wins=%d Draws=%d\n", bot2.GetScore()/config.GAMES_PER_EPOCH, bot2.GetWins(), bot2.GetDraws())
-	fmt.Printf("draw_machine: AvgScore=%d Wins=%d Draws=%d\n", bot3.GetScore()/config.GAMES_PER_EPOCH, bot3.GetWins(), bot3.GetDraws())
-	fmt.Printf("bracket133: AvgScore=%d Wins=%d Draws=%d\n", bot4.GetScore()/config.GAMES_PER_EPOCH, bot4.GetWins(), bot4.GetDraws())
-	// fmt.Printf("SimpleBot: AvgScore=%d Wins=%d Draws=%d\n", bot5.GetScore()/config.GAMES_PER_EPOCH, bot5.GetWins(), bot5.GetDraws())
+	fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot1_name, bot1.GetScore()/config.GAMES_PER_EPOCH, bot1.GetWins(), bot1.GetDraws())
+	fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot2_name, bot2.GetScore()/config.GAMES_PER_EPOCH, bot2.GetWins(), bot2.GetDraws())
+	fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot3_name, bot3.GetScore()/config.GAMES_PER_EPOCH, bot3.GetWins(), bot3.GetDraws())
+	fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot4_name, bot4.GetScore()/config.GAMES_PER_EPOCH, bot4.GetWins(), bot4.GetDraws())
+
+	fmt.Printf("simpleBot: AvgScore=%d Wins=%d Draws=%d\n", simpleBot.GetScore()/config.GAMES_PER_EPOCH, simpleBot.GetWins(), simpleBot.GetDraws())
 }
