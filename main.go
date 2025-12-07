@@ -13,6 +13,10 @@ import (
 	"github.com/yaricom/goNEAT/v4/neat/genetics"
 )
 
+func main() {
+	runConsoleMonopoly()
+}
+
 func runConsoleMonopoly() {
 	cliMode := flag.Bool("cli", false, "run in CLI client mode")
 	flag.Parse()
@@ -42,18 +46,8 @@ func trainNEATNetwork() {
 	neatnetwork.TrainNetwork(0, neatOptionsFile, neatGenomeFile, outputDir)
 }
 
-func main() {
-	// trainNEATNetwork()
-	runConsoleMonopoly()
-}
-
 func loadNEATPlayer() *neatnetwork.NEATMonopolyPlayer {
 	filePath := ".\\genomes\\trained"
-	// if len(os.Args) < 2 {
-	// 	fmt.Println("Usage: go run graph.go <genome_file_path>")
-	// } else {
-	// 	filePath = os.Args[1]
-	// }
 	genomeReader, err := genetics.NewGenomeReaderFromFile(filePath)
 	if err != nil {
 		log.Fatal("Failed to create genome reader:", err)

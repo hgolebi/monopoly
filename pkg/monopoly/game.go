@@ -393,7 +393,7 @@ func (g *Game) handleJail() {
 	}
 	action := g.io.GetJailAction(g.currentPlayerIdx, g.getState(), action_list)
 	if !slices.Contains(action_list, action) {
-		g.logger.Log(fmt.Sprintf("%s attempted an invalid jail action: %s", player.Name, action))
+		g.logger.Log(fmt.Sprintf("%s attempted an invalid jail action: %v", player.Name, action))
 		g.bankrupt(player, nil)
 		return
 	}
@@ -505,7 +505,7 @@ func (g *Game) resolveStandardAction(player_id int, action_details ActionDetails
 	player := g.players[player_id]
 
 	if !slices.Contains(available.Actions, action_details.Action) {
-		g.logger.Log(fmt.Sprintf("%s attempted an invalid action: %s", player.Name, action_details.Action))
+		g.logger.Log(fmt.Sprintf("%s attempted an invalid action: %v", player.Name, action_details.Action))
 		g.bankrupt(player, nil)
 		return
 	}

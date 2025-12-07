@@ -240,19 +240,6 @@ func dumpGroupAssignments(outputDir string, epoch int, round int, groups [][]Mon
 
 func (e *MonopolyEvaluator) createPlayersFromPopulation(pop *genetics.Population) ([]MonopolyPlayer, error) {
 	var players []MonopolyPlayer
-	// if e.lastChampion == nil {
-	// 	org, err := NewNEATMonopolyPlayer(pop.Organisms[0])
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("error creating NEATMonopolyPlayer for last champion (duplication): %v", err)
-	// 	}
-	// 	players = append(players, org)
-	// } else {
-	// 	org, err := NewNEATMonopolyPlayer(e.lastChampion)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("error creating NEATMonopolyPlayer for last champion: %v", err)
-	// 	}
-	// 	players = append(players, org)
-	// }
 
 	for i, org := range pop.Organisms {
 		org.Fitness = 0
