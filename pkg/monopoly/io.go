@@ -58,7 +58,7 @@ func (s GameState) String() string {
 	result += fmt.Sprintf("  ROUND %d | PLAYER %d\n", s.Round, s.CurrentPlayerIdx)
 	result += "\nPLAYERS:\n"
 	for i, p := range s.Players {
-		status := "----"
+		status := ""
 		if p.IsBankrupt {
 			status = "DEAD"
 		} else if p.IsJailed {
@@ -66,33 +66,21 @@ func (s GameState) String() string {
 		}
 		position := p.CurrentPosition
 		result +=
-			fmt.Sprintf("%d %s %s %d$ %dcard position=%d\n", i, p.Name, status, p.Money, p.JailCards, position)
+			fmt.Sprintf("%d %s %d$ position=%d jail_cards=%d %s\n", i, formatStr(p.Name, 15), p.Money, position, p.JailCards, status)
 
 		for _, propId := range p.Properties {
 			prop := s.Properties[propId]
-			owner := ""
-			if prop.Owner != p {
-
-				owner = "BANK"
-				if prop.Owner != nil {
-					owner = prop.Owner.Name
-				}
-			}
-			houseStr := "------"
-			if prop.Houses > 0 {
-				houseStr = "HOUSES"
-			}
 			mortgaged := "---------"
 			if prop.IsMortgaged {
 				mortgaged = "MORTGAGED"
 			}
-			result += fmt.Sprintf("    %s %d %s %d %s %s\n",
-				owner, prop.PropertyIndex, formatStr(prop.Name, 10), prop.Houses, houseStr, mortgaged)
+			result += fmt.Sprintf("    %2d %s houses=%d %s\n",
+				prop.PropertyIndex, formatStr(prop.Name, 10), prop.Houses, mortgaged)
 		}
 	}
 	result += "\nPROPERTIES:\n"
 	for _, prop := range s.Properties {
-		ownerName := "-------"
+		ownerName := "BANK"
 		if prop.Owner != nil {
 			ownerName = prop.Owner.Name
 		}
@@ -100,8 +88,8 @@ func (s GameState) String() string {
 		if prop.IsMortgaged {
 			mortgaged = "MORTGAGED"
 		}
-		result += fmt.Sprintf("%d %s %s %s %dHouse %v %s %d$ %d$\n",
-			prop.PropertyIndex, formatStr(prop.Name, 10), ownerName, mortgaged, prop.Houses, prop.CanBuildHouse, prop.Set, prop.Price, prop.HousePrice)
+		result += fmt.Sprintf("%2d %s %s %s houses=%d price=%d$ housePrice=%d$\n",
+			prop.PropertyIndex, formatStr(prop.Name, 12), formatStr(ownerName, 15), mortgaged, prop.Houses, prop.Price, prop.HousePrice)
 	}
 	result += "=============================================================================\n"
 	return result

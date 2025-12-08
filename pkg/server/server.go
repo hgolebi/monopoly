@@ -68,11 +68,11 @@ func NewConsoleServer(humanPlayers int, bots []PlayerIO) *ConsoleServer {
 		panic(err)
 	}
 
-	fmt.Printf("Serwer nasłuchuje na :12345, oczekuje %d graczy...\n", humanPlayers)
+	fmt.Printf("Server listening on :12345, waiting for %d players...\n", humanPlayers)
 	for i := range humanPlayers {
 		conn, err := ln.Accept()
 		if err != nil {
-			fmt.Println("Błąd połączenia:", err)
+			fmt.Println("Connection error:", err)
 			continue
 		}
 		id := perm[botPlayers+i]
@@ -80,16 +80,15 @@ func NewConsoleServer(humanPlayers int, bots []PlayerIO) *ConsoleServer {
 			isHuman: true,
 			conn:    conn,
 		}
-		fmt.Printf("Gracz %d dołączył\n", id)
+		fmt.Printf("Player %d joined\n", id)
 
-		// Wyślij ID gracza do klienta jako int
 		encoder := json.NewEncoder(conn)
 		if err := encoder.Encode(id); err != nil {
-			fmt.Println("Błąd wysyłania ID gracza")
+			fmt.Println("Error sending player ID")
 			panic(err)
 		}
 	}
-	fmt.Println("Wszyscy gracze połączeni!")
+	fmt.Println("All players connected!")
 	return &ConsoleServer{
 		PlayersInfoMap: playerMap,
 	}
@@ -122,17 +121,17 @@ func (s *ConsoleServer) GetStdAction(player int, state monopoly.GameState, avail
 	encoder := json.NewEncoder(playerInfo.conn)
 	decoder := json.NewDecoder(playerInfo.conn)
 	if err := encoder.Encode(req); err != nil {
-		fmt.Println("Błąd wysyłania żądania do gracza:", err)
+		fmt.Println("Error sending request to player:", err)
 		panic(err)
 	}
 
 	var resp monopoly.ActionDetails
 	err := decoder.Decode(&resp)
 	if err != nil {
-		fmt.Println("Błąd dekodowania odpowiedzi:", err)
-		panic("Nie można odczytać odpowiedzi od gracza")
+		fmt.Println("Error decoding response:", err)
+		panic("Cannot read response from player")
 	}
-	fmt.Printf("Gracz %d wybrał akcję: %s\n", player, monopoly.StdActionNames[resp.Action])
+	fmt.Printf("Player %d chose action: %s\n", player, monopoly.StdActionNames[resp.Action])
 	return resp
 }
 
@@ -150,17 +149,17 @@ func (s *ConsoleServer) GetJailAction(player int, state monopoly.GameState, avai
 	encoder := json.NewEncoder(playerInfo.conn)
 	decoder := json.NewDecoder(playerInfo.conn)
 	if err := encoder.Encode(req); err != nil {
-		fmt.Println("Błąd wysyłania żądania do gracza:", err)
+		fmt.Println("Error sending request to player:", err)
 		panic(err)
 	}
 
 	var resp monopoly.JailAction
 	err := decoder.Decode(&resp)
 	if err != nil {
-		fmt.Println("Błąd dekodowania odpowiedzi:", err)
-		panic("Nie można odczytać odpowiedzi od gracza")
+		fmt.Println("Error decoding response:", err)
+		panic("Cannot read response from player")
 	}
-	fmt.Printf("Gracz %d wybrał akcję w więzieniu: %s\n", player, monopoly.JailActionNames[resp])
+	fmt.Printf("Player %d chose jail action: %s\n", player, monopoly.JailActionNames[resp])
 	return resp
 }
 
@@ -179,17 +178,17 @@ func (s *ConsoleServer) BuyDecision(player int, state monopoly.GameState, proper
 	encoder := json.NewEncoder(playerInfo.conn)
 	decoder := json.NewDecoder(playerInfo.conn)
 	if err := encoder.Encode(req); err != nil {
-		fmt.Println("Błąd wysyłania żądania do gracza:", err)
+		fmt.Println("Error sending request to player:", err)
 		panic(err)
 	}
 
 	var resp bool
 	err := decoder.Decode(&resp)
 	if err != nil {
-		fmt.Println("Błąd dekodowania odpowiedzi:", err)
-		panic("Nie można odczytać odpowiedzi od gracza")
+		fmt.Println("Error decoding response:", err)
+		panic("Cannot read response from player")
 	}
-	fmt.Printf("Gracz %d podjął decyzję o zakupie: %t\n", player, resp)
+	fmt.Printf("Player %d decided to buy: %t\n", player, resp)
 	return resp
 }
 
@@ -208,17 +207,17 @@ func (s *ConsoleServer) BuyFromPlayerDecision(player int, state monopoly.GameSta
 	encoder := json.NewEncoder(playerInfo.conn)
 	decoder := json.NewDecoder(playerInfo.conn)
 	if err := encoder.Encode(req); err != nil {
-		fmt.Println("Błąd wysyłania żądania do gracza:", err)
+		fmt.Println("Error sending request to player:", err)
 		panic(err)
 	}
 
 	var resp bool
 	err := decoder.Decode(&resp)
 	if err != nil {
-		fmt.Println("Błąd dekodowania odpowiedzi:", err)
-		panic("Nie można odczytać odpowiedzi od gracza")
+		fmt.Println("Error decoding response:", err)
+		panic("Cannot read response from player")
 	}
-	fmt.Printf("Gracz %d podjął decyzję o zakupie od innego gracza: %t\n", player, resp)
+	fmt.Printf("Player %d decided to buy from another player: %t\n", player, resp)
 	return resp
 }
 
@@ -237,17 +236,17 @@ func (s *ConsoleServer) SellToPlayerDecision(player int, state monopoly.GameStat
 	encoder := json.NewEncoder(playerInfo.conn)
 	decoder := json.NewDecoder(playerInfo.conn)
 	if err := encoder.Encode(req); err != nil {
-		fmt.Println("Błąd wysyłania żądania do gracza:", err)
+		fmt.Println("Error sending request to player:", err)
 		panic(err)
 	}
 
 	var resp bool
 	err := decoder.Decode(&resp)
 	if err != nil {
-		fmt.Println("Błąd dekodowania odpowiedzi:", err)
-		panic("Nie można odczytać odpowiedzi od gracza")
+		fmt.Println("Error decoding response:", err)
+		panic("Cannot read response from player")
 	}
-	fmt.Printf("Gracz %d podjął decyzję o sprzedaży do innego gracza: %t\n", player, resp)
+	fmt.Printf("Player %d decided to sell to another player: %t\n", player, resp)
 	return resp
 }
 
@@ -266,28 +265,28 @@ func (s *ConsoleServer) BiddingDecision(player int, state monopoly.GameState, pr
 	encoder := json.NewEncoder(playerInfo.conn)
 	decoder := json.NewDecoder(playerInfo.conn)
 	if err := encoder.Encode(req); err != nil {
-		fmt.Println("Błąd wysyłania żądania do gracza:", err)
+		fmt.Println("Error sending request to player:", err)
 		panic(err)
 	}
 
 	var resp int
 	err := decoder.Decode(&resp)
 	if err != nil {
-		fmt.Println("Błąd dekodowania odpowiedzi:", err)
-		panic("Nie można odczytać odpowiedzi od gracza")
+		fmt.Println("Error decoding response:", err)
+		panic("Cannot read response from player")
 	}
-	fmt.Printf("Gracz %d złożył ofertę licytacyjną: %d\n", player, resp)
+	fmt.Printf("Player %d made a bid: %d\n", player, resp)
 	return resp
 }
 
 func (s *ConsoleServer) Finish(f monopoly.FinishOption, winner int, state monopoly.GameState) {
 	switch f {
 	case monopoly.WIN:
-		fmt.Printf("Gra skonczona. Gracz o ID %d wygrał!\n", winner)
+		fmt.Printf("Game over. Player with ID %d won!\n", winner)
 	case monopoly.DRAW:
-		fmt.Println("Gra zakończona remisem!")
+		fmt.Println("Game ended in a draw!")
 	case monopoly.ROUND_LIMIT:
-		fmt.Printf("Gra zakończona z powodu przekroczenia limitu rund. Wygrywa gracz z ID %d!\n", winner)
+		fmt.Printf("Game ended due to round limit. Player with ID %d wins!\n", winner)
 	}
 	for _, playerInfo := range s.PlayersInfoMap {
 		if playerInfo.isHuman {

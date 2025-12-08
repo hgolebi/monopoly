@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"monopoly/pkg/consoleCLI"
 	"monopoly/pkg/monopoly"
@@ -24,13 +25,28 @@ func runConsoleMonopoly() {
 		consoleCLI.StartClient()
 		return
 	}
-	neat.InitLogger("debug")
+	neat.InitLogger("error")
 	bots := []server.PlayerIO{
-		loadNEATPlayer(),
-		loadNEATPlayer(),
-		loadNEATPlayer(),
+		loadNEATPlayer("./genomes/trained"),
+		loadNEATPlayer("./genomes/trained"),
+		loadNEATPlayer("./genomes/trained"),
+		loadNEATPlayer("./genomes/trained"),
 	}
-	io := server.NewConsoleServer(1, bots)
+
+	// Get number of human players from user
+	var numHumanPlayers int
+	for {
+		fmt.Print("Enter number of human players (0-4): ")
+		_, err := fmt.Scan(&numHumanPlayers)
+		if err != nil || numHumanPlayers < 0 || numHumanPlayers > 4 {
+			fmt.Println("Invalid input for number of human players")
+			fmt.Println("Number must be between 0 and 4")
+			continue
+		}
+		break
+	}
+
+	io := server.NewConsoleServer(numHumanPlayers, bots[:4-numHumanPlayers])
 	logger := monopoly.ConsoleLogger{}
 	logger.Init()
 	ctx := context.Background()
@@ -46,8 +62,7 @@ func trainNEATNetwork() {
 	neatnetwork.TrainNetwork(0, neatOptionsFile, neatGenomeFile, outputDir)
 }
 
-func loadNEATPlayer() *neatnetwork.NEATMonopolyPlayer {
-	filePath := ".\\genomes\\trained"
+func loadNEATPlayer(filePath string) *neatnetwork.NEATMonopolyPlayer {
 	genomeReader, err := genetics.NewGenomeReaderFromFile(filePath)
 	if err != nil {
 		log.Fatal("Failed to create genome reader:", err)

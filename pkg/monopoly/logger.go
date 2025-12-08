@@ -3,6 +3,7 @@ package monopoly
 import (
 	"fmt"
 	"os"
+	"time"
 )
 
 type Logger interface {
@@ -27,7 +28,7 @@ func (c *ConsoleLogger) Init() {
 }
 
 func (c *ConsoleLogger) Log(message string) {
-	// time.Sleep(1500 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	println(message)
 }
 
@@ -46,7 +47,7 @@ func (c *ConsoleLogger) LogState(state GameState) {
 		return
 	}
 	c.StateID++
-	fmt.Printf("#%d\n", c.StateID)
+	// fmt.Printf("#%d\n", c.StateID)
 }
 
 func (c *ConsoleLogger) LogWithState(message string, state GameState) {

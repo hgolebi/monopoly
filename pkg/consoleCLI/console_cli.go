@@ -34,7 +34,10 @@ func (c *ConsoleCLI) GetStdAction(player int, state monopoly.GameState, availabl
 		if key == keyboard.KeyEsc {
 			panic("User quit the game")
 		}
-
+		if char == 's' || char == 'S' {
+			fmt.Println(state)
+			continue
+		}
 		if char < '0' || char >= '0'+rune(len(availableActions.Actions)) {
 			fmt.Println("Unknown action")
 			continue
@@ -45,26 +48,26 @@ func (c *ConsoleCLI) GetStdAction(player int, state monopoly.GameState, availabl
 		response.Action = action
 		switch action {
 		case monopoly.MORTGAGE:
-			response.PropertyId = chooseProperty(availableActions.MortgageList)
+			response.PropertyId = chooseProperty(availableActions.MortgageList, state)
 		case monopoly.BUYOUT:
-			response.PropertyId = chooseProperty(availableActions.BuyOutList)
+			response.PropertyId = chooseProperty(availableActions.BuyOutList, state)
 		case monopoly.SELLOFFER:
-			response.PropertyId = chooseProperty(availableActions.SellPropertyList)
-			response.Players = choosePlayers(state.Players, state.CurrentPlayerIdx)
+			response.PropertyId = chooseProperty(availableActions.SellPropertyList, state)
+			response.Players = choosePlayers(state.Players, state.CurrentPlayerIdx, state)
 			response.Price = choosePrice()
 		case monopoly.BUYOFFER:
-			response.PropertyId = chooseProperty(availableActions.BuyPropertyList)
+			response.PropertyId = chooseProperty(availableActions.BuyPropertyList, state)
 			response.Price = choosePrice()
 		case monopoly.BUYHOUSE:
-			response.PropertyId = chooseProperty(availableActions.BuyHouseList)
+			response.PropertyId = chooseProperty(availableActions.BuyHouseList, state)
 		case monopoly.SELLHOUSE:
-			response.PropertyId = chooseProperty(availableActions.SellHouseList)
+			response.PropertyId = chooseProperty(availableActions.SellHouseList, state)
 		}
 		return response
 	}
 }
 
-func chooseProperty(properties []int) int {
+func chooseProperty(properties []int, state monopoly.GameState) int {
 	page := 0
 	max_page := (len(properties) - 1) / 8
 	for {
@@ -86,6 +89,10 @@ func chooseProperty(properties []int) int {
 			if key == keyboard.KeyEsc {
 				panic("User quit the game")
 			}
+			if char == 's' || char == 'S' {
+				fmt.Println(state)
+				continue
+			}
 			if page > 0 && char == '9' {
 				page--
 				break
@@ -103,7 +110,7 @@ func chooseProperty(properties []int) int {
 	}
 }
 
-func choosePlayers(players []*monopoly.Player, currPlayerIdx int) []int {
+func choosePlayers(players []*monopoly.Player, currPlayerIdx int, state monopoly.GameState) []int {
 	for {
 		var availablePlayers []int
 		for idx, player := range players {
@@ -129,6 +136,12 @@ func choosePlayers(players []*monopoly.Player, currPlayerIdx int) []int {
 			if key == keyboard.KeyEsc {
 				panic("User quit the game")
 			}
+
+			if char == 's' || char == 'S' {
+				fmt.Println(state)
+				continue
+			}
+
 			chosen_number := int(char - '1')
 			if chosen_number >= 0 && chosen_number < len(availablePlayers) {
 				currDecision := chosenPlayersMap[availablePlayers[chosen_number]]
@@ -186,6 +199,10 @@ func (c *ConsoleCLI) GetJailAction(player int, state monopoly.GameState, availab
 			panic("User quit the game")
 		}
 
+		if char == 's' || char == 'S' {
+			fmt.Println(state)
+			continue
+		}
 		if char < '0' || char >= '0'+rune(len(available)) {
 			fmt.Println("Unknown action")
 			continue
@@ -212,6 +229,8 @@ func (c *ConsoleCLI) BuyDecision(player int, state monopoly.GameState, propertyI
 			panic("User quit the game")
 		}
 		switch char {
+		case 's', 'S':
+			fmt.Println(state)
 		case 'y', 'Y':
 			return true
 		case 'n', 'N':
@@ -238,6 +257,8 @@ func (c *ConsoleCLI) BuyFromPlayerDecision(player int, state monopoly.GameState,
 			panic("User quit the game")
 		}
 		switch char {
+		case 's', 'S':
+			fmt.Println(state)
 		case 'y', 'Y':
 			return true
 		case 'n', 'N':
@@ -264,6 +285,8 @@ func (c *ConsoleCLI) SellToPlayerDecision(player int, state monopoly.GameState, 
 			panic("User quit the game")
 		}
 		switch char {
+		case 's', 'S':
+			fmt.Println(state)
 		case 'y', 'Y':
 			return true
 		case 'n', 'N':
@@ -290,6 +313,8 @@ func (c *ConsoleCLI) BiddingDecision(player int, state monopoly.GameState, prope
 			panic("User quit the game")
 		}
 		switch char {
+		case 's', 'S':
+			fmt.Println(state)
 		case 'y', 'Y':
 			bid := choosePrice()
 			return bid
@@ -315,6 +340,7 @@ func StartClient() {
 		panic(err)
 	}
 	fmt.Printf("Connected to server with ID: %d\n", c.ID)
+	fmt.Println("Press 's' to show current game state at any time.")
 	for {
 		var req server.ActionRequest
 		if err := decoder.Decode(&req); err != nil {
