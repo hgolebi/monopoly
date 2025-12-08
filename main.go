@@ -48,9 +48,9 @@ func trainNEATNetwork() {
 }
 
 func main() {
-	// trainNEATNetwork()
+	trainNEATNetwork()
 	// runConsoleMonopoly()
-	runBotMatch()
+	// runBotMatch()
 }
 
 func loadNEATPlayer(filePath string) *neatnetwork.NEATMonopolyPlayer {
