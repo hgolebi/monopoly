@@ -37,10 +37,10 @@ const (
 	TOURNAMENT_TYPE       = "single_round" // "single_round" or "bracket"
 	INCLUDE_HEURISTIC_BOT = true           // whether to include a heuristic bot in the games played during evaluation
 
-	GAMES_PER_EPOCH = 1500 // number of games every organism has to play during one epoch
+	GAMES_PER_EPOCH = 2000 // number of games every organism has to play during one epoch
 	GROUP_SIZE      = 4    // number of players in each game
 	MAX_THREADS     = 100  // maximum number of threads used to evaluate organisms
-	PRINT_EVERY     = 50   // saves logs and population to files every N epochs
+	PRINT_EVERY     = 100  // saves logs and population to files every N epochs
 )
 
 type GameSettings struct {
