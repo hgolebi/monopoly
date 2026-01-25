@@ -16,7 +16,7 @@ excess_coeff:  1.0
 mutdiff_coeff:  3.0
 
 # This global tells compatibility threshold under which two Genomes are considered the same species
-compat_threshold:  5.0
+compat_threshold:  4.0
 # How much does age matter? Gives a fitness boost up to some young age (niching). If it is 1, then young species get no fitness boost.
 age_significance:  1.0
 # Percent of average fitness for survival, how many get to reproduce based on survival_thresh * pop_size
