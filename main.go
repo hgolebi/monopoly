@@ -48,9 +48,11 @@ func trainNEATNetwork() {
 }
 
 func main() {
-	trainNEATNetwork()
+	// trainNEATNetwork()
 	// runConsoleMonopoly()
-	// runBotMatch()
+	for range 10 {
+		runBotMatch()
+	}
 }
 
 func loadNEATPlayer(filePath string) *neatnetwork.NEATMonopolyPlayer {
@@ -93,9 +95,13 @@ func runBotMatch() {
 	bot3 := loadNEATPlayer(".\\genomes\\" + bot3_name)
 	bot4 := loadNEATPlayer(".\\genomes\\" + bot4_name)
 
+	if bot1 == nil || bot2 == nil || bot3 == nil || bot4 == nil {
+
+	}
+
 	simpleBot := neatnetwork.SimplePlayerBot{}
 
-	players := []neatnetwork.MonopolyPlayer{bot2, bot3, &simpleBot}
+	players := []neatnetwork.MonopolyPlayer{bot3, &simpleBot}
 
 	neatOptionsFile := "neat_options.yaml"
 	neatOptions, err := neat.ReadNeatOptionsFromFile(neatOptionsFile)
@@ -109,10 +115,10 @@ func runBotMatch() {
 	}
 
 	fmt.Printf("Games played: %d\n", config.GAMES_PER_EPOCH)
-	fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot1_name, bot1.GetScore()/config.GAMES_PER_EPOCH, bot1.GetWins(), bot1.GetDraws())
-	fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot2_name, bot2.GetScore()/config.GAMES_PER_EPOCH, bot2.GetWins(), bot2.GetDraws())
+	// fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot1_name, bot1.GetScore()/config.GAMES_PER_EPOCH, bot1.GetWins(), bot1.GetDraws())
+	// fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot2_name, bot2.GetScore()/config.GAMES_PER_EPOCH, bot2.GetWins(), bot2.GetDraws())
 	fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot3_name, bot3.GetScore()/config.GAMES_PER_EPOCH, bot3.GetWins(), bot3.GetDraws())
-	fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot4_name, bot4.GetScore()/config.GAMES_PER_EPOCH, bot4.GetWins(), bot4.GetDraws())
+	// fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot4_name, bot4.GetScore()/config.GAMES_PER_EPOCH, bot4.GetWins(), bot4.GetDraws())
 
 	fmt.Printf("simpleBot: AvgScore=%d Wins=%d Draws=%d\n", simpleBot.GetScore()/config.GAMES_PER_EPOCH, simpleBot.GetWins(), simpleBot.GetDraws())
 }
