@@ -35,12 +35,12 @@ const (
 	// ROUND_LIMIT_WINNER_SCORE    = 0 // if player wins the game by reaching the round limit he will receive this score
 
 	TOURNAMENT_TYPE       = "single_round" // "single_round" or "bracket"
-	INCLUDE_HEURISTIC_BOT = true           // whether to include a heuristic bot in the games played during evaluation
+	INCLUDE_HEURISTIC_BOT = false          // whether to include a heuristic bot in the games played during evaluation
 
 	GAMES_PER_EPOCH = 1000 // number of games every organism has to play during one epoch
 	GROUP_SIZE      = 4    // number of players in each game
 	MAX_THREADS     = 100  // maximum number of threads used to evaluate organisms
-	PRINT_EVERY     = 100  // saves logs and population to files every N epochs
+	PRINT_EVERY     = 50   // saves logs and population to files every N epochs
 )
 
 type GameSettings struct {

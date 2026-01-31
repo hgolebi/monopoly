@@ -48,11 +48,11 @@ func trainNEATNetwork() {
 }
 
 func main() {
-	// trainNEATNetwork()
+	trainNEATNetwork()
 	// runConsoleMonopoly()
-	for range 10 {
-		runBotMatch()
-	}
+	// for range 10 {
+	// 	runBotMatch()
+	// }
 }
 
 func loadNEATPlayer(filePath string) *neatnetwork.NEATMonopolyPlayer {
