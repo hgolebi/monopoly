@@ -123,7 +123,7 @@ func (p *NEATMonopolyPlayer) GetStdAction(player int, state monopoly.GameState, 
 		var highest float64 = 0.0
 		for _, action := range availableActions {
 			// Only consider buy offers for key properties
-			if action == monopoly.BUYOFFER || !slices.Contains(keyProperties, propertyId) {
+			if action == monopoly.BUYOFFER && !slices.Contains(keyProperties, propertyId) {
 				continue
 			}
 
