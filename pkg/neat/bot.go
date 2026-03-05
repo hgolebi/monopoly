@@ -102,7 +102,7 @@ func (bot *SimplePlayerBot) GetStdAction(player int, state monopoly.GameState, a
 
 	// Buying key properties
 	if state.BuyOfferTries < config.MAX_OFFER_TRIES {
-		keyProperties := findKeyProperties(state, player)
+		keyProperties := FindKeyProperties(state, player)
 		for _, propertyId := range keyProperties {
 			if slices.Contains(availableActions.BuyPropertyList, propertyId) {
 				price := state.Properties[propertyId].Price / 2
@@ -209,7 +209,7 @@ func (bot *SimplePlayerBot) BuyFromPlayerDecision(player int, state monopoly.Gam
 	if price < state.Properties[propertyId].Price {
 		return true
 	}
-	isKeyProperty := slices.Contains(findKeyProperties(state, player), propertyId)
+	isKeyProperty := slices.Contains(FindKeyProperties(state, player), propertyId)
 	if isKeyProperty && price <= 2*state.Properties[propertyId].Price {
 		return true
 	}
@@ -235,7 +235,7 @@ func (bot *SimplePlayerBot) BiddingDecision(player int, state monopoly.GameState
 	if state.Players[player].Money-currentPrice < 200 {
 		return 0
 	}
-	isKeyProperty := slices.Contains(findKeyProperties(state, player), propertyId)
+	isKeyProperty := slices.Contains(FindKeyProperties(state, player), propertyId)
 	if isKeyProperty {
 		return currentPrice + 20
 	}
@@ -245,7 +245,13 @@ func (bot *SimplePlayerBot) BiddingDecision(player int, state monopoly.GameState
 	return 0
 }
 
-func findKeyProperties(state monopoly.GameState, playerId int) []int {
+func (bot *SimplePlayerBot) ResetScore() {
+	bot.mutex.Lock()
+	bot.score = 0
+	bot.mutex.Unlock()
+}
+
+func FindKeyProperties(state monopoly.GameState, playerId int) []int {
 	_, missing := getSetMaps(state, playerId)
 	keyProperties := []int{}
 	for _, properties := range missing {

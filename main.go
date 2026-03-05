@@ -5,10 +5,13 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
+	"monopoly/pkg/config"
 	"monopoly/pkg/consoleCLI"
 	"monopoly/pkg/monopoly"
 	neatnetwork "monopoly/pkg/neat"
 	"monopoly/pkg/server"
+	"time"
 
 	"github.com/yaricom/goNEAT/v4/neat"
 	"github.com/yaricom/goNEAT/v4/neat/genetics"
@@ -25,12 +28,12 @@ func runConsoleMonopoly() {
 		consoleCLI.StartClient()
 		return
 	}
-	neat.InitLogger("error")
+	filePath := ".\\genomes\\trained"
+	neat.InitLogger("debug")
 	bots := []server.PlayerIO{
-		loadNEATPlayer("./genomes/trained"),
-		loadNEATPlayer("./genomes/trained"),
-		loadNEATPlayer("./genomes/trained"),
-		loadNEATPlayer("./genomes/trained"),
+		loadNEATPlayer(filePath),
+		loadNEATPlayer(filePath),
+		loadNEATPlayer(filePath),
 	}
 
 	// Get number of human players from user
@@ -62,7 +65,21 @@ func trainNEATNetwork() {
 	neatnetwork.TrainNetwork(0, neatOptionsFile, neatGenomeFile, outputDir)
 }
 
+func main() {
+	trainNEATNetwork()
+	// runConsoleMonopoly()
+	// for range 10 {
+	// 	runBotMatch()
+	// }
+}
+
 func loadNEATPlayer(filePath string) *neatnetwork.NEATMonopolyPlayer {
+
+	// if len(os.Args) < 2 {
+	// 	fmt.Println("Usage: go run graph.go <genome_file_path>")
+	// } else {
+	// 	filePath = os.Args[1]
+	// }
 	genomeReader, err := genetics.NewGenomeReaderFromFile(filePath)
 	if err != nil {
 		log.Fatal("Failed to create genome reader:", err)
@@ -80,4 +97,46 @@ func loadNEATPlayer(filePath string) *neatnetwork.NEATMonopolyPlayer {
 		log.Fatal("Failed to create NEAT player from organism:", err)
 	}
 	return bot
+}
+
+func runBotMatch() {
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	e := neatnetwork.NewMonopolyEvaluator("experiment", config.GROUP_SIZE, rng)
+
+	bot1_name := "first_good"
+	bot2_name := "bracket_with_bot767"
+	bot3_name := "bracket133"
+	bot4_name := "bracket796"
+
+	bot1 := loadNEATPlayer(".\\genomes\\" + bot1_name)
+	bot2 := loadNEATPlayer(".\\genomes\\" + bot2_name)
+	bot3 := loadNEATPlayer(".\\genomes\\" + bot3_name)
+	bot4 := loadNEATPlayer(".\\genomes\\" + bot4_name)
+
+	if bot1 == nil || bot2 == nil || bot3 == nil || bot4 == nil {
+
+	}
+
+	simpleBot := neatnetwork.SimplePlayerBot{}
+
+	players := []neatnetwork.MonopolyPlayer{bot3, &simpleBot}
+
+	neatOptionsFile := "neat_options.yaml"
+	neatOptions, err := neat.ReadNeatOptionsFromFile(neatOptionsFile)
+	if err != nil {
+		log.Fatal("Failed to load NEAT options:", err)
+	}
+	ctx := neat.NewContext(context.Background(), neatOptions)
+	err = e.PlayRound(ctx, players, -1)
+	if err != nil {
+		panic(fmt.Sprintf("Error during bot match: %v", err))
+	}
+
+	fmt.Printf("Games played: %d\n", config.GAMES_PER_EPOCH)
+	// fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot1_name, bot1.GetScore()/config.GAMES_PER_EPOCH, bot1.GetWins(), bot1.GetDraws())
+	// fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot2_name, bot2.GetScore()/config.GAMES_PER_EPOCH, bot2.GetWins(), bot2.GetDraws())
+	fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot3_name, bot3.GetScore()/config.GAMES_PER_EPOCH, bot3.GetWins(), bot3.GetDraws())
+	// fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot4_name, bot4.GetScore()/config.GAMES_PER_EPOCH, bot4.GetWins(), bot4.GetDraws())
+
+	fmt.Printf("simpleBot: AvgScore=%d Wins=%d Draws=%d\n", simpleBot.GetScore()/config.GAMES_PER_EPOCH, simpleBot.GetWins(), simpleBot.GetDraws())
 }

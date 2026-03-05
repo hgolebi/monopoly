@@ -28,6 +28,7 @@ type MonopolyPlayer interface {
 	GetId() int
 	GetScore() int
 	GetOrganism() *genetics.Organism
+	ResetScore()
 }
 
 type NEATMonopolyPlayer struct {
@@ -108,9 +109,12 @@ func (p *NEATMonopolyPlayer) GetStdAction(player int, state monopoly.GameState, 
 
 	}
 
+	keyProperties := FindKeyProperties(state, player)
+
 	var result monopoly.ActionDetails
 	propertyActions := transformAvailableActionsList(availableActions)
 	for propertyId, availableActions := range propertyActions {
+
 		sensors.LoadAvailableStdActions(availableActions)
 		sensors.LoadPropertyId(propertyId)
 		sensors.LoadPrice(state.Properties[propertyId].Price)
@@ -118,9 +122,17 @@ func (p *NEATMonopolyPlayer) GetStdAction(player int, state monopoly.GameState, 
 		stdActionOutValues := GetStdActionOutputValues(outputList)
 		var highest float64 = 0.0
 		for _, action := range availableActions {
+			// Only consider buy offers for key properties
+			if action == monopoly.BUYOFFER && !slices.Contains(keyProperties, propertyId) {
+				continue
+			}
+
+			// Dont sell houses if not nesessary
 			if state.Charge <= 0 && action == monopoly.SELLHOUSE {
 				continue
 			}
+
+			// Dont mortgage or sell properties if not nesessary
 			if state.Charge <= 0 && state.Players[player].Money > 200 && (action == monopoly.MORTGAGE || action == monopoly.SELLOFFER) {
 				continue
 			}
@@ -179,6 +191,9 @@ func (p *NEATMonopolyPlayer) BuyDecision(player int, state monopoly.GameState, p
 }
 
 func (p *NEATMonopolyPlayer) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, price int) bool {
+	if price == 0 {
+		return true
+	}
 	sensors := NewMonopolySensors()
 	sensors.LoadState(state, player)
 	sensors.LoadDecisionContext(BUY_FROM_PLAYER)
@@ -186,10 +201,14 @@ func (p *NEATMonopolyPlayer) BuyFromPlayerDecision(player int, state monopoly.Ga
 	sensors.LoadPrice(price)
 
 	outputList := p.GetDecision(sensors)
-	return outputList[outputs["BUY_FROM_PLAYER"]] > 0.5
+	property := state.Properties[propertyId]
+	return outputList[outputs["BUY_FROM_PLAYER"]]*float64(property.Price)/float64(price) > 0.5
 }
 
 func (p *NEATMonopolyPlayer) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, price int) bool {
+	if price == 0 {
+		return false
+	}
 	sensors := NewMonopolySensors()
 	sensors.LoadState(state, player)
 	sensors.LoadDecisionContext(SELL_TO_PLAYER)
@@ -197,7 +216,8 @@ func (p *NEATMonopolyPlayer) SellToPlayerDecision(player int, state monopoly.Gam
 	sensors.LoadPrice(price)
 
 	outputList := p.GetDecision(sensors)
-	return outputList[outputs["SELL_TO_PLAYER"]] > 0.5
+	property := state.Properties[propertyId]
+	return outputList[outputs["SELL_TO_PLAYER"]]*float64(price)/float64(property.Price) > 0.5
 }
 
 func (p *NEATMonopolyPlayer) BiddingDecision(player int, state monopoly.GameState, propertyId int, currentPrice int, currentWinner int) int {
@@ -275,4 +295,10 @@ func (p *NEATMonopolyPlayer) GetDraws() int {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	return p.draws
+}
+
+func (p *NEATMonopolyPlayer) ResetScore() {
+	p.mutex.Lock()
+	p.score = 0
+	p.mutex.Unlock()
 }
