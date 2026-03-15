@@ -7,14 +7,14 @@ import (
 )
 
 func TestNewProperty(t *testing.T) {
-	property := NewProperty(1, 1, "Test Property", 100, 50, true, "Test Set")
+	property := NewProperty(1, 1, "Test Property", 100, 50, true, 1)
 	assert.Equal(t, property.FieldIndex, 1, "FieldIndex should be 1")
 	assert.Equal(t, property.PropertyIndex, 1, "PropertyIndex should be 1")
 	assert.Equal(t, property.Name, "Test Property", "Name should be 'Test Property'")
 	assert.Equal(t, property.Price, 100, "Price should be 100")
 	assert.Equal(t, property.HousePrice, 50, "HousePrice should be 50")
 	assert.Equal(t, property.CanBuildHouse, true, "CanBuildHouse should be true")
-	assert.Equal(t, property.Set, "Test Set", "Set should be 'Test Set'")
+	assert.Equal(t, property.SetIndex, 1, "SetIndex should be 1")
 }
 
 func TestNewPropertyFail(t *testing.T) {
@@ -36,7 +36,7 @@ func TestNewPropertyFail(t *testing.T) {
 				t.Errorf("Expected panic for property with price %d and house price %d, but got none", test.price, test.housePrice)
 			}
 		}()
-		NewProperty(test.fieldID, test.propertyID, test.name, test.price, test.housePrice, test.canBuild, "Test Set")
+		NewProperty(test.fieldID, test.propertyID, test.name, test.price, test.housePrice, test.canBuild, 1)
 	}
 
 }

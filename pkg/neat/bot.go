@@ -306,13 +306,13 @@ func getSetMaps(state monopoly.GameState, playerId int) (have map[string][]int, 
 		"DarkBlue":  {},
 	}
 	for idx, property := range state.Properties {
-		if property.Set == monopoly.RAILROAD || property.Set == monopoly.UTILITY {
+		if property.SetIndex == monopoly.RAILROAD || property.SetIndex == monopoly.UTILITY {
 			continue
 		}
 		if property.Owner == nil || property.Owner.ID != playerId {
-			missing[property.Set] = append(missing[property.Set], idx)
+			missing[property.SetIndex] = append(missing[property.SetIndex], idx)
 		} else {
-			have[property.Set] = append(have[property.Set], idx)
+			have[property.SetIndex] = append(have[property.SetIndex], idx)
 		}
 	}
 	return

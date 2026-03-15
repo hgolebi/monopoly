@@ -1271,10 +1271,10 @@ func TestBuyOut(t *testing.T) {
 		cash         int
 		expectedCash int
 	}{
-		{0, 1, 500, 434},
-		{1, 3, 300, 190},
-		{2, 5, 400, 268},
-		{3, 8, 600, 446},
+		{0, 1, 500, 467},
+		{1, 3, 300, 245},
+		{2, 5, 400, 334},
+		{3, 8, 600, 523},
 	}
 	for _, test := range tests {
 		io := &MockMonopolyIO{}

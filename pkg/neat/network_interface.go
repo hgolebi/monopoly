@@ -6,316 +6,123 @@ import (
 	"monopoly/pkg/monopoly"
 )
 
-var propertyInputs = map[int]map[string]int{
-	0: { // brown1
-		"OWNER":        0,
-		"IS_MORTGAGED": 1,
-		"HOUSES":       2,
-	},
-	1: { // brown2
-		"OWNER":        3,
-		"IS_MORTGAGED": 4,
-		"HOUSES":       5,
-	},
-	2: { // railway1
-		"OWNER":        6,
-		"IS_MORTGAGED": 7,
-	},
-	3: { // lightblue1
-		"OWNER":        8,
-		"IS_MORTGAGED": 9,
-		"HOUSES":       10,
-	},
-	4: { // lightblue2
-		"OWNER":        11,
-		"IS_MORTGAGED": 12,
-		"HOUSES":       13,
-	},
-	5: { // lightblue3
-		"OWNER":        14,
-		"IS_MORTGAGED": 15,
-		"HOUSES":       16,
-	},
-	6: { // railway2
-		"OWNER":        17,
-		"IS_MORTGAGED": 18,
-	},
-	7: { // pink1
-		"OWNER":        19,
-		"IS_MORTGAGED": 20,
-		"HOUSES":       21,
-	},
-	8: { // pink2
-		"OWNER":        22,
-		"IS_MORTGAGED": 23,
-		"HOUSES":       24,
-	},
-	9: { // pink3
-		"OWNER":        25,
-		"IS_MORTGAGED": 26,
-		"HOUSES":       27,
-	},
-	10: { // utility1
-		"OWNER":        28,
-		"IS_MORTGAGED": 29,
-	},
-	11: { // orange1
-		"OWNER":        30,
-		"IS_MORTGAGED": 31,
-		"HOUSES":       32,
-	},
-	12: { // orange2
-		"OWNER":        33,
-		"IS_MORTGAGED": 34,
-		"HOUSES":       35,
-	},
-	13: { // orange3
-		"OWNER":        36,
-		"IS_MORTGAGED": 37,
-		"HOUSES":       38,
-	},
-	14: { // railway3
-		"OWNER":        39,
-		"IS_MORTGAGED": 40,
-	},
-	15: { // red1
-		"OWNER":        41,
-		"IS_MORTGAGED": 42,
-		"HOUSES":       43,
-	},
-	16: { // red2
-		"OWNER":        44,
-		"IS_MORTGAGED": 45,
-		"HOUSES":       46,
-	},
-	17: { // red3
-		"OWNER":        47,
-		"IS_MORTGAGED": 48,
-		"HOUSES":       49,
-	},
-	18: { // yellow1
-		"OWNER":        50,
-		"IS_MORTGAGED": 51,
-		"HOUSES":       52,
-	},
-	19: { // utility2
-		"OWNER":        53,
-		"IS_MORTGAGED": 54,
-	},
-	20: { // yellow2
-		"OWNER":        55,
-		"IS_MORTGAGED": 56,
-		"HOUSES":       57,
-	},
-	21: { // yellow3
-		"OWNER":        58,
-		"IS_MORTGAGED": 59,
-		"HOUSES":       60,
-	},
-	22: { // railway4
-		"OWNER":        61,
-		"IS_MORTGAGED": 62,
-	},
-	23: { // green1
-		"OWNER":        63,
-		"IS_MORTGAGED": 64,
-		"HOUSES":       65,
-	},
-	24: { // green2
-		"OWNER":        66,
-		"IS_MORTGAGED": 67,
-		"HOUSES":       68,
-	},
-	25: { // green3
-		"OWNER":        69,
-		"IS_MORTGAGED": 70,
-		"HOUSES":       71,
-	},
-	26: { // blue1
-		"OWNER":        72,
-		"IS_MORTGAGED": 73,
-		"HOUSES":       74,
-	},
-	27: { // blue2
-		"OWNER":        75,
-		"IS_MORTGAGED": 76,
-		"HOUSES":       77,
-	},
-}
-
-var playerInputs = map[int]map[string]int{
-	1: {
-		"IS_ALIVE": 78,
-		"MONEY":    79,
-	},
-	2: {
-		"IS_ALIVE": 80,
-		"MONEY":    81,
-	},
-	3: {
-		"IS_ALIVE": 82,
-		"MONEY":    83,
-	},
-}
-
-// Inputs dedicated to the player making the decision, information is redundant
-var currPlayerInputs = map[string]int{
-	"IS_ALIVE":   84,
-	"IS_JAILED":  85,
-	"POSITION":   86,
-	"MONEY":      87,
-	"JAIL_CARDS": 88,
-}
-
-var baseInputs = map[string]int{
-	"DECISION_CONTEXT": 89, // Current decision context, for example bidding decision, buying decision
-	"PROPERTY_ID":      90, // In case of property-related decisions like bidding
-	"PRICE":            91, // In case of price-related decisions; normalized to 0.0 - 1.0, where 1.0 is MAX_MONEY
-	"CURR_BID":         92, // In case of bidding
-	"CURR_BID_WINNER":  93, // In case of bidding
-	"CHARGE":           94, // In case of charge that would result in player going bankrupt
-}
-
-var availableStdActionInputs = map[monopoly.StdAction]int{
-	monopoly.NOACTION:  95,
-	monopoly.MORTGAGE:  96,
-	monopoly.BUYOUT:    97,
-	monopoly.SELLOFFER: 98,
-	monopoly.BUYOFFER:  99,
-	monopoly.BUYHOUSE:  100,
-	monopoly.SELLHOUSE: 101,
-}
-
-type DecisionContext int
+type InputID int
+type OutputID int
 
 const (
-	BUY_DECISION DecisionContext = iota
-	BIDDING_DECISION
-	JAIL_DECISION
-	BUY_FROM_PLAYER
-	SELL_TO_PLAYER
-	STD_ACTION
+	IN_PLAYER_IS_JAILED InputID = iota
+	IN_PLAYER_POSITION
+	IN_PLAYER_MONEY
+
+	IN_PROPERTY_ID
+	IN_PROPERTY_TYPE // street/railroad/utility
+	IN_PROPERTY_PRICE
+
+	IN_SET_ID
+	IN_SET_PROPERTIES_NEEDED   // how many properties player needs to complete the set
+	IN_SET_PROPERTIES_OCCUPIED // how many properties in the set are owned by other players
+
+	// enemy is the player that is being targeted by the current action (buying from, selling to, bidding against)
+	IN_ENEMY_INVOLVED
+	IN_ENEMY_MONEY
+	IN_ENEMY_SET_PROPERTIES_NEEDED   // how many properties in the set the enemy player needs to complete the set
+	IN_ENEMY_SET_PROPERTIES_OCCUPIED // how many properties in the set are owned by players other than the enemy player
+
+	IN_AVAILABLE_PROPERTIES // how many properties are still available for purchase (not owned by any player)
+
+	IN_BUY_PRICE  // price for the current action of buying (including bidding)
+	IN_SELL_PRICE // price for the current action of selling
+
+	INPUT_COUNT
 )
 
-var outputs = map[string]int{
-	"BUY_DECISION":    0, // yes / no
-	"BID_DECISION":    1, // yes / no
-	"BUY_FROM_PLAYER": 2, // yes / no
-	"SELL_TO_PLAYER":  3, // yes / no
+const (
+	OUT_BUY_PROPERTY OutputID = iota
+	OUT_SELL_PROPERTY
+	OUT_MORTGAGE
+	OUT_BUYOUT
+	OUT_BUY_HOUSE
 
-	// standard actions; highest score is the result (if applicable)
-	"NO_ACTION":  4,
-	"MORTGAGE":   5,
-	"BUYOUT":     6,
-	"SELL_OFFER": 7,
-	"BUY_OFFER":  8,
-	"BUY_HOUSE":  9,
-	"SELL_HOUSE": 10,
-
-	// in case of sell offer; if player is included in the offer;
-	"PLAYER_1": 11, // yes / no
-	"PLAYER_2": 12, // yes / no
-	"PLAYER_3": 13, // yes / no
-
-	"PRICE": 14, // in case of price-related actions; normalized to 0.0 - 1.0, where 1.0 is MAX_MONEY
-}
-
-func GetStdActionOutputValues(output []float64) map[monopoly.StdAction]float64 {
-	return map[monopoly.StdAction]float64{
-		monopoly.NOACTION:  output[outputs["NO_ACTION"]],
-		monopoly.MORTGAGE:  activation(output[outputs["MORTGAGE"]]),
-		monopoly.BUYOUT:    output[outputs["BUYOUT"]],
-		monopoly.SELLOFFER: activation(output[outputs["SELL_OFFER"]]),
-		monopoly.BUYOFFER:  activation(output[outputs["BUY_OFFER"]]),
-		monopoly.BUYHOUSE:  output[outputs["BUY_HOUSE"]],
-		monopoly.SELLHOUSE: activation(output[outputs["SELL_HOUSE"]]),
-	}
-
-}
-
-func GetPlayerOutputValues(output []float64) map[int]float64 {
-	return map[int]float64{
-		1: output[outputs["PLAYER_1"]],
-		2: output[outputs["PLAYER_2"]],
-		3: output[outputs["PLAYER_3"]],
-	}
-}
-
-func GetPriceOutputValue(output []float64) int {
-	out := output[outputs["PRICE"]]
-	return int(math.Round(out * float64(cfg.MAX_MONEY)))
-}
+	OUTPUT_COUNT
+)
 
 type MonopolySensors []float64
 
 func NewMonopolySensors() MonopolySensors {
-	return make([]float64, 102)
+	return make([]float64, int(INPUT_COUNT))
 }
 
-func (s MonopolySensors) LoadState(state monopoly.GameState, playerID int) {
-	id := 0
-	for index, player := range state.Players {
-		if index == playerID {
-			s.loadCurrentPlayerState(player)
-		} else {
-			s.loadPlayerState(id, player)
-			id++
+func (s MonopolySensors) LoadState(state monopoly.GameState, playerID int, propertyID int) {
+	s.loadPlayerInputs(state, playerID)
+	s.loadPropertyInputs(state, propertyID)
+	//TODO LoadSetInputs
+	s.loadAvailablePropertiesInput(state)
+
+}
+
+func (s MonopolySensors) loadPlayerInputs(state monopoly.GameState, playerID int) {
+	player := state.Players[playerID]
+	s[IN_PLAYER_IS_JAILED] = fromBool(player.IsJailed)
+	s[IN_PLAYER_POSITION] = normalize(player.CurrentPosition, 0, cfg.LAST_FIELD_ID, false)
+	s[IN_PLAYER_MONEY] = normalize(player.Money, 0, cfg.MAX_MONEY, false)
+}
+
+func (s MonopolySensors) loadPropertyInputs(state monopoly.GameState, propertyID int) {
+	property := state.Properties[propertyID]
+	s[IN_PROPERTY_ID] = normalize(propertyID, 0, cfg.LAST_PROPERTY_ID, false)
+	if property.SetIndex == monopoly.RailroadSetIndex {
+		s[IN_PROPERTY_TYPE] = 0.0
+	} else if property.SetIndex == monopoly.UtilitySetIndex {
+		s[IN_PROPERTY_TYPE] = 0.5
+	} else {
+		s[IN_PROPERTY_TYPE] = 1.0
+	}
+
+	price := property.Price
+	if property.IsMortgaged {
+		price = price + property.GetBuyoutPrice()
+	}
+	s[IN_PROPERTY_PRICE] = normalize(price, 0, cfg.MAX_MONEY, false)
+}
+
+func (s MonopolySensors) LoadSetInputs(state monopoly.GameState, propertyId int, playerID int) {
+	property := state.Properties[propertyId]
+	setId := property.SetIndex
+	lastSetId := len(monopoly.Sets) - 1
+	s[IN_SET_ID] = normalize(setId, 0, lastSetId, false)
+	setCount, ownedByPlayer, ownedByOthers := getSetDetails(state, setId, playerID)
+	s[IN_SET_PROPERTIES_NEEDED] = normalize(setCount-ownedByPlayer, 0, lastSetId, false)
+	s[IN_SET_PROPERTIES_OCCUPIED] = normalize(ownedByOthers, 0, lastSetId, false)
+}
+
+func (s MonopolySensors) loadAvailablePropertiesInput(state monopoly.GameState) {
+	availableProperties := 0
+	for _, prop := range state.Properties {
+		if prop.Owner == nil {
+			availableProperties++
 		}
 	}
-	for idx, property := range state.Properties {
-		s.loadPropertyState(idx, property, playerID)
-	}
+	s[IN_AVAILABLE_PROPERTIES] = normalize(availableProperties, 0, cfg.LAST_PROPERTY_ID+1, false)
 }
 
-func (s MonopolySensors) loadPlayerState(id int, player *monopoly.Player) {
-	// id is not the same as in game
-	s[playerInputs[id]["IS_ALIVE"]] = fromBool(!player.IsBankrupt)
-	s[playerInputs[id]["MONEY"]] = normalize(player.Money, 0, cfg.MAX_MONEY, false)
+func (s MonopolySensors) LoadEnemyInputs(state monopoly.GameState, enemyPlayerID int, propertyID int) {
+	enemy := state.Players[enemyPlayerID]
+	s[IN_ENEMY_INVOLVED] = fromBool(true)
+	s[IN_ENEMY_MONEY] = normalize(enemy.Money, 0, cfg.MAX_MONEY, false)
+	property := state.Properties[propertyID]
+	setId := property.SetIndex
+	lastSetId := len(monopoly.Sets) - 1
+	setCount, ownedByEnemy, ownedByOthers := getSetDetails(state, setId, enemyPlayerID)
+	s[IN_ENEMY_SET_PROPERTIES_NEEDED] = normalize(setCount-ownedByEnemy, 0, lastSetId, false)
+	s[IN_ENEMY_SET_PROPERTIES_OCCUPIED] = normalize(ownedByOthers, 0, lastSetId, false)
 }
 
-func (s MonopolySensors) loadPropertyState(propertyId int, property *monopoly.Property, currPlayerId int) {
-	s[propertyInputs[propertyId]["IS_MORTGAGED"]] = fromBool(property.IsMortgaged)
-	if property.Owner != nil {
-		s[propertyInputs[propertyId]["OWNER"]] = normalize(getNewPlayerId(property.Owner.ID, currPlayerId), 0, cfg.LAST_PLAYER_ID, true)
-	}
-	if property.CanBuildHouse {
-		s[propertyInputs[propertyId]["HOUSES"]] = normalize(property.Houses, 0, cfg.MAX_HOUSES, false)
-	}
+func (s MonopolySensors) LoadBuyPriceInput(price int) {
+	s[IN_BUY_PRICE] = normalize(price, 0, cfg.MAX_MONEY, false)
 }
 
-func (s MonopolySensors) loadCurrentPlayerState(player *monopoly.Player) {
-	s[currPlayerInputs["IS_ALIVE"]] = fromBool(!player.IsBankrupt)
-	s[currPlayerInputs["IS_JAILED"]] = fromBool(player.IsJailed)
-	s[currPlayerInputs["POSITION"]] = normalize(player.CurrentPosition, 0, cfg.LAST_FIELD_ID, false)
-	s[currPlayerInputs["MONEY"]] = normalize(player.Money, 0, cfg.MAX_MONEY, false)
-	s[currPlayerInputs["JAIL_CARDS"]] = normalize(player.JailCards, 0, cfg.MAX_JAIL_CARDS, false)
-}
-
-func (s MonopolySensors) LoadDecisionContext(ctx DecisionContext) {
-	s[baseInputs["DECISION_CONTEXT"]] = normalize(int(ctx), 0, int(STD_ACTION), false)
-}
-
-func (s MonopolySensors) LoadPropertyId(propertyId int) {
-	s[baseInputs["PROPERTY_ID"]] = normalize(propertyId, 0, cfg.LAST_PROPERTY_ID, true)
-}
-
-func (s MonopolySensors) LoadPrice(price int) {
-	s[baseInputs["PRICE"]] = normalize(price, 0, cfg.MAX_MONEY, false)
-}
-
-func (s MonopolySensors) LoadBiddingInputs(currentBid int, currentBidWinner int, currPlayerId int) {
-	s[baseInputs["CURR_BID"]] = normalize(currentBid, 0, cfg.MAX_MONEY, false)
-	s[baseInputs["CURR_BID_WINNER"]] = normalize(getNewPlayerId(currentBidWinner, currPlayerId), 0, cfg.LAST_PLAYER_ID, true)
-}
-
-func (s MonopolySensors) LoadCharge(charge int) {
-	s[baseInputs["CHARGE"]] = normalize(charge, 0, cfg.MAX_MONEY, false)
-}
-
-func (s MonopolySensors) LoadAvailableStdActions(actions []monopoly.StdAction) {
-	for _, action := range actions {
-		s[availableStdActionInputs[action]] = 1.0
-	}
+func (s MonopolySensors) LoadSellPriceInput(price int) {
+	s[IN_SELL_PRICE] = normalize(price, 0, cfg.MAX_MONEY, false)
 }
 
 func fromBool(value bool) float64 {

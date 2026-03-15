@@ -1,5 +1,7 @@
 package monopoly
 
+type PropertyType int
+
 type Field interface {
 	Action(*Game)
 	GetName() string
@@ -15,7 +17,7 @@ type Property struct {
 	IsMortgaged   bool
 	CanBuildHouse bool
 	Houses        int
-	Set           string
+	SetIndex      int
 }
 
 type NoActionField struct {
@@ -41,7 +43,7 @@ type TaxField struct {
 	Tax        int
 }
 
-func NewProperty(field_id int, property_id int, name string, price int, house_price int, can_build bool, set string) *Property {
+func NewProperty(field_id int, property_id int, name string, price int, house_price int, can_build bool, set int) *Property {
 	if price < 0 || house_price < 0 {
 		panic("Price and house price cannot be negative")
 	}
@@ -52,7 +54,7 @@ func NewProperty(field_id int, property_id int, name string, price int, house_pr
 		Price:         price,
 		HousePrice:    house_price,
 		CanBuildHouse: can_build,
-		Set:           set,
+		SetIndex:      set,
 		IsMortgaged:   false,
 		Houses:        0,
 	}
@@ -104,4 +106,8 @@ func (f *Chance) GetName() string {
 
 func (f *TaxField) GetName() string {
 	return f.Name
+}
+
+func (p *Property) GetBuyoutPrice() int {
+	return int(float64(p.Price) * 0.55)
 }

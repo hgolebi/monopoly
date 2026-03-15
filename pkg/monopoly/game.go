@@ -11,16 +11,12 @@ import (
 	cfg "monopoly/pkg/config"
 )
 
-const RAILROAD = "Railroad"
-const UTILITY = "Utility"
-
 type Game struct {
 	ctx              context.Context
 	players          []*Player
 	fields           []Field
 	properties       []*Property
 	charge_map       map[int][]int
-	sets             map[string][]int
 	currentPlayerIdx int
 	round            int
 	settings         cfg.GameSettings
@@ -58,34 +54,34 @@ func NewGame(ctx context.Context, io IMonopoly_IO, logger Logger, seed int64) *G
 	}
 
 	g.properties = []*Property{
-		NewProperty(1, 0, "Brown1", 60, 50, true, "Brown"),
-		NewProperty(3, 1, "Brown2", 60, 50, true, "Brown"),
-		NewProperty(5, 2, "Railroad1", 200, 0, false, RAILROAD),
-		NewProperty(6, 3, "LightBlue1", 100, 50, true, "Light Blue"),
-		NewProperty(8, 4, "LightBlue2", 100, 50, true, "Light Blue"),
-		NewProperty(9, 5, "LightBlue3", 120, 50, true, "Light Blue"),
-		NewProperty(11, 6, "Pink1", 140, 100, true, "Pink"),
-		NewProperty(12, 7, "Utility1", 150, 0, false, UTILITY),
-		NewProperty(13, 8, "Pink2", 140, 100, true, "Pink"),
-		NewProperty(14, 9, "Pink3", 160, 100, true, "Pink"),
-		NewProperty(15, 10, "Railroad2", 200, 0, false, RAILROAD),
-		NewProperty(16, 11, "Orange1", 180, 100, true, "Orange"),
-		NewProperty(18, 12, "Orange2", 180, 100, true, "Orange"),
-		NewProperty(19, 13, "Orange3", 200, 100, true, "Orange"),
-		NewProperty(21, 14, "Red1", 220, 150, true, "Red"),
-		NewProperty(23, 15, "Red2", 220, 150, true, "Red"),
-		NewProperty(24, 16, "Red3", 240, 150, true, "Red"),
-		NewProperty(25, 17, "Railroad3", 200, 0, false, RAILROAD),
-		NewProperty(26, 18, "Yellow1", 260, 150, true, "Yellow"),
-		NewProperty(27, 19, "Yellow2", 260, 150, true, "Yellow"),
-		NewProperty(28, 20, "Utility2", 150, 0, false, UTILITY),
-		NewProperty(29, 21, "Yellow3", 280, 150, true, "Yellow"),
-		NewProperty(31, 22, "Green1", 300, 200, true, "Green"),
-		NewProperty(32, 23, "Green2", 300, 200, true, "Green"),
-		NewProperty(34, 24, "Green3", 320, 200, true, "Green"),
-		NewProperty(35, 25, "Railroad4", 200, 0, false, RAILROAD),
-		NewProperty(37, 26, "DarkBlue1", 350, 200, true, "Dark Blue"),
-		NewProperty(39, 27, "DarkBlue2", 400, 200, true, "Dark Blue"),
+		NewProperty(1, 0, "Brown1", 60, 50, true, 0),
+		NewProperty(3, 1, "Brown2", 60, 50, true, 0),
+		NewProperty(5, 2, "Railroad1", 200, 0, false, 1),
+		NewProperty(6, 3, "LightBlue1", 100, 50, true, 2),
+		NewProperty(8, 4, "LightBlue2", 100, 50, true, 2),
+		NewProperty(9, 5, "LightBlue3", 120, 50, true, 2),
+		NewProperty(11, 6, "Pink1", 140, 100, true, 3),
+		NewProperty(12, 7, "Utility1", 150, 0, false, 4),
+		NewProperty(13, 8, "Pink2", 140, 100, true, 3),
+		NewProperty(14, 9, "Pink3", 160, 100, true, 3),
+		NewProperty(15, 10, "Railroad2", 200, 0, false, 1),
+		NewProperty(16, 11, "Orange1", 180, 100, true, 5),
+		NewProperty(18, 12, "Orange2", 180, 100, true, 5),
+		NewProperty(19, 13, "Orange3", 200, 100, true, 5),
+		NewProperty(21, 14, "Red1", 220, 150, true, 6),
+		NewProperty(23, 15, "Red2", 220, 150, true, 6),
+		NewProperty(24, 16, "Red3", 240, 150, true, 6),
+		NewProperty(25, 17, "Railroad3", 200, 0, false, 1),
+		NewProperty(26, 18, "Yellow1", 260, 150, true, 7),
+		NewProperty(27, 19, "Yellow2", 260, 150, true, 7),
+		NewProperty(28, 20, "Utility2", 150, 0, false, 4),
+		NewProperty(29, 21, "Yellow3", 280, 150, true, 7),
+		NewProperty(31, 22, "Green1", 300, 200, true, 8),
+		NewProperty(32, 23, "Green2", 300, 200, true, 8),
+		NewProperty(34, 24, "Green3", 320, 200, true, 8),
+		NewProperty(35, 25, "Railroad4", 200, 0, false, 1),
+		NewProperty(37, 26, "DarkBlue1", 350, 200, true, 9),
+		NewProperty(39, 27, "DarkBlue2", 400, 200, true, 9),
 	}
 
 	g.fields = []Field{
@@ -129,19 +125,6 @@ func NewGame(ctx context.Context, io IMonopoly_IO, logger Logger, seed int64) *G
 		g.properties[26],
 		&TaxField{FieldIndex: 38, Name: "Luxury Tax", Tax: 100},
 		g.properties[27],
-	}
-
-	g.sets = map[string][]int{
-		"Brown":      {0, 1},
-		"Light Blue": {3, 4, 5},
-		"Pink":       {6, 8, 9},
-		"Orange":     {11, 12, 13},
-		"Red":        {14, 15, 16},
-		"Yellow":     {18, 19, 20, 21},
-		"Green":      {22, 23, 24},
-		"Dark Blue":  {26, 27},
-		RAILROAD:     {2, 10, 17, 25},
-		UTILITY:      {7, 20},
 	}
 
 	g.charge_map = map[int][]int{
@@ -663,7 +646,7 @@ func (g *Game) getBuyPropertyList(player_id int) []int {
 func (g *Game) getBuyHouseList(player_id int) []int {
 	buy_list := []int{}
 	player := g.players[player_id]
-	for _, set := range g.sets {
+	for _, set := range Sets {
 		has_full_set := true
 		var temp_list []int
 		for _, propertyIdx := range set {
@@ -699,7 +682,7 @@ func (g *Game) checkHouses(property *Property) bool {
 	if !property.CanBuildHouse {
 		return false
 	}
-	set := g.sets[property.Set]
+	set := Sets[property.SetIndex]
 	for _, propertyIdx := range set {
 		if g.properties[propertyIdx].Houses > 0 {
 			return true
@@ -851,7 +834,7 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, price int) {
 
 func (g *Game) buyOut(player_id int, propertyId int) {
 	property := g.properties[propertyId]
-	price := int(float64(property.Price) * 1.1)
+	price := property.GetBuyoutPrice()
 	g.chargePlayer(player_id, price, nil)
 	property.IsMortgaged = false
 	player := g.players[player_id]
@@ -962,16 +945,16 @@ func (g *Game) checkCharge(p *Property) int {
 	}
 	charges := g.charge_map[p.PropertyIndex]
 	charge_idx := -1
-	if p.Set == RAILROAD {
-		for _, propertyIdx := range g.sets[RAILROAD] {
+	if p.SetIndex == RailroadSetIndex {
+		for _, propertyIdx := range Sets[RailroadSetIndex] {
 			if g.properties[propertyIdx].Owner == p.Owner {
 				charge_idx++
 			}
 		}
 		return charges[charge_idx]
 	}
-	if p.Set == UTILITY {
-		for _, propertyIdx := range g.sets[UTILITY] {
+	if p.SetIndex == UtilitySetIndex {
+		for _, propertyIdx := range Sets[UtilitySetIndex] {
 			if g.properties[propertyIdx].Owner == p.Owner {
 				charge_idx++
 			}
@@ -979,7 +962,7 @@ func (g *Game) checkCharge(p *Property) int {
 		return charges[charge_idx]
 	}
 
-	set := g.sets[p.Set]
+	set := Sets[p.SetIndex]
 	has_full_set := true
 	for _, propertyIdx := range set {
 		if g.properties[propertyIdx].Owner != p.Owner {
