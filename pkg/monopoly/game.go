@@ -924,13 +924,15 @@ func (g *Game) doForProperty(p *Property) {
 
 	if player.Money < p.Price {
 		g.logger.Log(fmt.Sprintf("%s cannot afford the property", player.Name))
-		g.auction(p, g.currentPlayerIdx)
+		queue := g.getAuctionQueue(g.currentPlayerIdx)
+		g.auction(p, queue, g.settings.MinPrice)
 		return
 	}
 	wantToBuy := g.io.BuyDecision(g.currentPlayerIdx, g.getState(), p.PropertyIndex)
 	if !wantToBuy {
 		g.logger.Log(fmt.Sprintf("%s does not want to buy the property", player.Name))
-		g.auction(p, g.currentPlayerIdx)
+		queue := g.getAuctionQueue(g.currentPlayerIdx)
+		g.auction(p, queue, g.settings.MinPrice)
 		return
 	}
 	g.logger.Log(fmt.Sprintf("%s buys the property", player.Name))
@@ -978,8 +980,7 @@ func (g *Game) checkCharge(p *Property) int {
 	return charges[charge_idx]
 }
 
-func (g *Game) auction(property *Property, first_player_id int) {
-	g.logger.Log(fmt.Sprintf("Auctioning property %d", property.PropertyIndex))
+func (g *Game) getAuctionQueue(first_player_id int) *list.List {
 	queue := list.New()
 	for _, player := range g.players[first_player_id:] {
 		if !player.IsBankrupt {
@@ -991,7 +992,14 @@ func (g *Game) auction(property *Property, first_player_id int) {
 			queue.PushBack(player.ID)
 		}
 	}
-	curr_price := g.settings.MinPrice
+	return queue
+}
+
+func (g *Game) auction(property *Property, player_queue *list.List, min_price int) (winner_id int, winning_price int) {
+	g.logger.Log(fmt.Sprintf("Auctioning property %d", property.PropertyIndex))
+	queue := player_queue
+
+	curr_price := min_price
 	auction_winner := -1
 	for queue.Len() > 0 {
 		bidderID := queue.Front().Value.(int)
@@ -1001,7 +1009,7 @@ func (g *Game) auction(property *Property, first_player_id int) {
 		}
 		bidder := g.players[bidderID]
 		bid_offer := g.io.BiddingDecision(bidderID, g.getState(), property.PropertyIndex, curr_price, auction_winner)
-		if bid_offer <= curr_price {
+		if bid_offer < curr_price || (bid_offer == curr_price && auction_winner != -1) {
 			g.logger.Log(fmt.Sprintf("%s passes", bidder.Name))
 		} else if bid_offer > bidder.Money {
 			g.logger.Log(fmt.Sprintf("%s wants to bid %d$ but cannot afford it", bidder.Name, bid_offer))
@@ -1013,17 +1021,18 @@ func (g *Game) auction(property *Property, first_player_id int) {
 			queue.PushBack(bidderID)
 		}
 		if g.finished {
-			return
+			return -1, 0
 		}
 	}
 	if auction_winner == -1 {
 		g.logger.Log("Auction ended without any bids.")
-		return
+		return -1, 0
 	}
 	winner := g.players[auction_winner]
 	g.logger.Log(fmt.Sprintf("Auction won by %s for %d$", winner.Name, curr_price))
 	g.charge(winner, curr_price, nil)
 	g.addProperty(winner, property.PropertyIndex)
+	return auction_winner, curr_price
 }
 
 func (g *Game) addProperty(player *Player, property_id int) {
@@ -1079,7 +1088,8 @@ func (g *Game) bankrupt(player *Player, creditor *Player) {
 		}
 		for _, property := range lostProperties {
 			if !g.finished {
-				g.auction(g.properties[property], active_players[g.randomSource.Intn(len(active_players))])
+				queue := g.getAuctionQueue(active_players[g.randomSource.Intn(len(active_players))])
+				g.auction(g.properties[property], queue, g.settings.MinPrice)
 			}
 		}
 	}

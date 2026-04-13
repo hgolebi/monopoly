@@ -29,6 +29,7 @@ const (
 	IN_ENEMY_SET_PROPERTIES_OCCUPIED // how many properties in the set are owned by players other than the enemy player
 
 	IN_AVAILABLE_PROPERTIES // how many properties are still available for purchase (not owned by any player)
+	IN_ROUND                // current round number
 
 	IN_BUY_PRICE  // price for the current action of buying (including bidding)
 	IN_SELL_PRICE // price for the current action of selling
@@ -55,8 +56,9 @@ func NewMonopolySensors() MonopolySensors {
 func (s MonopolySensors) LoadState(state monopoly.GameState, playerID int, propertyID int) {
 	s.loadPlayerInputs(state, playerID)
 	s.loadPropertyInputs(state, propertyID)
-	//TODO LoadSetInputs
+	s.LoadSetInputs(state, propertyID, playerID)
 	s.loadAvailablePropertiesInput(state)
+	s[IN_ROUND] = normalize(state.Round, 0, cfg.MAX_ROUNDS, false)
 
 }
 

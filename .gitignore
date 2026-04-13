@@ -4,3 +4,7 @@ output*
 experiment
 
 graph.json
+
+.claude/
+CLAUDE.md
+dev/

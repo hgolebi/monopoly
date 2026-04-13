@@ -3,6 +3,7 @@ package neatnetwork
 import (
 	"errors"
 	"fmt"
+	cfg "monopoly/pkg/config"
 	"monopoly/pkg/monopoly"
 	"slices"
 	"sync"
@@ -101,67 +102,140 @@ func (p *NEATMonopolyPlayer) GetDecision(input []float64) []float64 {
 }
 
 func (p *NEATMonopolyPlayer) GetStdAction(player int, state monopoly.GameState, availableActions monopoly.FullActionList) monopoly.ActionDetails {
-	sensors := NewMonopolySensors()
-	sensors.LoadState(state, player)
-	sensors.LoadDecisionContext(STD_ACTION)
-	if state.Charge > 0 {
-		sensors.LoadCharge(state.Charge)
-
+	response := monopoly.ActionDetails{
+		Action: monopoly.NOACTION,
 	}
 
-	keyProperties := FindKeyProperties(state, player)
+	decision, propertyId, needMoney := p.getBuyHouseDecision(player, state, availableActions)
+	if decision {
+		response.Action = monopoly.BUYHOUSE
+		response.PropertyId = propertyId
+		return response
+	}
+	if needMoney {
+		p.getMoney(player, state, availableActions)
+	}
 
-	var result monopoly.ActionDetails
-	propertyActions := transformAvailableActionsList(availableActions)
-	for propertyId, availableActions := range propertyActions {
+	decision, propertyId, needMoney = p.getBuyOutDecision(player, state, availableActions)
+	if decision {
+		response.Action = monopoly.BUYOUT
+		response.PropertyId = propertyId
+		return response
+	}
+	if needMoney {
+		p.getMoney(player, state, availableActions)
+	}
 
-		sensors.LoadAvailableStdActions(availableActions)
-		sensors.LoadPropertyId(propertyId)
-		sensors.LoadPrice(state.Properties[propertyId].Price)
+	decision, propertyId, price, needMoney = p.getBuyKeyPropertyDecision(player, state, availableActions)
+	if decision {
+		response.Action = monopoly.BUYOFFER
+		response.PropertyId = propertyId
+		response.Price = price
+		return response
+	}
+	if needMoney {
+		p.getMoney(player, state, availableActions)
+	}
+
+}
+
+func (p *NEATMonopolyPlayer) getBuyHouseDecision(playerId int, state monopoly.GameState, availableActions monopoly.FullActionList) (decision bool, propertyId int, needMoney bool) {
+	if len(availableActions.BuyHouseList) == 0 {
+		return false, 0, false
+	}
+	outputs := make(map[int]float64)
+
+	player := state.Players[playerId]
+	for _, propertyId := range availableActions.BuyHouseList {
+		property := state.Properties[propertyId]
+		if property.HousePrice >= player.Money {
+			needMoney = true
+			continue
+		}
+		sensors := NewMonopolySensors()
+		sensors.LoadState(state, playerId, propertyId)
+		sensors.LoadBuyPriceInput(property.HousePrice)
 		outputList := p.GetDecision(sensors)
-		stdActionOutValues := GetStdActionOutputValues(outputList)
-		var highest float64 = 0.0
-		for _, action := range availableActions {
-			// Only consider buy offers for key properties
-			if action == monopoly.BUYOFFER && !slices.Contains(keyProperties, propertyId) {
-				continue
-			}
-
-			// Dont sell houses if not nesessary
-			if state.Charge <= 0 && action == monopoly.SELLHOUSE {
-				continue
-			}
-
-			// Dont mortgage or sell properties if not nesessary
-			if state.Charge <= 0 && state.Players[player].Money > 200 && (action == monopoly.MORTGAGE || action == monopoly.SELLOFFER) {
-				continue
-			}
-			if stdActionOutValues[action] > highest {
-				highest = stdActionOutValues[action]
-				result.Action = action
-			}
-		}
-		if result.Action == monopoly.SELLOFFER || result.Action == monopoly.BUYOFFER {
-			result.Price = GetPriceOutputValue(outputList)
-
-			playerOutputs := GetPlayerOutputValues(outputList)
-			result.Players = []int{}
-			for pID, val := range playerOutputs {
-				if val > 0.5 {
-					result.Players = append(result.Players, getOriginalPlayerId(pID, player))
-				}
-			}
-		}
-		if result.Action == monopoly.SELLOFFER && result.Price == 0 {
-			result.Action = monopoly.NOACTION
-			return result
-		}
-		if result.Action != monopoly.NOACTION {
-			result.PropertyId = propertyId
-			return result
+		if outputList[OUT_BUY_HOUSE] > 0.5 {
+			outputs[propertyId] = outputList[OUT_BUY_HOUSE]
 		}
 	}
-	return result
+	decision, propertyId, _ = getBestDecision(outputs)
+	return decision, propertyId, needMoney
+
+}
+
+func (p *NEATMonopolyPlayer) getBuyOutDecision(playerId int, state monopoly.GameState, availableActions monopoly.FullActionList) (decision bool, propertyId int, needMoney bool) {
+	if len(availableActions.BuyOutList) == 0 {
+		return false, 0, false
+	}
+	outputs := make(map[int]float64)
+
+	player := state.Players[playerId]
+	for _, propertyId := range availableActions.BuyOutList {
+		setCount, ownedByPlayer, _ := getSetDetails(state, state.Properties[propertyId].SetIndex, playerId)
+		if setCount != ownedByPlayer {
+			continue
+		}
+		property := state.Properties[propertyId]
+		buyoutPrice := property.GetBuyoutPrice()
+		if buyoutPrice >= player.Money {
+			needMoney = true
+			continue
+		}
+		sensors := NewMonopolySensors()
+		sensors.LoadState(state, playerId, propertyId)
+		sensors.LoadBuyPriceInput(buyoutPrice)
+		outputList := p.GetDecision(sensors)
+		if outputList[OUT_BUYOUT] > 0.5 {
+			outputs[propertyId] = outputList[OUT_BUYOUT]
+		}
+	}
+	decision, propertyId, _ = getBestDecision(outputs)
+	return decision, propertyId, needMoney
+}
+
+func (p *NEATMonopolyPlayer) getBuyKeyPropertyDecision(playerId int, state monopoly.GameState, availableActions monopoly.FullActionList) (decision bool, propertyId int, price int, needMoney bool) {
+	keyProperties := findKeyPropertiesToBuy(state, playerId)
+	for propertyId := range keyProperties {
+		maxPrice := p.findMaxBuyPrice(state, playerId, propertyId)
+
+	}
+	return false, 0, 0, needMoney
+}
+
+func (p *NEATMonopolyPlayer) findMaxBuyPrice(state monopoly.GameState, playerId int, propertyId int) int {
+	property := state.Properties[propertyId]
+	price := property.Price
+	decision := p.GetBuyFromPlayerDecision(playerId, state, propertyId, price)
+	for decision {
+		if price == cfg.MAX_MONEY {
+			return price
+		}
+		price += 10
+		newDecision := p.GetBuyFromPlayerDecision(playerId, state, propertyId, price)
+		if !newDecision {
+			return price - 10
+		}
+		decision = newDecision
+	}
+	for !decision {
+		if price == 0 {
+			return price
+		}
+		price -= 10
+		decision = p.GetBuyFromPlayerDecision(playerId, state, propertyId, price)
+	}
+	return price
+}
+
+func (p *NEATMonopolyPlayer) GetBuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, price int) bool {
+	sensors := NewMonopolySensors()
+	sensors.LoadState(state, player, propertyId)
+	sensors.LoadBuyPriceInput(price)
+	sensors.LoadEnemyInputs(state, state.Properties[propertyId].Owner.ID, propertyId)
+	outputList := p.GetDecision(sensors)
+	return outputList[OUT_BUY_PROPERTY] > 0.5
 }
 
 func (p *NEATMonopolyPlayer) GetJailAction(player int, state monopoly.GameState, available []monopoly.JailAction) monopoly.JailAction {
@@ -182,90 +256,26 @@ func (p *NEATMonopolyPlayer) GetJailAction(player int, state monopoly.GameState,
 
 func (p *NEATMonopolyPlayer) BuyDecision(player int, state monopoly.GameState, propertyId int) bool {
 	sensors := NewMonopolySensors()
-	sensors.LoadState(state, player)
-	sensors.LoadDecisionContext(BUY_DECISION)
-	sensors.LoadPropertyId(propertyId)
-	sensors.LoadPrice(state.Properties[propertyId].Price)
+	sensors.LoadState(state, player, propertyId)
+	price := state.Properties[propertyId].Price
+	sensors.LoadBuyPriceInput(price)
 	outputList := p.GetDecision(sensors)
-	return outputList[outputs["BUY_DECISION"]] > 0.5
-}
-
-func (p *NEATMonopolyPlayer) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, price int) bool {
-	if price == 0 {
-		return true
-	}
-	sensors := NewMonopolySensors()
-	sensors.LoadState(state, player)
-	sensors.LoadDecisionContext(BUY_FROM_PLAYER)
-	sensors.LoadPropertyId(propertyId)
-	sensors.LoadPrice(price)
-
-	outputList := p.GetDecision(sensors)
-	property := state.Properties[propertyId]
-	return outputList[outputs["BUY_FROM_PLAYER"]]*float64(property.Price)/float64(price) > 0.5
-}
-
-func (p *NEATMonopolyPlayer) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, price int) bool {
-	if price == 0 {
-		return false
-	}
-	sensors := NewMonopolySensors()
-	sensors.LoadState(state, player)
-	sensors.LoadDecisionContext(SELL_TO_PLAYER)
-	sensors.LoadPropertyId(propertyId)
-	sensors.LoadPrice(price)
-
-	outputList := p.GetDecision(sensors)
-	property := state.Properties[propertyId]
-	return outputList[outputs["SELL_TO_PLAYER"]]*float64(price)/float64(property.Price) > 0.5
+	return outputList[OUT_BUY_PROPERTY] > 0.5
 }
 
 func (p *NEATMonopolyPlayer) BiddingDecision(player int, state monopoly.GameState, propertyId int, currentPrice int, currentWinner int) int {
 	sensors := NewMonopolySensors()
-	sensors.LoadState(state, player)
-	sensors.LoadDecisionContext(BIDDING_DECISION)
-	sensors.LoadPropertyId(propertyId)
-	sensors.LoadPrice(state.Properties[propertyId].Price)
-	sensors.LoadBiddingInputs(currentPrice, currentWinner, player)
+	sensors.LoadState(state, player, propertyId)
+	sensors.LoadEnemyInputs(state, currentWinner, propertyId)
+	bid := currentPrice + 10
+	sensors.LoadBuyPriceInput(bid)
+
 	outputList := p.GetDecision(sensors)
-	decision := outputList[outputs["BIDDING_DECISION"]] > 0.5
+	decision := outputList[OUT_BUY_PROPERTY] > 0.5
 	if !decision {
 		return 0.0
 	}
-	return currentPrice + 10
-}
-
-func transformAvailableActionsList(actions monopoly.FullActionList) map[int][]monopoly.StdAction {
-	propertyActions := make(map[int][]monopoly.StdAction)
-	for _, action := range actions.Actions {
-		switch action {
-		case monopoly.MORTGAGE:
-			for _, propertyID := range actions.MortgageList {
-				propertyActions[propertyID] = append(propertyActions[propertyID], monopoly.MORTGAGE)
-			}
-		case monopoly.BUYOUT:
-			for _, propertyID := range actions.BuyOutList {
-				propertyActions[propertyID] = append(propertyActions[propertyID], monopoly.BUYOUT)
-			}
-		case monopoly.SELLOFFER:
-			for _, propertyID := range actions.SellPropertyList {
-				propertyActions[propertyID] = append(propertyActions[propertyID], monopoly.SELLOFFER)
-			}
-		case monopoly.BUYOFFER:
-			for _, propertyID := range actions.BuyPropertyList {
-				propertyActions[propertyID] = append(propertyActions[propertyID], monopoly.BUYOFFER)
-			}
-		case monopoly.BUYHOUSE:
-			for _, propertyID := range actions.BuyHouseList {
-				propertyActions[propertyID] = append(propertyActions[propertyID], monopoly.BUYHOUSE)
-			}
-		case monopoly.SELLHOUSE:
-			for _, propertyID := range actions.SellHouseList {
-				propertyActions[propertyID] = append(propertyActions[propertyID], monopoly.SELLHOUSE)
-			}
-		}
-	}
-	return propertyActions
+	return bid
 }
 
 func (p *NEATMonopolyPlayer) AddScore(points int) {
@@ -301,4 +311,45 @@ func (p *NEATMonopolyPlayer) ResetScore() {
 	p.mutex.Lock()
 	p.score = 0
 	p.mutex.Unlock()
+}
+
+func getBestDecision(decisions map[int]float64) (bestFound bool, bestId int, bestValue float64) {
+	if len(decisions) == 0 {
+		return false, 0, 0.0
+	}
+
+	bestId = -1
+	bestValue = -1.0
+	for id, value := range decisions {
+		if value > bestValue {
+			bestValue = value
+			bestId = id
+		}
+	}
+	return true, bestId, bestValue
+}
+
+func getSetDetails(state monopoly.GameState, setId int, playerId int) (propertiesInSet int, ownedByPlayer int, ownedByOthers int) {
+	propertiesInSet = len(monopoly.Sets[setId])
+	for _, propertyId := range monopoly.Sets[setId] {
+		property := state.Properties[propertyId]
+		if property.Owner == state.Players[playerId] {
+			ownedByPlayer++
+		} else if property.Owner != nil {
+			ownedByOthers++
+		}
+	}
+	return propertiesInSet, ownedByPlayer, ownedByOthers
+}
+
+func findKeyPropertiesToBuy(state monopoly.GameState, playerId int) map[int]bool {
+	keyProperties := make(map[int]bool)
+	player := state.Players[playerId]
+	for _, propertyId := range player.Properties {
+		setCount, ownedByPlayer, ownedByOthers := getSetDetails(state, state.Properties[propertyId].SetIndex, playerId)
+		if ownedByPlayer == setCount-1 && ownedByOthers == 1 {
+			keyProperties[propertyId] = true
+		}
+	}
+	return keyProperties
 }
