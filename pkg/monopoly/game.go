@@ -782,54 +782,163 @@ func (g *Game) getHouseCount(player_id int) int {
 	return total_houses
 }
 
-func (g *Game) sendSellOffer(player_id int, targets []int, property_id int, price int) {
-	g.sell_offer_tries++
+func (g *Game) sendSellOffer(player_id int, targets []int, property_id int, start_price int) {
 	seller := g.players[player_id]
+	property := g.properties[property_id]
+	g.logger.Log(fmt.Sprintf("%s initiates a sell auction for %s starting at %d$", seller.Name, property.GetName(), start_price))
+
+	// Build auction queue from invited targets (shuffled for fairness)
 	g.randomSource.Shuffle(len(targets), func(i, j int) {
 		targets[i], targets[j] = targets[j], targets[i]
 	})
-	for _, target_id := range targets {
-		buyer := g.players[target_id]
-		property := g.properties[property_id]
-		g.logger.Log(fmt.Sprintf("%s offers to sell %s to %s for %d$", seller.Name, property.GetName(), buyer.Name, price))
-		accepted := g.io.BuyFromPlayerDecision(target_id, g.getState(), property_id, price)
-		if accepted {
-			g.logger.Log(fmt.Sprintf("%s accepted the sell offer", buyer.Name))
-			g.charge(buyer, price, seller)
-			g.transferProperty(seller, buyer, property_id)
-			return
+	queue := list.New()
+	for _, id := range targets {
+		queue.PushBack(id)
+	}
+
+	curr_price := start_price
+	auction_winner := -1
+	for queue.Len() > 0 {
+		bidderID := queue.Front().Value.(int)
+		queue.Remove(queue.Front())
+		if auction_winner == bidderID {
+			// Winner lapped the queue — no one outbid them
+			break
+		}
+		bidder := g.players[bidderID]
+		bid := g.io.BiddingDecision(bidderID, g.getState(), property_id, curr_price, auction_winner)
+		if bid < curr_price || (bid == curr_price && auction_winner != -1) {
+			g.logger.Log(fmt.Sprintf("%s passes on the auction", bidder.Name))
+		} else if bid > bidder.Money {
+			g.logger.Log(fmt.Sprintf("%s wants to bid %d$ but cannot afford it", bidder.Name, bid))
 		} else {
-			g.logger.Log(fmt.Sprintf("%s rejected the sell offer", buyer.Name))
+			g.logger.Log(fmt.Sprintf("%s bids %d$", bidder.Name, bid))
+			curr_price = bid
+			auction_winner = bidderID
+			queue.PushBack(bidderID)
+		}
+		if g.finished {
+			return
 		}
 	}
 
+	if auction_winner == -1 {
+		g.logger.Log(fmt.Sprintf("Sell auction for %s ended with no bids — no sale", property.GetName()))
+		return
+	}
+
+	// Seller is obligated to sell if at least one bid was made
+	winner := g.players[auction_winner]
+	g.logger.Log(fmt.Sprintf("%s wins the sell auction for %s at %d$", winner.Name, property.GetName(), curr_price))
+	g.charge(winner, curr_price, seller)
+	g.transferProperty(seller, winner, property_id)
 }
 
-func (g *Game) sendBuyOffer(player_id int, property_id int, price int) {
-	g.buy_offer_tries++
+func (g *Game) sendBuyOffer(player_id int, property_id int, initial_price int) {
 	buyer := g.players[player_id]
 	property := g.properties[property_id]
-	g.logger.Log(fmt.Sprintf("%s offers to buy %s for %d$", buyer.Name, property.GetName(), price))
 	seller := property.Owner
 	if seller == nil {
 		g.logger.Log(fmt.Sprintf("Property %s is not owned by anyone", property.GetName()))
 		g.bankrupt(buyer, nil)
-		g.buy_offer_tries = 0
 		return
 	}
-	accepted := g.io.SellToPlayerDecision(seller.ID, g.getState(), property_id, price)
-	if accepted {
-		g.logger.Log(fmt.Sprintf("%s accepted the buy offer", seller.Name))
-		if buyer.Money < price {
-			g.logger.Log(fmt.Sprintf("%s cannot afford the property", buyer.Name))
-			g.bankrupt(buyer, nil)
+	g.logger.Log(fmt.Sprintf("%s initiates buy negotiation for %s, opening offer: %d$", buyer.Name, property.GetName(), initial_price))
+
+	buyerPrice := initial_price
+	lastBuyerPrice := -1  // sentinel: buyer has not repeated yet
+	lastSellerPrice := -1 // sentinel: seller has not responded yet
+
+	const maxIterations = 20
+	for i := 0; i < maxIterations; i++ {
+		if !g.continueRound(player_id) || !g.continueRound(seller.ID) {
 			return
 		}
-		g.charge(buyer, price, seller)
-		g.transferProperty(seller, buyer, property_id)
-	} else {
-		g.logger.Log(fmt.Sprintf("%s rejected the buy offer", seller.Name))
+
+		// --- Seller's turn ---
+		state := g.getState()
+		state.NegotiationBuyerOffer = buyerPrice
+		state.NegotiationSellerOffer = lastSellerPrice
+
+		sellerResponse := g.io.SellToPlayerDecision(seller.ID, state, property_id, buyerPrice)
+		g.logger.Log(fmt.Sprintf("%s responds to %d$ offer with: %d$", seller.Name, buyerPrice, sellerResponse))
+
+		if sellerResponse == 0 {
+			// Hard rejection
+			g.logger.Log(fmt.Sprintf("%s hard-rejected the offer — negotiation over", seller.Name))
+			return
+		}
+		if sellerResponse <= buyerPrice {
+			// Seller accepts (offered price at or below buyer's offer)
+			finalPrice := sellerResponse
+			if finalPrice <= 0 {
+				finalPrice = buyerPrice
+			}
+			g.logger.Log(fmt.Sprintf("%s accepted %s for %d$", seller.Name, property.GetName(), finalPrice))
+			g.finalizeTrade(buyer, seller, property_id, finalPrice)
+			return
+		}
+
+		// Seller made a counteroffer
+		sellerPrice := sellerResponse
+		buyerImpasse := buyerPrice == lastBuyerPrice
+		sellerImpasse := sellerPrice == lastSellerPrice
+		if buyerImpasse && sellerImpasse {
+			g.logger.Log(fmt.Sprintf("Negotiation for %s ended in an impasse (%d$ vs %d$)", property.GetName(), buyerPrice, sellerPrice))
+			return
+		}
+		lastSellerPrice = sellerPrice
+
+		// --- Buyer's turn ---
+		state = g.getState()
+		state.NegotiationBuyerOffer = buyerPrice
+		state.NegotiationSellerOffer = sellerPrice
+
+		buyerResponse := g.io.BuyFromPlayerDecision(player_id, state, property_id, sellerPrice)
+		g.logger.Log(fmt.Sprintf("%s responds to %d$ counteroffer with: %d$", buyer.Name, sellerPrice, buyerResponse))
+
+		if buyerResponse == 0 {
+			// Buyer withdraws
+			g.logger.Log(fmt.Sprintf("%s withdrew from the negotiation", buyer.Name))
+			return
+		}
+		if buyerResponse >= sellerPrice {
+			// Buyer accepts the seller's counteroffer
+			g.logger.Log(fmt.Sprintf("%s accepted %s for %d$", buyer.Name, property.GetName(), sellerPrice))
+			g.finalizeTrade(buyer, seller, property_id, sellerPrice)
+			return
+		}
+
+		// Buyer raised their offer (but below seller's counteroffer — negotiation continues)
+		newBuyerPrice := buyerResponse
+		if newBuyerPrice < buyerPrice {
+			// Invalid — buyer cannot lower their offer; treat as withdrawal
+			g.logger.Log(fmt.Sprintf("%s attempted to lower their offer (%d$ → %d$) — withdrawal", buyer.Name, buyerPrice, newBuyerPrice))
+			return
+		}
+
+		buyerImpasse = newBuyerPrice == lastBuyerPrice
+		sellerImpasse = sellerPrice == lastSellerPrice
+		if buyerImpasse && sellerImpasse {
+			g.logger.Log(fmt.Sprintf("Negotiation for %s ended in an impasse (%d$ vs %d$)", property.GetName(), newBuyerPrice, sellerPrice))
+			return
+		}
+
+		lastBuyerPrice = buyerPrice
+		buyerPrice = newBuyerPrice
 	}
+
+	g.logger.Log(fmt.Sprintf("Negotiation for %s exceeded max iterations — no sale", property.GetName()))
+}
+
+func (g *Game) finalizeTrade(buyer *Player, seller *Player, property_id int, price int) {
+	if buyer.Money < price {
+		g.logger.Log(fmt.Sprintf("%s cannot afford %d$ for the trade", buyer.Name, price))
+		g.bankrupt(buyer, nil)
+		return
+	}
+	g.charge(buyer, price, seller)
+	g.transferProperty(seller, buyer, property_id)
 }
 
 func (g *Game) buyOut(player_id int, propertyId int) {

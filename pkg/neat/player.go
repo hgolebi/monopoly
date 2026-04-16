@@ -17,8 +17,8 @@ type MonopolyPlayer interface {
 	GetStdAction(player int, state monopoly.GameState, availableActions monopoly.FullActionList) monopoly.ActionDetails
 	GetJailAction(player int, state monopoly.GameState, available []monopoly.JailAction) monopoly.JailAction
 	BuyDecision(player int, state monopoly.GameState, propertyId int) bool
-	BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, price int) bool
-	SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, price int) bool
+	BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int) int
+	SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int) int
 	BiddingDecision(player int, state monopoly.GameState, propertyId int, currentPrice int, currentWinner int) int
 	AddScore(points int)
 	AddWin()
@@ -266,16 +266,74 @@ func (p *NEATMonopolyPlayer) BuyDecision(player int, state monopoly.GameState, p
 func (p *NEATMonopolyPlayer) BiddingDecision(player int, state monopoly.GameState, propertyId int, currentPrice int, currentWinner int) int {
 	sensors := NewMonopolySensors()
 	sensors.LoadState(state, player, propertyId)
-	sensors.LoadEnemyInputs(state, currentWinner, propertyId)
+	if currentWinner >= 0 {
+		sensors.LoadEnemyInputs(state, currentWinner, propertyId)
+	}
 	bid := currentPrice + 10
 	sensors.LoadBuyPriceInput(bid)
 
 	outputList := p.GetDecision(sensors)
-	decision := outputList[OUT_BUY_PROPERTY] > 0.5
-	if !decision {
-		return 0.0
+	if outputList[OUT_BUY_PROPERTY] <= 0.5 {
+		return 0
 	}
 	return bid
+}
+
+func (p *NEATMonopolyPlayer) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int) int {
+	// Called during BUYOFFER negotiation: seller has made a counteroffer.
+	// Returns 0 to withdraw, or a price >= sellerOffer to accept/raise.
+	// Returning state.NegotiationBuyerOffer (unchanged) signals buyer impasse.
+	sensors := NewMonopolySensors()
+	sensors.LoadState(state, player, propertyId)
+	sensors.LoadBuyPriceInput(sellerOffer)
+	property := state.Properties[propertyId]
+	if property.Owner != nil {
+		sensors.LoadEnemyInputs(state, property.Owner.ID, propertyId)
+	}
+	outputList := p.GetDecision(sensors)
+	if outputList[OUT_BUY_PROPERTY] <= 0.5 {
+		return 0 // Withdraw
+	}
+	// Accept seller's offer
+	return sellerOffer
+}
+
+func (p *NEATMonopolyPlayer) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int) int {
+	// Called during BUYOFFER negotiation: buyer has made an offer.
+	// Returns 0 to hard-reject, <= buyerOffer to accept, or > buyerOffer as a counteroffer.
+	// Returning state.NegotiationSellerOffer (unchanged) signals seller impasse.
+	sensors := NewMonopolySensors()
+	sensors.LoadState(state, player, propertyId)
+	sensors.LoadSellPriceInput(buyerOffer)
+	outputList := p.GetDecision(sensors)
+	if outputList[OUT_SELL_PROPERTY] <= 0.5 {
+		// Not willing to sell at this price — counteroffer using findMaxSellPrice logic
+		minPrice := p.findMinSellPrice(state, player, propertyId)
+		if minPrice == 0 {
+			return 0 // Hard reject
+		}
+		return minPrice // Counteroffer
+	}
+	// Accept the buyer's offer
+	return buyerOffer
+}
+
+func (p *NEATMonopolyPlayer) findMinSellPrice(state monopoly.GameState, playerId int, propertyId int) int {
+	property := state.Properties[propertyId]
+	price := property.Price
+	// Walk down from catalogue price to find minimum acceptable
+	for price > 0 {
+		sensors := NewMonopolySensors()
+		sensors.LoadState(state, playerId, propertyId)
+		sensors.LoadSellPriceInput(price)
+		outputList := p.GetDecision(sensors)
+		if outputList[OUT_SELL_PROPERTY] > 0.5 {
+			price -= 10
+		} else {
+			return price + 10
+		}
+	}
+	return 0
 }
 
 func (p *NEATMonopolyPlayer) AddScore(points int) {

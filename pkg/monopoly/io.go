@@ -47,6 +47,9 @@ type GameState struct {
 	SellOfferTries   int
 	BuyOfferTries    int
 	StdActionsUsed   int
+	// Negotiation context — set by sendBuyOffer, zero outside active negotiation
+	NegotiationBuyerOffer  int // Current buyer's offer
+	NegotiationSellerOffer int // Current seller's counteroffer
 }
 
 func formatStr(str string, length int) string {
@@ -125,8 +128,14 @@ type IMonopoly_IO interface {
 	GetStdAction(player int, state GameState, availableActions FullActionList) ActionDetails
 	GetJailAction(player int, state GameState, available []JailAction) JailAction
 	BuyDecision(player int, state GameState, propertyId int) bool
-	BuyFromPlayerDecision(player int, state GameState, propertyId int, price int) bool
-	SellToPlayerDecision(player int, state GameState, propertyId int, price int) bool
+	// BuyFromPlayerDecision is called during BUYOFFER negotiation when the seller has made a counteroffer.
+	// Returns 0 to withdraw, or a price >= sellerOffer to accept/raise the buyer's offer.
+	// If the returned price equals the buyer's last offer, the buyer signals an impasse.
+	BuyFromPlayerDecision(player int, state GameState, propertyId int, sellerOffer int) int
+	// SellToPlayerDecision is called during BUYOFFER negotiation when the buyer has made an offer.
+	// Returns 0 to reject outright, or a price <= buyerOffer to accept, or a price > buyerOffer as a counteroffer.
+	// If the returned price equals the seller's last counteroffer, the seller signals an impasse.
+	SellToPlayerDecision(player int, state GameState, propertyId int, buyerOffer int) int
 	BiddingDecision(player int, state GameState, propertyId int, currentPrice int, currentWinner int) int
 	Finish(f FinishOption, winner int, state GameState)
 }

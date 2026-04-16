@@ -35,14 +35,14 @@ func (m *MockMonopolyIO) BuyDecision(player int, state GameState, propertyId int
 	return args.Bool(0)
 }
 
-func (m *MockMonopolyIO) BuyFromPlayerDecision(player int, state GameState, propertyId int, price int) bool {
-	args := m.Called(player, state, propertyId, price)
-	return args.Bool(0)
+func (m *MockMonopolyIO) BuyFromPlayerDecision(player int, state GameState, propertyId int, sellerOffer int) int {
+	args := m.Called(player, state, propertyId, sellerOffer)
+	return args.Int(0)
 }
 
-func (m *MockMonopolyIO) SellToPlayerDecision(player int, state GameState, propertyId int, price int) bool {
-	args := m.Called(player, state, propertyId, price)
-	return args.Bool(0)
+func (m *MockMonopolyIO) SellToPlayerDecision(player int, state GameState, propertyId int, buyerOffer int) int {
+	args := m.Called(player, state, propertyId, buyerOffer)
+	return args.Int(0)
 }
 
 // BiddingDecision(player int, state GameState, propertyId int, currentPrice int, currentWinner int) int
@@ -1205,8 +1205,8 @@ func TestSendSellOffer(t *testing.T) {
 	for _, test := range tests {
 		io := &MockMonopolyIO{}
 		io.On("Init").Return(playerNames[:4])
-		//BuyFromPlayerDecision(player int, state GameState, propertyId int, price int) bool
-		io.On("BuyFromPlayerDecision", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(false)
+		// sendSellOffer now uses BiddingDecision (returns 0 = no bid)
+		io.On("BiddingDecision", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(0)
 
 		logger := &MockLogger{}
 		logger.On("Init").Return()
@@ -1214,14 +1214,14 @@ func TestSendSellOffer(t *testing.T) {
 		logger.On("LogState", mock.Anything).Return()
 		logger.On("Error", mock.Anything, mock.Anything).Return()
 		logger.On("LogWithState", mock.Anything, mock.Anything).Return()
-		game := NewGame(context.Background(), io, logger, 0)
+		game := NewGame(context.Background(), io, logger, 42)
 		player := game.players[test.playerId]
 		player.Properties = []int{test.propertyId}
 		property := game.properties[test.propertyId]
 		property.Owner = player
 		game.sendSellOffer(test.playerId, test.targetPlayers, test.propertyId, test.price)
 		for _, targetId := range test.targetPlayers {
-			io.AssertCalled(t, "BuyFromPlayerDecision", targetId, mock.Anything, test.propertyId, test.price)
+			io.AssertCalled(t, "BiddingDecision", targetId, mock.Anything, test.propertyId, test.price, -1)
 		}
 	}
 }
@@ -1242,8 +1242,8 @@ func TestSendBuyOffer(t *testing.T) {
 	for _, test := range tests {
 		io := &MockMonopolyIO{}
 		io.On("Init").Return(playerNames[:4])
-		//SellToPlayerDecision(player int, state GameState, propertyId int, price int) bool
-		io.On("SellToPlayerDecision", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(false)
+		// SellToPlayerDecision now returns int: 0 = hard reject
+		io.On("SellToPlayerDecision", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(0)
 
 		logger := &MockLogger{}
 		logger.On("Init").Return()
@@ -1251,7 +1251,7 @@ func TestSendBuyOffer(t *testing.T) {
 		logger.On("LogState", mock.Anything).Return()
 		logger.On("Error", mock.Anything, mock.Anything).Return()
 		logger.On("LogWithState", mock.Anything, mock.Anything).Return()
-		game := NewGame(context.Background(), io, logger, 0)
+		game := NewGame(context.Background(), io, logger, 42)
 
 		target := game.players[test.targetPlayer]
 		target.Properties = []int{test.propertyId}
@@ -1260,7 +1260,6 @@ func TestSendBuyOffer(t *testing.T) {
 		game.sendBuyOffer(test.playerId, test.propertyId, test.price)
 
 		io.AssertCalled(t, "SellToPlayerDecision", test.targetPlayer, mock.Anything, test.propertyId, test.price)
-
 	}
 }
 

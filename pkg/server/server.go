@@ -34,8 +34,8 @@ type PlayerIO interface {
 	GetStdAction(player int, state monopoly.GameState, availableActions monopoly.FullActionList) monopoly.ActionDetails
 	GetJailAction(player int, state monopoly.GameState, available []monopoly.JailAction) monopoly.JailAction
 	BuyDecision(player int, state monopoly.GameState, propertyId int) bool
-	BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, price int) bool
-	SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, price int) bool
+	BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int) int
+	SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int) int
 	BiddingDecision(player int, state monopoly.GameState, propertyId int, currentPrice int, currentWinner int) int
 }
 
@@ -192,17 +192,17 @@ func (s *ConsoleServer) BuyDecision(player int, state monopoly.GameState, proper
 	return resp
 }
 
-func (s *ConsoleServer) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, price int) bool {
+func (s *ConsoleServer) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int) int {
 	playerInfo := s.PlayersInfoMap[player]
 	if !playerInfo.isHuman {
-		return playerInfo.bot.BuyFromPlayerDecision(player, state, propertyId, price)
+		return playerInfo.bot.BuyFromPlayerDecision(player, state, propertyId, sellerOffer)
 	}
 	req := ActionRequest{
 		Type:       BuyFromPlayerDecision,
 		PlayerId:   player,
 		State:      state,
 		PropertyId: propertyId,
-		Price:      price,
+		Price:      sellerOffer,
 	}
 	encoder := json.NewEncoder(playerInfo.conn)
 	decoder := json.NewDecoder(playerInfo.conn)
@@ -211,27 +211,27 @@ func (s *ConsoleServer) BuyFromPlayerDecision(player int, state monopoly.GameSta
 		panic(err)
 	}
 
-	var resp bool
+	var resp int
 	err := decoder.Decode(&resp)
 	if err != nil {
 		fmt.Println("Error decoding response:", err)
 		panic("Cannot read response from player")
 	}
-	fmt.Printf("Player %d decided to buy from another player: %t\n", player, resp)
+	fmt.Printf("Player %d responded to counteroffer with: %d$\n", player, resp)
 	return resp
 }
 
-func (s *ConsoleServer) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, price int) bool {
+func (s *ConsoleServer) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int) int {
 	playerInfo := s.PlayersInfoMap[player]
 	if !playerInfo.isHuman {
-		return playerInfo.bot.SellToPlayerDecision(player, state, propertyId, price)
+		return playerInfo.bot.SellToPlayerDecision(player, state, propertyId, buyerOffer)
 	}
 	req := ActionRequest{
 		Type:       SellToPlayerDecision,
 		PlayerId:   player,
 		State:      state,
 		PropertyId: propertyId,
-		Price:      price,
+		Price:      buyerOffer,
 	}
 	encoder := json.NewEncoder(playerInfo.conn)
 	decoder := json.NewDecoder(playerInfo.conn)
@@ -240,13 +240,13 @@ func (s *ConsoleServer) SellToPlayerDecision(player int, state monopoly.GameStat
 		panic(err)
 	}
 
-	var resp bool
+	var resp int
 	err := decoder.Decode(&resp)
 	if err != nil {
 		fmt.Println("Error decoding response:", err)
 		panic("Cannot read response from player")
 	}
-	fmt.Printf("Player %d decided to sell to another player: %t\n", player, resp)
+	fmt.Printf("Player %d responded to buy offer with: %d$\n", player, resp)
 	return resp
 }
 

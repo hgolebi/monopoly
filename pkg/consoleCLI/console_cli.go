@@ -241,59 +241,53 @@ func (c *ConsoleCLI) BuyDecision(player int, state monopoly.GameState, propertyI
 	}
 }
 
-func (c *ConsoleCLI) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, price int) bool {
-	if err := keyboard.Open(); err != nil {
-		log.Fatal(err)
-	}
-	defer keyboard.Close()
-
-	fmt.Printf("Player %s wants to sell you property %d for %d? (y/n) \n", state.Players[state.CurrentPlayerIdx].Name, propertyId, price)
+func (c *ConsoleCLI) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int) int {
+	property := state.Properties[propertyId]
+	fmt.Printf("\n--- NEGOTIATION: %s ---\n", property.Name)
+	fmt.Printf("Seller's counteroffer: %d$\n", sellerOffer)
+	fmt.Printf("Your current offer:    %d$\n", state.NegotiationBuyerOffer)
+	fmt.Printf("Enter your response (0 to withdraw, or a price >= %d$ to accept/raise): ", sellerOffer)
+	var resp int
 	for {
-		char, key, err := keyboard.GetKey()
+		_, err := fmt.Scan(&resp)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println("Invalid input. Enter a number.")
+			continue
 		}
-		if key == keyboard.KeyEsc {
-			panic("User quit the game")
+		if resp == 0 || resp >= sellerOffer {
+			return resp
 		}
-		switch char {
-		case 's', 'S':
-			fmt.Println(state)
-		case 'y', 'Y':
-			return true
-		case 'n', 'N':
-			return false
-		default:
-			fmt.Println("Invalid input. Please enter 'y' or 'n'.")
+		if resp == state.NegotiationBuyerOffer {
+			fmt.Println("(Signalling buyer impasse — repeating your last offer)")
+			return resp
 		}
+		fmt.Printf("Price must be 0 (withdraw) or >= %d$ (accept/raise). Try again: ", sellerOffer)
 	}
 }
 
-func (c *ConsoleCLI) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, price int) bool {
-	if err := keyboard.Open(); err != nil {
-		log.Fatal(err)
+func (c *ConsoleCLI) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int) int {
+	property := state.Properties[propertyId]
+	fmt.Printf("\n--- NEGOTIATION: %s ---\n", property.Name)
+	fmt.Printf("Buyer's offer:         %d$\n", buyerOffer)
+	if state.NegotiationSellerOffer > 0 {
+		fmt.Printf("Your last counteroffer: %d$\n", state.NegotiationSellerOffer)
 	}
-	defer keyboard.Close()
-
-	fmt.Printf("Player %s wants to buy property %d from you for %d. Do you want to sell it? (y/n)\n ", state.Players[state.CurrentPlayerIdx].Name, propertyId, price)
+	fmt.Printf("Enter your response (0 to hard-reject, or a price to accept/counteroffer): ")
+	var resp int
 	for {
-		char, key, err := keyboard.GetKey()
+		_, err := fmt.Scan(&resp)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println("Invalid input. Enter a number.")
+			continue
 		}
-		if key == keyboard.KeyEsc {
-			panic("User quit the game")
+		if resp == 0 {
+			return 0
 		}
-		switch char {
-		case 's', 'S':
-			fmt.Println(state)
-		case 'y', 'Y':
-			return true
-		case 'n', 'N':
-			return false
-		default:
-			fmt.Println("Invalid input. Please enter 'y' or 'n'.")
+		if state.NegotiationSellerOffer > 0 && resp > state.NegotiationSellerOffer {
+			fmt.Printf("You cannot raise your counteroffer (last: %d$). Try again: ", state.NegotiationSellerOffer)
+			continue
 		}
+		return resp
 	}
 }
 
