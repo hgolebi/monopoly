@@ -102,41 +102,41 @@ func (p *NEATMonopolyPlayer) GetDecision(input []float64) []float64 {
 }
 
 func (p *NEATMonopolyPlayer) GetStdAction(player int, state monopoly.GameState, availableActions monopoly.FullActionList) monopoly.ActionDetails {
-	response := monopoly.ActionDetails{
-		Action: monopoly.NOACTION,
-	}
+	// response := monopoly.ActionDetails{
+	// 	Action: monopoly.NOACTION,
+	// }
 
-	decision, propertyId, needMoney := p.getBuyHouseDecision(player, state, availableActions)
-	if decision {
-		response.Action = monopoly.BUYHOUSE
-		response.PropertyId = propertyId
-		return response
-	}
-	if needMoney {
-		p.getMoney(player, state, availableActions)
-	}
+	// decision, propertyId, needMoney := p.getBuyHouseDecision(player, state, availableActions)
+	// if decision {
+	// 	response.Action = monopoly.BUYHOUSE
+	// 	response.PropertyId = propertyId
+	// 	return response
+	// }
+	// if needMoney {
+	// 	p.getMoney(player, state, availableActions)
+	// }
 
-	decision, propertyId, needMoney = p.getBuyOutDecision(player, state, availableActions)
-	if decision {
-		response.Action = monopoly.BUYOUT
-		response.PropertyId = propertyId
-		return response
-	}
-	if needMoney {
-		p.getMoney(player, state, availableActions)
-	}
+	// decision, propertyId, needMoney = p.getBuyOutDecision(player, state, availableActions)
+	// if decision {
+	// 	response.Action = monopoly.BUYOUT
+	// 	response.PropertyId = propertyId
+	// 	return response
+	// }
+	// if needMoney {
+	// 	p.getMoney(player, state, availableActions)
+	// }
 
-	decision, propertyId, price, needMoney = p.getBuyKeyPropertyDecision(player, state, availableActions)
-	if decision {
-		response.Action = monopoly.BUYOFFER
-		response.PropertyId = propertyId
-		response.Price = price
-		return response
-	}
-	if needMoney {
-		p.getMoney(player, state, availableActions)
-	}
-
+	// decision, propertyId, price, needMoney = p.getBuyKeyPropertyDecision(player, state, availableActions)
+	// if decision {
+	// 	response.Action = monopoly.BUYOFFER
+	// 	response.PropertyId = propertyId
+	// 	response.Price = price
+	// 	return response
+	// }
+	// if needMoney {
+	// 	p.getMoney(player, state, availableActions)
+	// }
+	return monopoly.ActionDetails{}
 }
 
 func (p *NEATMonopolyPlayer) getBuyHouseDecision(playerId int, state monopoly.GameState, availableActions monopoly.FullActionList) (decision bool, propertyId int, needMoney bool) {
@@ -196,12 +196,14 @@ func (p *NEATMonopolyPlayer) getBuyOutDecision(playerId int, state monopoly.Game
 }
 
 func (p *NEATMonopolyPlayer) getBuyKeyPropertyDecision(playerId int, state monopoly.GameState, availableActions monopoly.FullActionList) (decision bool, propertyId int, price int, needMoney bool) {
-	keyProperties := findKeyPropertiesToBuy(state, playerId)
-	for propertyId := range keyProperties {
-		maxPrice := p.findMaxBuyPrice(state, playerId, propertyId)
+	// keyProperties := findKeyPropertiesToBuy(state, playerId)
+	// for propertyId := range keyProperties {
+	// 	maxPrice := p.findMaxBuyPrice(state, playerId, propertyId)
 
-	}
-	return false, 0, 0, needMoney
+	// }
+	// return false, 0, 0, needMoney
+
+	return
 }
 
 func (p *NEATMonopolyPlayer) findMaxBuyPrice(state monopoly.GameState, playerId int, propertyId int) int {

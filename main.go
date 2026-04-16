@@ -17,10 +17,6 @@ import (
 	"github.com/yaricom/goNEAT/v4/neat/genetics"
 )
 
-func main() {
-	runConsoleMonopoly()
-}
-
 func runConsoleMonopoly() {
 	cliMode := flag.Bool("cli", false, "run in CLI client mode")
 	flag.Parse()
@@ -66,8 +62,8 @@ func trainNEATNetwork() {
 }
 
 func main() {
-	trainNEATNetwork()
-	// runConsoleMonopoly()
+	// trainNEATNetwork()
+	runConsoleMonopoly()
 	// for range 10 {
 	// 	runBotMatch()
 	// }

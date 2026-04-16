@@ -1,7 +1,5 @@
 package monopoly
 
-type PropertyType int
-
 type Field interface {
 	Action(*Game)
 	GetName() string

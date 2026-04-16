@@ -284,8 +284,9 @@ func FindKeyProperties(state monopoly.GameState, playerId int) []int {
 func findUnwantedProperties(state monopoly.GameState, playerId int) []int {
 	have, _ := getSetMaps(state, playerId)
 	unwanted := []int{}
-	for set, properties := range have {
-		if len(properties) == 1 && set != "DarkBlue" && set != "Brown" {
+	for setIdx, properties := range have {
+		// Skip small sets (2 properties) — Brown and DarkBlue are too valuable to mark as unwanted
+		if len(properties) == 1 && len(monopoly.Sets[setIdx]) > 2 {
 			unwanted = append(unwanted, properties[0])
 		}
 	}
@@ -295,37 +296,27 @@ func findUnwantedProperties(state monopoly.GameState, playerId int) []int {
 func findPropertiesInFullSets(state monopoly.GameState, playerId int) []int {
 	have, missing := getSetMaps(state, playerId)
 	fullSetProperties := []int{}
-	for set, properties := range missing {
+	for setIdx, properties := range missing {
 		if len(properties) == 0 {
-			fullSetProperties = append(fullSetProperties, have[set]...)
+			fullSetProperties = append(fullSetProperties, have[setIdx]...)
 		}
 	}
 	return fullSetProperties
 }
 
-func getSetMaps(state monopoly.GameState, playerId int) (have map[string][]int, missing map[string][]int) {
-	have = map[string][]int{
-		"Brown":     {},
-		"LightBlue": {},
-		"Pink":      {},
-		"Orange":    {},
-		"Red":       {},
-		"Yellow":    {},
-		"Green":     {},
-		"DarkBlue":  {},
-	}
-	missing = map[string][]int{
-		"Brown":     {},
-		"LightBlue": {},
-		"Pink":      {},
-		"Orange":    {},
-		"Red":       {},
-		"Yellow":    {},
-		"Green":     {},
-		"DarkBlue":  {},
+func getSetMaps(state monopoly.GameState, playerId int) (have map[int][]int, missing map[int][]int) {
+	have = make(map[int][]int)
+	missing = make(map[int][]int)
+	// Initialize all street sets (skip Railroad and Utility)
+	for setIdx := range monopoly.Sets {
+		if setIdx == monopoly.RailroadSetIndex || setIdx == monopoly.UtilitySetIndex {
+			continue
+		}
+		have[setIdx] = []int{}
+		missing[setIdx] = []int{}
 	}
 	for idx, property := range state.Properties {
-		if property.SetIndex == monopoly.RAILROAD || property.SetIndex == monopoly.UTILITY {
+		if property.SetIndex == monopoly.RailroadSetIndex || property.SetIndex == monopoly.UtilitySetIndex {
 			continue
 		}
 		if property.Owner == nil || property.Owner.ID != playerId {
