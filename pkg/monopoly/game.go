@@ -25,7 +25,10 @@ type Game struct {
 	buy_offer_tries  int
 	sell_offer_tries int
 	std_actions_used int
-	randomSource     *rand.Rand
+	// usedActions tracks which (action, propertyId) pairs were used this turn.
+	// A player cannot repeat the same action on the same property within one turn.
+	usedActions  map[StdAction]map[int]bool
+	randomSource *rand.Rand
 	finished         bool
 }
 
@@ -34,6 +37,7 @@ func NewGame(ctx context.Context, io IMonopoly_IO, logger Logger, seed int64) *G
 	g.ctx = ctx
 	g.io = io
 	g.logger = logger
+	g.usedActions = make(map[StdAction]map[int]bool)
 
 	if seed == 0 {
 		seed = time.Now().UnixNano()
@@ -248,7 +252,7 @@ func (g *Game) resetRoundState(idx int, player *Player) {
 	g.std_actions_used = 0
 	g.sell_offer_tries = 0
 	g.buy_offer_tries = 0
-
+	g.usedActions = make(map[StdAction]map[int]bool)
 }
 
 func (g *Game) endGame() {
@@ -437,6 +441,29 @@ func (g *Game) jailCard() {
 	g.makeMove(1, 0, 0)
 }
 
+// filterUsed removes from list any propertyId that has already been used for the given action this turn.
+func (g *Game) filterUsed(action StdAction, list []int) []int {
+	used, ok := g.usedActions[action]
+	if !ok {
+		return list
+	}
+	result := make([]int, 0, len(list))
+	for _, id := range list {
+		if !used[id] {
+			result = append(result, id)
+		}
+	}
+	return result
+}
+
+// recordUsed marks (action, propertyId) as used for the current turn.
+func (g *Game) recordUsed(action StdAction, propertyId int) {
+	if g.usedActions[action] == nil {
+		g.usedActions[action] = make(map[int]bool)
+	}
+	g.usedActions[action][propertyId] = true
+}
+
 func (g *Game) standardActions() {
 	if g.std_actions_used >= g.settings.MaxStdActionsPerTurn {
 		return
@@ -444,12 +471,12 @@ func (g *Game) standardActions() {
 
 	action_list := FullActionList{}
 
-	action_list.MortgageList = g.getMortgageList(g.currentPlayerIdx)
-	action_list.BuyOutList = g.getBuyOutList(g.currentPlayerIdx)
-	action_list.SellPropertyList = g.getSellPropertyList(g.currentPlayerIdx)
-	action_list.BuyPropertyList = g.getBuyPropertyList(g.currentPlayerIdx)
-	action_list.BuyHouseList = g.getBuyHouseList(g.currentPlayerIdx)
-	action_list.SellHouseList = g.getSellHouseList(g.currentPlayerIdx)
+	action_list.MortgageList = g.filterUsed(MORTGAGE, g.getMortgageList(g.currentPlayerIdx))
+	action_list.BuyOutList = g.filterUsed(BUYOUT, g.getBuyOutList(g.currentPlayerIdx))
+	action_list.SellPropertyList = g.filterUsed(SELLOFFER, g.getSellPropertyList(g.currentPlayerIdx))
+	action_list.BuyPropertyList = g.filterUsed(BUYOFFER, g.getBuyPropertyList(g.currentPlayerIdx))
+	action_list.BuyHouseList = g.filterUsed(BUYHOUSE, g.getBuyHouseList(g.currentPlayerIdx))
+	action_list.SellHouseList = g.filterUsed(SELLHOUSE, g.getSellHouseList(g.currentPlayerIdx))
 
 	action_list.Actions = []StdAction{NOACTION}
 	if len(action_list.MortgageList) > 0 {
@@ -476,6 +503,7 @@ func (g *Game) standardActions() {
 		return
 	}
 	g.std_actions_used++
+	g.recordUsed(action_details.Action, action_details.PropertyId)
 	g.resolveStandardAction(g.currentPlayerIdx, action_details, action_list)
 	if !g.continueRound(g.currentPlayerIdx) {
 		return

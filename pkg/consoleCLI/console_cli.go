@@ -101,8 +101,12 @@ func chooseProperty(properties []int, state monopoly.GameState) int {
 				page++
 				break
 			}
+			if char == 0 {
+				// Special key (arrow, Enter, F-key, etc.) — ignore
+				continue
+			}
 			chosen_number := int(char - '1')
-			if page*8+chosen_number < len(properties) {
+			if chosen_number >= 0 && page*8+chosen_number < len(properties) {
 				return properties[page*8+chosen_number]
 			}
 			fmt.Println("Invalid character. Try again.")
