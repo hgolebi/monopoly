@@ -20,6 +20,13 @@ const (
 	BiddingDecision
 )
 
+// NegotiationResponse is sent by the client for BuyFromPlayerDecision and SellToPlayerDecision.
+// Continue=false means immediate withdrawal/rejection; Continue=true means Price is the response.
+type NegotiationResponse struct {
+	Continue bool
+	Price    int
+}
+
 type ActionRequest struct {
 	Type           RequestType
 	PlayerId       int
@@ -34,8 +41,8 @@ type PlayerIO interface {
 	GetStdAction(player int, state monopoly.GameState, availableActions monopoly.FullActionList) monopoly.ActionDetails
 	GetJailAction(player int, state monopoly.GameState, available []monopoly.JailAction) monopoly.JailAction
 	BuyDecision(player int, state monopoly.GameState, propertyId int) bool
-	BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int) int
-	SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int) int
+	BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int) (bool, int)
+	SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int) (bool, int)
 	BiddingDecision(player int, state monopoly.GameState, propertyId int, currentPrice int, currentWinner int) int
 }
 
@@ -192,7 +199,7 @@ func (s *ConsoleServer) BuyDecision(player int, state monopoly.GameState, proper
 	return resp
 }
 
-func (s *ConsoleServer) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int) int {
+func (s *ConsoleServer) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int) (bool, int) {
 	playerInfo := s.PlayersInfoMap[player]
 	if !playerInfo.isHuman {
 		return playerInfo.bot.BuyFromPlayerDecision(player, state, propertyId, sellerOffer)
@@ -211,17 +218,16 @@ func (s *ConsoleServer) BuyFromPlayerDecision(player int, state monopoly.GameSta
 		panic(err)
 	}
 
-	var resp int
-	err := decoder.Decode(&resp)
-	if err != nil {
+	var resp NegotiationResponse
+	if err := decoder.Decode(&resp); err != nil {
 		fmt.Println("Error decoding response:", err)
 		panic("Cannot read response from player")
 	}
-	fmt.Printf("Player %d responded to counteroffer with: %d$\n", player, resp)
-	return resp
+	fmt.Printf("Player %d responded to counteroffer: continue=%v price=%d$\n", player, resp.Continue, resp.Price)
+	return resp.Continue, resp.Price
 }
 
-func (s *ConsoleServer) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int) int {
+func (s *ConsoleServer) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int) (bool, int) {
 	playerInfo := s.PlayersInfoMap[player]
 	if !playerInfo.isHuman {
 		return playerInfo.bot.SellToPlayerDecision(player, state, propertyId, buyerOffer)
@@ -240,14 +246,13 @@ func (s *ConsoleServer) SellToPlayerDecision(player int, state monopoly.GameStat
 		panic(err)
 	}
 
-	var resp int
-	err := decoder.Decode(&resp)
-	if err != nil {
+	var resp NegotiationResponse
+	if err := decoder.Decode(&resp); err != nil {
 		fmt.Println("Error decoding response:", err)
 		panic("Cannot read response from player")
 	}
-	fmt.Printf("Player %d responded to buy offer with: %d$\n", player, resp)
-	return resp
+	fmt.Printf("Player %d responded to buy offer: continue=%v price=%d$\n", player, resp.Continue, resp.Price)
+	return resp.Continue, resp.Price
 }
 
 func (s *ConsoleServer) BiddingDecision(player int, state monopoly.GameState, propertyId int, currentPrice int, currentWinner int) int {

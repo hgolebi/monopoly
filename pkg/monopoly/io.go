@@ -129,13 +129,13 @@ type IMonopoly_IO interface {
 	GetJailAction(player int, state GameState, available []JailAction) JailAction
 	BuyDecision(player int, state GameState, propertyId int) bool
 	// BuyFromPlayerDecision is called during BUYOFFER negotiation when the seller has made a counteroffer.
-	// Returns 0 to withdraw, or a price >= sellerOffer to accept/raise the buyer's offer.
-	// If the returned price equals the buyer's last offer, the buyer signals an impasse.
-	BuyFromPlayerDecision(player int, state GameState, propertyId int, sellerOffer int) int
+	// Returns (false, _) to withdraw immediately.
+	// Returns (true, price) to continue: price >= sellerOffer = accept, price <= buyerPrice = impasse signal, in between = raise offer.
+	BuyFromPlayerDecision(player int, state GameState, propertyId int, sellerOffer int) (bool, int)
 	// SellToPlayerDecision is called during BUYOFFER negotiation when the buyer has made an offer.
-	// Returns 0 to reject outright, or a price <= buyerOffer to accept, or a price > buyerOffer as a counteroffer.
-	// If the returned price equals the seller's last counteroffer, the seller signals an impasse.
-	SellToPlayerDecision(player int, state GameState, propertyId int, buyerOffer int) int
+	// Returns (false, _) to hard-reject immediately.
+	// Returns (true, price) to continue: price <= buyerOffer = accept, price >= lastSellerPrice = impasse signal, in between = lower counteroffer.
+	SellToPlayerDecision(player int, state GameState, propertyId int, buyerOffer int) (bool, int)
 	BiddingDecision(player int, state GameState, propertyId int, currentPrice int, currentWinner int) int
 	Finish(f FinishOption, winner int, state GameState)
 }

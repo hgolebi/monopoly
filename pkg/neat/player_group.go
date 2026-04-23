@@ -59,7 +59,7 @@ func (t *NEATPlayerGroup) BuyDecision(player int, state monopoly.GameState, prop
 	return p.BuyDecision(player, state, propertyId)
 }
 
-func (t *NEATPlayerGroup) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int) int {
+func (t *NEATPlayerGroup) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int) (bool, int) {
 	if player < 0 || player >= len(t.players) {
 		panic("Invalid player index")
 	}
@@ -68,7 +68,7 @@ func (t *NEATPlayerGroup) BuyFromPlayerDecision(player int, state monopoly.GameS
 	return p.BuyFromPlayerDecision(player, state, propertyId, sellerOffer)
 }
 
-func (t *NEATPlayerGroup) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int) int {
+func (t *NEATPlayerGroup) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int) (bool, int) {
 	if player < 0 || player >= len(t.players) {
 		panic("Invalid player index")
 	}

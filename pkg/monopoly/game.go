@@ -860,10 +860,10 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, initial_price int) {
 		state.NegotiationBuyerOffer = buyerPrice
 		state.NegotiationSellerOffer = sellerPrice
 
-		sellerResponse := g.io.SellToPlayerDecision(seller.ID, state, property_id, buyerPrice)
-		g.logger.Log(fmt.Sprintf("%s responds to %d$ offer with: %d$", seller.Name, buyerPrice, sellerResponse))
+		sellerContinue, sellerResponse := g.io.SellToPlayerDecision(seller.ID, state, property_id, buyerPrice)
+		g.logger.Log(fmt.Sprintf("%s responds to %d$ offer with: continue=%v price=%d$", seller.Name, buyerPrice, sellerContinue, sellerResponse))
 
-		if sellerResponse == 0 {
+		if !sellerContinue {
 			// Hard rejection
 			g.logger.Log(fmt.Sprintf("%s hard-rejected the offer — negotiation over", seller.Name))
 			return
@@ -896,10 +896,10 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, initial_price int) {
 		state.NegotiationBuyerOffer = buyerPrice
 		state.NegotiationSellerOffer = sellerPrice
 
-		buyerResponse := g.io.BuyFromPlayerDecision(player_id, state, property_id, sellerPrice)
-		g.logger.Log(fmt.Sprintf("%s responds to %d$ counteroffer with: %d$", buyer.Name, sellerPrice, buyerResponse))
+		buyerContinue, buyerResponse := g.io.BuyFromPlayerDecision(player_id, state, property_id, sellerPrice)
+		g.logger.Log(fmt.Sprintf("%s responds to %d$ counteroffer with: continue=%v price=%d$", buyer.Name, sellerPrice, buyerContinue, buyerResponse))
 
-		if buyerResponse == 0 {
+		if !buyerContinue {
 			// Buyer explicitly withdraws
 			g.logger.Log(fmt.Sprintf("%s withdrew from the negotiation", buyer.Name))
 			return

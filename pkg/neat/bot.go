@@ -202,52 +202,52 @@ func (bot *SimplePlayerBot) BuyDecision(player int, state monopoly.GameState, pr
 	}
 	return false
 }
-func (bot *SimplePlayerBot) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int) int {
+func (bot *SimplePlayerBot) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int) (bool, int) {
 	// Called when seller has made a counteroffer during BUYOFFER negotiation.
-	// Returns 0 to withdraw, or a price >= sellerOffer to accept/raise the offer.
+	// Returns (false, _) to withdraw, or (true, price) to continue.
 	property := state.Properties[propertyId]
 	playerMoney := state.Players[player].Money
 
 	if playerMoney-sellerOffer < 200 {
-		return 0 // Cannot afford it
+		return false, 0 // Cannot afford it — withdraw
 	}
 	if sellerOffer <= property.Price {
-		return sellerOffer // Accept — price is at or below catalogue value
+		return true, sellerOffer // Accept — price is at or below catalogue value
 	}
 	isKeyProperty := slices.Contains(FindKeyProperties(state, player), propertyId)
 	if isKeyProperty && sellerOffer <= 2*property.Price {
-		return sellerOffer // Accept — key property within budget
+		return true, sellerOffer // Accept — key property within budget
 	}
-	// Repeat buyer's current offer as impasse signal (no better counteroffer to make)
-	return state.NegotiationBuyerOffer
+	// Repeat buyer's current offer as impasse signal
+	return true, state.NegotiationBuyerOffer
 }
 
-func (bot *SimplePlayerBot) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int) int {
+func (bot *SimplePlayerBot) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int) (bool, int) {
 	// Called when buyer has made an offer during BUYOFFER negotiation.
-	// Returns 0 to hard-reject, a price <= buyerOffer to accept, or a price > buyerOffer as a counteroffer.
+	// Returns (false, _) to hard-reject, or (true, price) to continue.
 	property := state.Properties[propertyId]
 
 	fullSetProperties := findPropertiesInFullSets(state, player)
 	if slices.Contains(fullSetProperties, propertyId) {
-		return 0 // Never sell monopoly properties
+		return false, 0 // Never sell monopoly properties
 	}
 	unwantedProperties := findUnwantedProperties(state, player)
 	if slices.Contains(unwantedProperties, propertyId) && buyerOffer > property.Price {
-		return buyerOffer // Accept — unwanted property above catalogue price
+		return true, buyerOffer // Accept — unwanted property above catalogue price
 	}
 	if buyerOffer > 2*property.Price {
-		return buyerOffer // Accept — excellent price
+		return true, buyerOffer // Accept — excellent price
 	}
 	// Counteroffer: ask for 1.5× catalogue price
 	minAcceptable := property.Price * 3 / 2
 	if buyerOffer >= minAcceptable {
-		return buyerOffer // Accept if already at or above minimum acceptable
+		return true, buyerOffer // Accept if already at or above minimum acceptable
 	}
 	// Signal impasse if already at minimum (repeat last seller offer)
 	if state.NegotiationSellerOffer == minAcceptable {
-		return minAcceptable // Repeat = seller impasse signal
+		return true, minAcceptable // Repeat = seller impasse signal
 	}
-	return minAcceptable
+	return true, minAcceptable // Counteroffer
 }
 
 func (bot *SimplePlayerBot) BiddingDecision(player int, state monopoly.GameState, propertyId int, currentPrice int, currentWinner int) int {
