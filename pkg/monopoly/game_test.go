@@ -1263,6 +1263,265 @@ func TestSendBuyOffer(t *testing.T) {
 	}
 }
 
+// helper: build a standard game with 4 players, logging mocked away.
+func newTestGame(t *testing.T, seed int64) (*Game, *MockMonopolyIO) {
+	t.Helper()
+	io := &MockMonopolyIO{}
+	io.On("Init").Return(playerNames[:4])
+	logger := &MockLogger{}
+	logger.On("Init").Return()
+	logger.On("Log", mock.Anything).Return()
+	logger.On("LogState", mock.Anything).Return()
+	logger.On("Error", mock.Anything, mock.Anything).Return()
+	logger.On("LogWithState", mock.Anything, mock.Anything).Return()
+	game := NewGame(context.Background(), io, logger, seed)
+	return game, io
+}
+
+// TestSendBuyOffer_HardRejectBySeller — seller returns 0 on first call.
+// Expected: negotiation ends immediately, no transfer, no BuyFromPlayerDecision call.
+func TestSendBuyOffer_HardRejectBySeller(t *testing.T) {
+	game, io := newTestGame(t, 42)
+
+	buyerId, sellerId, propertyId := 0, 1, 3
+	buyerInitialMoney := 1000
+	sellerInitialMoney := 1000
+
+	buyer := game.players[buyerId]
+	seller := game.players[sellerId]
+	buyer.Money = buyerInitialMoney
+	seller.Money = sellerInitialMoney
+	seller.Properties = []int{propertyId}
+	property := game.properties[propertyId]
+	property.Owner = seller
+
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything).Return(0)
+
+	game.sendBuyOffer(buyerId, propertyId, 300)
+
+	// Property must not have changed hands
+	assert.Equal(t, seller, property.Owner, "Property owner should not change after hard reject")
+	assert.Equal(t, buyerInitialMoney, buyer.Money, "Buyer money should be unchanged after hard reject")
+	assert.Equal(t, sellerInitialMoney, seller.Money, "Seller money should be unchanged after hard reject")
+	io.AssertNotCalled(t, "BuyFromPlayerDecision", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+}
+
+// TestSendBuyOffer_SellerAcceptsBuyerPrice — seller immediately responds with a price ≤ buyerPrice (rule c).
+// Expected: trade finalizes at buyerPrice, no buyer decision needed.
+func TestSendBuyOffer_SellerAcceptsBuyerPrice(t *testing.T) {
+	game, io := newTestGame(t, 42)
+
+	buyerId, sellerId, propertyId := 0, 1, 3
+	buyerPrice := 300
+	buyer := game.players[buyerId]
+	seller := game.players[sellerId]
+	buyer.Money = 1000
+	seller.Money = 500
+	seller.Properties = []int{propertyId}
+	property := game.properties[propertyId]
+	property.Owner = seller
+
+	// Seller accepts: responds with exactly buyerPrice → ≤ buyerPrice
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, buyerPrice).Return(buyerPrice)
+
+	game.sendBuyOffer(buyerId, propertyId, buyerPrice)
+
+	// Buyer pays buyerPrice to seller
+	assert.Equal(t, 1000-buyerPrice, buyer.Money, "Buyer should pay buyerPrice")
+	assert.Equal(t, 500+buyerPrice, seller.Money, "Seller should receive buyerPrice")
+	assert.Equal(t, buyer, property.Owner, "Property should transfer to buyer")
+	io.AssertNotCalled(t, "BuyFromPlayerDecision", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+}
+
+// TestSendBuyOffer_BuyerAcceptsSellerPrice — seller counters with sellerPrice > buyerPrice,
+// buyer responds ≥ sellerPrice (rule c). Expected: trade at sellerPrice.
+func TestSendBuyOffer_BuyerAcceptsSellerPrice(t *testing.T) {
+	game, io := newTestGame(t, 42)
+
+	buyerId, sellerId, propertyId := 0, 1, 3
+	buyerInitialOffer := 300
+	sellerCounter := 500
+	buyer := game.players[buyerId]
+	seller := game.players[sellerId]
+	buyer.Money = 1000
+	seller.Money = 200
+	seller.Properties = []int{propertyId}
+	property := game.properties[propertyId]
+	property.Owner = seller
+
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, buyerInitialOffer).Return(sellerCounter)
+	// Buyer accepts sellerCounter exactly (≥ sellerPrice → rule c)
+	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, sellerCounter).Return(sellerCounter)
+
+	game.sendBuyOffer(buyerId, propertyId, buyerInitialOffer)
+
+	assert.Equal(t, 1000-sellerCounter, buyer.Money, "Buyer should pay sellerPrice")
+	assert.Equal(t, 200+sellerCounter, seller.Money, "Seller should receive sellerPrice")
+	assert.Equal(t, buyer, property.Owner, "Property should transfer to buyer")
+}
+
+// TestSendBuyOffer_BuyerWithdraws — seller counters, buyer responds 0 (withdrawal).
+// Expected: negotiation ends, no transfer.
+func TestSendBuyOffer_BuyerWithdraws(t *testing.T) {
+	game, io := newTestGame(t, 42)
+
+	buyerId, sellerId, propertyId := 0, 1, 3
+	buyerInitialOffer := 300
+	sellerCounter := 500
+	buyer := game.players[buyerId]
+	seller := game.players[sellerId]
+	buyer.Money = 1000
+	seller.Money = 200
+	seller.Properties = []int{propertyId}
+	property := game.properties[propertyId]
+	property.Owner = seller
+
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, buyerInitialOffer).Return(sellerCounter)
+	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, sellerCounter).Return(0)
+
+	game.sendBuyOffer(buyerId, propertyId, buyerInitialOffer)
+
+	assert.Equal(t, seller, property.Owner, "Property should not transfer after buyer withdrawal")
+	assert.Equal(t, 1000, buyer.Money, "Buyer money should be unchanged after withdrawal")
+	assert.Equal(t, 200, seller.Money, "Seller money should be unchanged after withdrawal")
+}
+
+// TestSendBuyOffer_ImpaseBothSides — buyer keeps repeating its price (≤ buyerPrice → buyerImpasse),
+// seller keeps repeating its price (≥ sellerPrice → sellerImpasse). Both impasse → end.
+// Sequence: Iter1: seller=500(new), buyer=300(≤300→impasse). Iter2: seller=500(≥500→sellerImpasse) → both impasse.
+func TestSendBuyOffer_ImpaseBothSides(t *testing.T) {
+	game, io := newTestGame(t, 42)
+
+	buyerId, sellerId, propertyId := 0, 1, 3
+	buyerOffer := 300
+	sellerOffer := 500
+	buyer := game.players[buyerId]
+	seller := game.players[sellerId]
+	buyer.Money = 1000
+	seller.Money = 200
+	seller.Properties = []int{propertyId}
+	property := game.properties[propertyId]
+	property.Owner = seller
+
+	// Seller counters with 500 every time (first call sets sellerPrice=500, subsequent ≥500 → impasse)
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything).Return(sellerOffer)
+	// Buyer repeats its offer 300 (≤ buyerOffer=300 → buyerImpasse every time)
+	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, sellerOffer).Return(buyerOffer)
+
+	game.sendBuyOffer(buyerId, propertyId, buyerOffer)
+
+	// No transfer should have happened
+	assert.Equal(t, seller, property.Owner, "Property should not transfer in an impasse")
+	assert.Equal(t, 1000, buyer.Money, "Buyer money unchanged in impasse")
+	assert.Equal(t, 200, seller.Money, "Seller money unchanged in impasse")
+}
+
+// TestSendBuyOffer_BuyerRaisesOfferThenAccepts — buyer raises price (rule d) then accepts.
+// Sequence: seller=500, buyer raises to 400 (rule d). seller=500(≥500→sellerImpasse), buyer=500(≥sellerPrice→accepts).
+func TestSendBuyOffer_BuyerRaisesOfferRuleD(t *testing.T) {
+	game, io := newTestGame(t, 42)
+
+	buyerId, sellerId, propertyId := 0, 1, 5
+	buyer := game.players[buyerId]
+	seller := game.players[sellerId]
+	buyer.Money = 1000
+	seller.Money = 200
+	seller.Properties = []int{propertyId}
+	property := game.properties[propertyId]
+	property.Owner = seller
+
+	// Seller always responds 500
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything).Return(500)
+	// First buyer call: raise to 400 (rule d: 300 < 400 < 500)
+	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, 500).Return(400).Once()
+	// Second buyer call: accept at 500 (≥ sellerPrice → rule c)
+	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, 500).Return(500).Once()
+
+	game.sendBuyOffer(buyerId, propertyId, 300)
+
+	// Trade at sellerPrice=500
+	assert.Equal(t, 1000-500, buyer.Money, "Buyer should pay seller's price after raising and accepting")
+	assert.Equal(t, 200+500, seller.Money, "Seller should receive its price")
+	assert.Equal(t, buyer, property.Owner, "Property should transfer to buyer")
+}
+
+// TestSendBuyOffer_SellerRuleB — seller responds ≥ lastSellerPrice on second call → treated as repeat
+// (sellerImpasse), sellerPrice should NOT change.
+// Sequence: seller=500(new sellerPrice=500), buyer=400(rule d, buyerPrice=400).
+//
+//	seller=600(≥500 → sellerImpasse, sellerPrice stays 500), buyer=400(≤400 → buyerImpasse) → both impasse.
+func TestSendBuyOffer_SellerRuleBImpasse(t *testing.T) {
+	game, io := newTestGame(t, 42)
+
+	buyerId, sellerId, propertyId := 0, 1, 3
+	buyer := game.players[buyerId]
+	seller := game.players[sellerId]
+	buyer.Money = 1000
+	seller.Money = 200
+	seller.Properties = []int{propertyId}
+	property := game.properties[propertyId]
+	property.Owner = seller
+
+	// First seller call: 500 → new sellerPrice = 500
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything).Return(500).Once()
+	// Second seller call: 600 ≥ 500 → rule b, sellerImpasse, sellerPrice stays 500
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything).Return(600).Once()
+
+	// First buyer call: 400 (300 < 400 < 500 → rule d, buyerPrice = 400)
+	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, mock.Anything).Return(400).Once()
+	// Second buyer call: 400 ≤ buyerPrice (400) → buyerImpasse
+	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, mock.Anything).Return(400).Once()
+
+	game.sendBuyOffer(buyerId, propertyId, 300)
+
+	// Both impasse → no transfer
+	assert.Equal(t, seller, property.Owner, "Property should not transfer when seller rule-b triggers impasse")
+	assert.Equal(t, 1000, buyer.Money, "Buyer money unchanged")
+	assert.Equal(t, 200, seller.Money, "Seller money unchanged")
+	// Verify both Once() expectations were consumed (2 seller calls + 2 buyer calls)
+	io.AssertExpectations(t)
+}
+
+// TestSendBuyOffer_FullExampleFromSpec — reproduces the 4-iteration example from the task description.
+// K:300→400→450→450, S:700→700→650→650 — ends in impasse.
+//
+// Iter 1: seller=700(new), buyer=400(300<400<700 → rule d, buyerPrice=400)
+// Iter 2: seller=700(≥700 → sellerImpasse, sellerPrice stays 700), buyer=450(400<450<700 → rule d, buyerPrice=450)
+// Iter 3: seller=650(<700 → rule d/new, sellerPrice=650, sellerImpasse=false), buyer=450(≤450 → buyerImpasse)
+// Iter 4: seller=650(≥650 → sellerImpasse) → both impasse → end
+func TestSendBuyOffer_FullExampleImpasse(t *testing.T) {
+	game, io := newTestGame(t, 42)
+
+	buyerId, sellerId, propertyId := 0, 1, 3
+	buyer := game.players[buyerId]
+	seller := game.players[sellerId]
+	buyer.Money = 2000
+	seller.Money = 200
+	seller.Properties = []int{propertyId}
+	property := game.properties[propertyId]
+	property.Owner = seller
+
+	// Seller responses: 700, 700, 650, 650
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything).Return(700).Once()
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything).Return(700).Once()
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything).Return(650).Once()
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything).Return(650).Once()
+
+	// Buyer responses: 400, 450, 450
+	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, mock.Anything).Return(400).Once()
+	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, mock.Anything).Return(450).Once()
+	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, mock.Anything).Return(450).Once()
+
+	game.sendBuyOffer(buyerId, propertyId, 300)
+
+	// Negotiation ends in impasse — no transfer
+	assert.Equal(t, seller, property.Owner, "Property should not transfer in full-example impasse")
+	assert.Equal(t, 2000, buyer.Money, "Buyer money unchanged in full-example impasse")
+	assert.Equal(t, 200, seller.Money, "Seller money unchanged in full-example impasse")
+	// All Once() expectations consumed means exactly 4 seller + 3 buyer calls happened
+	io.AssertExpectations(t)
+}
+
 func TestBuyOut(t *testing.T) {
 	tests := []struct {
 		playerId     int

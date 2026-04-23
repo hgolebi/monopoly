@@ -244,47 +244,45 @@ func (c *ConsoleCLI) BuyDecision(player int, state monopoly.GameState, propertyI
 func (c *ConsoleCLI) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int) int {
 	property := state.Properties[propertyId]
 	fmt.Printf("\n--- NEGOTIATION: %s ---\n", property.Name)
-	fmt.Printf("Seller's counteroffer: %d$\n", sellerOffer)
-	fmt.Printf("Your current offer:    %d$\n", state.NegotiationBuyerOffer)
-	fmt.Printf("Enter your response (0 to withdraw, or a price >= %d$ to accept/raise): ", sellerOffer)
-	var resp int
+	fmt.Printf("Seller's counteroffer:  %d$\n", sellerOffer)
+	fmt.Printf("Your current offer:     %d$\n", state.NegotiationBuyerOffer)
+	fmt.Printf("  0                     — withdraw from negotiation\n")
+	fmt.Printf("  1..%d               — repeat/impasse signal (treated as %d$)\n", state.NegotiationBuyerOffer, state.NegotiationBuyerOffer)
+	fmt.Printf("  %d..%d          — raise your offer (negotiation continues)\n", state.NegotiationBuyerOffer+1, sellerOffer-1)
+	fmt.Printf("  %d+               — accept seller's price (%d$)\n", sellerOffer, sellerOffer)
+	fmt.Printf("Enter price: ")
 	for {
+		var resp int
 		_, err := fmt.Scan(&resp)
-		if err != nil {
-			fmt.Println("Invalid input. Enter a number.")
+		if err != nil || resp < 0 {
+			fmt.Println("Invalid input. Enter a non-negative number.")
 			continue
 		}
-		if resp == 0 || resp >= sellerOffer {
-			return resp
-		}
-		if resp == state.NegotiationBuyerOffer {
-			fmt.Println("(Signalling buyer impasse — repeating your last offer)")
-			return resp
-		}
-		fmt.Printf("Price must be 0 (withdraw) or >= %d$ (accept/raise). Try again: ", sellerOffer)
+		return resp
 	}
 }
 
 func (c *ConsoleCLI) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int) int {
 	property := state.Properties[propertyId]
 	fmt.Printf("\n--- NEGOTIATION: %s ---\n", property.Name)
-	fmt.Printf("Buyer's offer:         %d$\n", buyerOffer)
+	fmt.Printf("Buyer's offer:          %d$\n", buyerOffer)
 	if state.NegotiationSellerOffer > 0 {
 		fmt.Printf("Your last counteroffer: %d$\n", state.NegotiationSellerOffer)
+		fmt.Printf("  0                     — hard reject (end negotiation)\n")
+		fmt.Printf("  1..%d               — accept buyer's price (%d$)\n", buyerOffer, buyerOffer)
+		fmt.Printf("  %d..%d          — lower your counteroffer (negotiation continues)\n", buyerOffer+1, state.NegotiationSellerOffer-1)
+		fmt.Printf("  %d+               — repeat/impasse signal (treated as %d$)\n", state.NegotiationSellerOffer, state.NegotiationSellerOffer)
+	} else {
+		fmt.Printf("  0                     — hard reject (end negotiation)\n")
+		fmt.Printf("  1..%d               — accept buyer's price (%d$)\n", buyerOffer, buyerOffer)
+		fmt.Printf("  %d+               — counteroffer (name your price)\n", buyerOffer+1)
 	}
-	fmt.Printf("Enter your response (0 to hard-reject, or a price to accept/counteroffer): ")
-	var resp int
+	fmt.Printf("Enter price: ")
 	for {
+		var resp int
 		_, err := fmt.Scan(&resp)
-		if err != nil {
-			fmt.Println("Invalid input. Enter a number.")
-			continue
-		}
-		if resp == 0 {
-			return 0
-		}
-		if state.NegotiationSellerOffer > 0 && resp > state.NegotiationSellerOffer {
-			fmt.Printf("You cannot raise your counteroffer (last: %d$). Try again: ", state.NegotiationSellerOffer)
+		if err != nil || resp < 0 {
+			fmt.Println("Invalid input. Enter a non-negative number.")
 			continue
 		}
 		return resp

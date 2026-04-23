@@ -11,6 +11,7 @@ const (
 	MAX_OFFER_TRIES  = 1
 	MAX_PLAYERS      = 4
 	MAX_STD_ACTIONS  = 5
+	MAX_TRADE_ROUNDS = 10
 
 	// game settings used for normalization of NEAT input/outputs
 	LAST_FIELD_ID    = 39
@@ -52,6 +53,7 @@ type GameSettings struct {
 	MinPrice             int
 	MaxOfferTries        int
 	MaxStdActionsPerTurn int
+	MaxTradeRounds       int
 }
 
 func NewGameSettings() GameSettings {
@@ -64,5 +66,6 @@ func NewGameSettings() GameSettings {
 		MinPrice:             MIN_PRICE,
 		MaxOfferTries:        MAX_OFFER_TRIES,
 		MaxStdActionsPerTurn: MAX_STD_ACTIONS,
+		MaxTradeRounds:       MAX_TRADE_ROUNDS,
 	}
 }

@@ -846,11 +846,11 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, initial_price int) {
 	g.logger.Log(fmt.Sprintf("%s initiates buy negotiation for %s, opening offer: %d$", buyer.Name, property.GetName(), initial_price))
 
 	buyerPrice := initial_price
-	lastBuyerPrice := -1  // sentinel: buyer has not repeated yet
-	lastSellerPrice := -1 // sentinel: seller has not responded yet
+	sellerPrice := -1    // sentinel: seller has not yet made a counteroffer
+	buyerImpasse := false
+	sellerImpasse := false
 
-	const maxIterations = 20
-	for i := 0; i < maxIterations; i++ {
+	for i := 0; i < g.settings.MaxTradeRounds; i++ {
 		if !g.continueRound(player_id) || !g.continueRound(seller.ID) {
 			return
 		}
@@ -858,7 +858,7 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, initial_price int) {
 		// --- Seller's turn ---
 		state := g.getState()
 		state.NegotiationBuyerOffer = buyerPrice
-		state.NegotiationSellerOffer = lastSellerPrice
+		state.NegotiationSellerOffer = sellerPrice
 
 		sellerResponse := g.io.SellToPlayerDecision(seller.ID, state, property_id, buyerPrice)
 		g.logger.Log(fmt.Sprintf("%s responds to %d$ offer with: %d$", seller.Name, buyerPrice, sellerResponse))
@@ -869,25 +869,27 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, initial_price int) {
 			return
 		}
 		if sellerResponse <= buyerPrice {
-			// Seller accepts (offered price at or below buyer's offer)
-			finalPrice := sellerResponse
-			if finalPrice <= 0 {
-				finalPrice = buyerPrice
-			}
-			g.logger.Log(fmt.Sprintf("%s accepted %s for %d$", seller.Name, property.GetName(), finalPrice))
-			g.finalizeTrade(buyer, seller, property_id, finalPrice)
+			// Rule c: seller accepts — finalize at buyer's price
+			g.logger.Log(fmt.Sprintf("%s accepted %s for %d$", seller.Name, property.GetName(), buyerPrice))
+			g.finalizeTrade(buyer, seller, property_id, buyerPrice)
 			return
 		}
 
-		// Seller made a counteroffer
-		sellerPrice := sellerResponse
-		buyerImpasse := buyerPrice == lastBuyerPrice
-		sellerImpasse := sellerPrice == lastSellerPrice
+		// sellerResponse > buyerPrice — seller wants more
+		if sellerPrice != -1 && sellerResponse >= sellerPrice {
+			// Rule b: seller responded at or above their last price → treat as repeat (seller impasse signal)
+			sellerImpasse = true
+			// sellerPrice stays unchanged
+		} else {
+			// First response, or rule d: seller lowered their price (between buyerPrice and last sellerPrice)
+			sellerImpasse = false
+			sellerPrice = sellerResponse
+		}
+
 		if buyerImpasse && sellerImpasse {
 			g.logger.Log(fmt.Sprintf("Negotiation for %s ended in an impasse (%d$ vs %d$)", property.GetName(), buyerPrice, sellerPrice))
 			return
 		}
-		lastSellerPrice = sellerPrice
 
 		// --- Buyer's turn ---
 		state = g.getState()
@@ -898,34 +900,32 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, initial_price int) {
 		g.logger.Log(fmt.Sprintf("%s responds to %d$ counteroffer with: %d$", buyer.Name, sellerPrice, buyerResponse))
 
 		if buyerResponse == 0 {
-			// Buyer withdraws
+			// Buyer explicitly withdraws
 			g.logger.Log(fmt.Sprintf("%s withdrew from the negotiation", buyer.Name))
 			return
 		}
 		if buyerResponse >= sellerPrice {
-			// Buyer accepts the seller's counteroffer
+			// Rule c: buyer accepts — finalize at seller's price
 			g.logger.Log(fmt.Sprintf("%s accepted %s for %d$", buyer.Name, property.GetName(), sellerPrice))
 			g.finalizeTrade(buyer, seller, property_id, sellerPrice)
 			return
 		}
 
-		// Buyer raised their offer (but below seller's counteroffer — negotiation continues)
-		newBuyerPrice := buyerResponse
-		if newBuyerPrice < buyerPrice {
-			// Invalid — buyer cannot lower their offer; treat as withdrawal
-			g.logger.Log(fmt.Sprintf("%s attempted to lower their offer (%d$ → %d$) — withdrawal", buyer.Name, buyerPrice, newBuyerPrice))
-			return
+		// buyerResponse < sellerPrice
+		if buyerResponse <= buyerPrice {
+			// Rules a & b: same or lower than last buyer offer → treat as repeat (buyer impasse signal)
+			buyerImpasse = true
+			// buyerPrice stays unchanged
+		} else {
+			// Rule d: buyer raised their offer (between buyerPrice and sellerPrice) → negotiation continues
+			buyerImpasse = false
+			buyerPrice = buyerResponse
 		}
 
-		buyerImpasse = newBuyerPrice == lastBuyerPrice
-		sellerImpasse = sellerPrice == lastSellerPrice
 		if buyerImpasse && sellerImpasse {
-			g.logger.Log(fmt.Sprintf("Negotiation for %s ended in an impasse (%d$ vs %d$)", property.GetName(), newBuyerPrice, sellerPrice))
+			g.logger.Log(fmt.Sprintf("Negotiation for %s ended in an impasse (%d$ vs %d$)", property.GetName(), buyerPrice, sellerPrice))
 			return
 		}
-
-		lastBuyerPrice = buyerPrice
-		buyerPrice = newBuyerPrice
 	}
 
 	g.logger.Log(fmt.Sprintf("Negotiation for %s exceeded max iterations — no sale", property.GetName()))
