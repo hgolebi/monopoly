@@ -246,64 +246,100 @@ func (c *ConsoleCLI) BuyDecision(player int, state monopoly.GameState, propertyI
 }
 
 func (c *ConsoleCLI) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int) (bool, int) {
+	if err := keyboard.Open(); err != nil {
+		log.Fatal(err)
+	}
+	defer keyboard.Close()
+
 	property := state.Properties[propertyId]
-	fmt.Printf("\n--- NEGOTIATION: %s ---\n", property.Name)
-	fmt.Printf("Seller's counteroffer:  %d$\n", sellerOffer)
-	fmt.Printf("Your current offer:     %d$\n", state.NegotiationBuyerOffer)
-	fmt.Printf("  -1                    — withdraw from negotiation\n")
-	fmt.Printf("  0..%d              — repeat/impasse signal (treated as %d$)\n", state.NegotiationBuyerOffer, state.NegotiationBuyerOffer)
-	fmt.Printf("  %d..%d         — raise your offer (negotiation continues)\n", state.NegotiationBuyerOffer+1, sellerOffer-1)
-	fmt.Printf("  %d+              — accept seller's price (%d$)\n", sellerOffer, sellerOffer)
-	fmt.Printf("Enter price (-1 to withdraw): ")
+	fmt.Printf("\n--- NEGOTIATION: %s (buyer) ---\n", property.Name)
+	fmt.Printf("Your current offer:    %d$\n", state.NegotiationBuyerOffer)
+	fmt.Printf("Seller's counteroffer: %d$\n", sellerOffer)
+	fmt.Printf("1. Accept (%d$)\n", sellerOffer)
+	fmt.Printf("2. Withdraw from negotiation\n")
+	fmt.Printf("3. Make a counteroffer\n")
+
 	for {
-		var resp int
-		_, err := fmt.Scan(&resp)
+		char, key, err := keyboard.GetKey()
 		if err != nil {
-			fmt.Println("Invalid input. Enter a number.")
-			continue
+			log.Fatal(err)
 		}
-		if resp == -1 {
+		if key == keyboard.KeyEsc {
+			panic("User quit the game")
+		}
+		switch char {
+		case '1':
+			fmt.Printf("You accept the offer of %d$.\n", sellerOffer)
+			return true, sellerOffer
+		case '2':
+			fmt.Println("You withdraw from the negotiation.")
 			return false, 0
+		case '3':
+			keyboard.Close()
+			fmt.Printf("Your offer: %d$, seller's offer: %d$\n", state.NegotiationBuyerOffer, sellerOffer)
+			fmt.Printf("Enter your counteroffer (>= 0): ")
+			for {
+				var price int
+				_, err := fmt.Scan(&price)
+				if err != nil || price < 0 {
+					fmt.Println("Invalid price. Enter a number >= 0.")
+					continue
+				}
+				return true, price
+			}
+		default:
+			fmt.Println("Press 1, 2 or 3.")
 		}
-		if resp < -1 {
-			fmt.Println("Invalid input. Use -1 to withdraw or 0+ for a price.")
-			continue
-		}
-		return true, resp
 	}
 }
 
 func (c *ConsoleCLI) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int) (bool, int) {
+	if err := keyboard.Open(); err != nil {
+		log.Fatal(err)
+	}
+	defer keyboard.Close()
+
 	property := state.Properties[propertyId]
-	fmt.Printf("\n--- NEGOTIATION: %s ---\n", property.Name)
-	fmt.Printf("Buyer's offer:          %d$\n", buyerOffer)
+	fmt.Printf("\n--- NEGOTIATION: %s (seller) ---\n", property.Name)
+	fmt.Printf("Buyer's offer:         %d$\n", buyerOffer)
 	if state.NegotiationSellerOffer > 0 {
 		fmt.Printf("Your last counteroffer: %d$\n", state.NegotiationSellerOffer)
-		fmt.Printf("  -1                    — hard reject (end negotiation)\n")
-		fmt.Printf("  0..%d              — accept buyer's price (%d$)\n", buyerOffer, buyerOffer)
-		fmt.Printf("  %d..%d         — lower your counteroffer (negotiation continues)\n", buyerOffer+1, state.NegotiationSellerOffer-1)
-		fmt.Printf("  %d+              — repeat/impasse signal (treated as %d$)\n", state.NegotiationSellerOffer, state.NegotiationSellerOffer)
-	} else {
-		fmt.Printf("  -1                    — hard reject (end negotiation)\n")
-		fmt.Printf("  0..%d              — accept buyer's price (%d$)\n", buyerOffer, buyerOffer)
-		fmt.Printf("  %d+              — counteroffer (name your price)\n", buyerOffer+1)
 	}
-	fmt.Printf("Enter price (-1 to reject): ")
+	fmt.Printf("1. Accept (%d$)\n", buyerOffer)
+	fmt.Printf("2. Hard reject (end negotiation)\n")
+	fmt.Printf("3. Make a counteroffer\n")
+
 	for {
-		var resp int
-		_, err := fmt.Scan(&resp)
+		char, key, err := keyboard.GetKey()
 		if err != nil {
-			fmt.Println("Invalid input. Enter a number.")
-			continue
+			log.Fatal(err)
 		}
-		if resp == -1 {
+		if key == keyboard.KeyEsc {
+			panic("User quit the game")
+		}
+		switch char {
+		case '1':
+			fmt.Printf("You accept the offer of %d$.\n", buyerOffer)
+			return true, buyerOffer
+		case '2':
+			fmt.Println("You reject the offer — negotiation ended.")
 			return false, 0
+		case '3':
+			keyboard.Close()
+			fmt.Printf("Buyer's offer: %d$\n", buyerOffer)
+			fmt.Printf("Enter your counteroffer (>= 0): ")
+			for {
+				var price int
+				_, err := fmt.Scan(&price)
+				if err != nil || price < 0 {
+					fmt.Println("Invalid price. Enter a number >= 0.")
+					continue
+				}
+				return true, price
+			}
+		default:
+			fmt.Println("Press 1, 2 or 3.")
 		}
-		if resp < -1 {
-			fmt.Println("Invalid input. Use -1 to reject or 0+ for a price.")
-			continue
-		}
-		return true, resp
 	}
 }
 
