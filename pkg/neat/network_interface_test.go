@@ -7,374 +7,317 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLoadPlayerState(t *testing.T) {
-	var tests = []struct {
-		id                   int
-		is_alive             bool
-		money                int
-		expectedIsAliveInput int
-		expectedIsAlive      float64
-		expectedMoneyInput   int
-		expectedMoney        float64
-	}{
-		{0, true, 1000, 78, -1.23, 79, -1.23},
-		{1, false, 0.0, 78, 0.0, 79, 0.0},
-		{2, true, 2000, 80, 1.0, 81, 1.0},
-		{3, false, 500, 82, 0.0, 83, 0.25},
+// makeTestState creates a GameState with numPlayers players (each starting with 1000 money)
+// and all 28 properties unowned, matching the property setup from game.go.
+func makeTestState(numPlayers int) monopoly.GameState {
+	names := []string{"Alice", "Bob", "Charlie", "Dave"}
+	players := make([]*monopoly.Player, numPlayers)
+	for i := 0; i < numPlayers; i++ {
+		players[i] = monopoly.NewPlayer(i, names[i], 1000)
 	}
-	for _, tt := range tests {
-		ms := NewMonopolySensors()
-		for i := range ms {
-			ms[i] = -1.23
-		}
-		player := monopoly.NewPlayer(tt.id, "", tt.money)
-		player.IsBankrupt = !tt.is_alive
-		ms.loadPlayerState(tt.id, player)
-		assert.InDelta(t, tt.expectedIsAlive, ms[tt.expectedIsAliveInput], 0.0001)
-		assert.InDelta(t, tt.expectedMoney, ms[tt.expectedMoneyInput], 0.0001)
+
+	properties := []*monopoly.Property{
+		monopoly.NewProperty(1, 0, "Brown1", 60, 50, true, 0),
+		monopoly.NewProperty(3, 1, "Brown2", 60, 50, true, 0),
+		monopoly.NewProperty(5, 2, "Railroad1", 200, 0, false, 1),
+		monopoly.NewProperty(6, 3, "LightBlue1", 100, 50, true, 2),
+		monopoly.NewProperty(8, 4, "LightBlue2", 100, 50, true, 2),
+		monopoly.NewProperty(9, 5, "LightBlue3", 120, 50, true, 2),
+		monopoly.NewProperty(11, 6, "Pink1", 140, 100, true, 3),
+		monopoly.NewProperty(12, 7, "Utility1", 150, 0, false, 4),
+		monopoly.NewProperty(13, 8, "Pink2", 140, 100, true, 3),
+		monopoly.NewProperty(14, 9, "Pink3", 160, 100, true, 3),
+		monopoly.NewProperty(15, 10, "Railroad2", 200, 0, false, 1),
+		monopoly.NewProperty(16, 11, "Orange1", 180, 100, true, 5),
+		monopoly.NewProperty(18, 12, "Orange2", 180, 100, true, 5),
+		monopoly.NewProperty(19, 13, "Orange3", 200, 100, true, 5),
+		monopoly.NewProperty(21, 14, "Red1", 220, 150, true, 6),
+		monopoly.NewProperty(23, 15, "Red2", 220, 150, true, 6),
+		monopoly.NewProperty(24, 16, "Red3", 240, 150, true, 6),
+		monopoly.NewProperty(25, 17, "Railroad3", 200, 0, false, 1),
+		monopoly.NewProperty(26, 18, "Yellow1", 260, 150, true, 7),
+		monopoly.NewProperty(27, 19, "Yellow2", 260, 150, true, 7),
+		monopoly.NewProperty(28, 20, "Utility2", 150, 0, false, 4),
+		monopoly.NewProperty(29, 21, "Yellow3", 280, 150, true, 7),
+		monopoly.NewProperty(31, 22, "Green1", 300, 200, true, 8),
+		monopoly.NewProperty(32, 23, "Green2", 300, 200, true, 8),
+		monopoly.NewProperty(34, 24, "Green3", 320, 200, true, 8),
+		monopoly.NewProperty(35, 25, "Railroad4", 200, 0, false, 1),
+		monopoly.NewProperty(37, 26, "DarkBlue1", 350, 200, true, 9),
+		monopoly.NewProperty(39, 27, "DarkBlue2", 400, 200, true, 9),
+	}
+
+	return monopoly.GameState{
+		Players:    players,
+		Properties: properties,
 	}
 }
 
-func TestLoadPropertyState(t *testing.T) {
-	var tests = []struct {
-		id                      int
-		ownerId                 int
-		isMortgaged             bool
-		houses                  int
-		expectedOwnerInput      int
-		expectedOwnerValue      float64
-		expectedIsMortgagedInpt int
-		expectedIsMortgaged     float64
-		expectedHousesInput     int
-		expectedHousesValue     float64
+func TestNewMonopolySensors(t *testing.T) {
+	ms := NewMonopolySensors()
+	assert.Equal(t, int(INPUT_COUNT), len(ms))
+}
+
+func TestLoadState_PlayerInputs(t *testing.T) {
+	tests := []struct {
+		isJailed         bool
+		position         int
+		money            int
+		expectedIsJailed float64
+		expectedPosition float64
+		expectedMoney    float64
 	}{
-		{0, -1, false, 0, 0, -1.23, 1, 0.0, 2, 0.0},
-		{1, 1, true, 3, 3, 0.5, 4, 1.0, 5, 0.6},
-		{2, 2, false, 5, 6, 0.75, 7, 0.0, 8, -1.23},
-		{3, 3, true, 2, 8, 1.0, 9, 1.0, 10, 0.4},
+		{false, 0, 0, 0.0, 0.0, 0.0},
+		{true, 39, 2000, 1.0, 1.0, 1.0},
+		{false, 19, 1000, 0.0, 19.0 / 39.0, 0.5},
+		{true, 10, 500, 1.0, 10.0 / 39.0, 0.25},
 	}
 	for _, tt := range tests {
+		state := makeTestState(1)
+		state.Players[0].IsJailed = tt.isJailed
+		state.Players[0].CurrentPosition = tt.position
+		state.Players[0].Money = tt.money
+
 		ms := NewMonopolySensors()
-		for i := range ms {
-			ms[i] = -1.23
-		}
-		var owner *monopoly.Player
-		if tt.ownerId >= 0 {
-			owner = monopoly.NewPlayer(tt.ownerId, "", 0)
-		} else {
-			owner = nil
-		}
-		property := monopoly.Property{
-			Owner:         owner,
-			IsMortgaged:   tt.isMortgaged,
-			Houses:        tt.houses,
-			CanBuildHouse: true,
-		}
-		ms.loadPropertyState(tt.id, &property, 0)
-		assert.InDelta(t, tt.expectedOwnerValue, ms[tt.expectedOwnerInput], 0.0001)
-		assert.InDelta(t, tt.expectedIsMortgaged, ms[tt.expectedIsMortgagedInpt], 0.0001)
-		assert.InDelta(t, tt.expectedHousesValue, ms[tt.expectedHousesInput], 0.0001)
+		ms.LoadState(state, 0, 0)
+
+		assert.InDelta(t, tt.expectedIsJailed, ms[IN_PLAYER_IS_JAILED], 0.0001)
+		assert.InDelta(t, tt.expectedPosition, ms[IN_PLAYER_POSITION], 0.0001)
+		assert.InDelta(t, tt.expectedMoney, ms[IN_PLAYER_MONEY], 0.0001)
 	}
 }
 
-func TestLoadCurrentPlayerState(t *testing.T) {
-	var tests = []struct {
-		is_alive          bool
-		is_jailed         bool
-		position          int
-		money             int
-		jail_cards        int
-		expectedIsAlive   float64
-		expectedIsJailed  float64
-		expectedPosition  float64
-		expectedMoney     float64
-		expectedJailCards float64
+func TestLoadState_PropertyType(t *testing.T) {
+	state := makeTestState(1)
+	tests := []struct {
+		propertyID   int
+		expectedType float64
 	}{
-		{true, false, 0, 0, 0, 1.0, 0.0, 0.0, 0.0, 0.0},
-		{false, true, 39, 1000, 1, 0.0, 1.0, 1.0, 0.5, 0.1},
-		{true, true, 19, 2000, 2, 1.0, 1.0, 19.0 / 39.0, 1.0, 0.2},
-		{false, false, 1, 10, 3, 0.0, 0.0, 1.0 / 39.0, 0.005, 0.3},
+		{0, 1.0},  // Brown — street
+		{2, 0.0},  // Railroad1
+		{7, 0.5},  // Utility1
+		{20, 0.5}, // Utility2
+		{27, 1.0}, // DarkBlue — street
 	}
 	for _, tt := range tests {
 		ms := NewMonopolySensors()
-		for i := range ms {
-			ms[i] = -1.23
-		}
-		player := monopoly.NewPlayer(0, "", tt.money)
-		player.IsBankrupt = !tt.is_alive
-		player.IsJailed = tt.is_jailed
-		player.CurrentPosition = tt.position
-		player.JailCards = tt.jail_cards
-		ms.loadCurrentPlayerState(player)
-		assert.InDelta(t, tt.expectedIsAlive, ms[84], 0.0001)
-		assert.InDelta(t, tt.expectedIsJailed, ms[85], 0.0001)
-		assert.InDelta(t, tt.expectedPosition, ms[86], 0.0001)
-		assert.InDelta(t, tt.expectedMoney, ms[87], 0.0001)
-		assert.InDelta(t, tt.expectedJailCards, ms[88], 0.0001)
+		ms.LoadState(state, 0, tt.propertyID)
+		assert.InDelta(t, tt.expectedType, ms[IN_PROPERTY_TYPE], 0.0001, "propertyID=%d", tt.propertyID)
 	}
 }
 
-func TestLoadDecisionContext(t *testing.T) {
-	var tests = []struct {
-		decisionContext         DecisionContext
-		expectedDecisionContext float64
+func TestLoadState_PropertyID(t *testing.T) {
+	state := makeTestState(1)
+	tests := []struct {
+		propertyID int
+		expected   float64
 	}{
-		{BUY_DECISION, 0.0},
-		{BIDDING_DECISION, 0.2},
-		{JAIL_DECISION, 0.4},
-		{BUY_FROM_PLAYER, 0.6},
-		{SELL_TO_PLAYER, 0.8},
-		{STD_ACTION, 1.0},
-	}
-	for _, tt := range tests {
-		ms := NewMonopolySensors()
-		for i := range ms {
-			ms[i] = -1.23
-		}
-		ms.LoadDecisionContext(tt.decisionContext)
-		assert.InDelta(t, tt.expectedDecisionContext, ms[89], 0.0001)
-	}
-}
-
-func TestLoadPropertyId(t *testing.T) {
-	var tests = []struct {
-		propertyId         int
-		expectedPropertyId float64
-	}{
-		{0, 1.0 / 28.0},
-		{10, 11.0 / 28.0},
+		{0, 0.0},
 		{27, 1.0},
+		{13, 13.0 / 27.0},
 	}
 	for _, tt := range tests {
 		ms := NewMonopolySensors()
-		for i := range ms {
-			ms[i] = -1.23
-		}
-		ms.LoadPropertyId(tt.propertyId)
-		assert.InDelta(t, tt.expectedPropertyId, ms[90], 0.0001)
+		ms.LoadState(state, 0, tt.propertyID)
+		assert.InDelta(t, tt.expected, ms[IN_PROPERTY_ID], 0.0001, "propertyID=%d", tt.propertyID)
 	}
 }
 
-func TestLoadPrice(t *testing.T) {
-	var tests = []struct {
-		price         int
-		expectedPrice float64
+func TestLoadState_PropertyPrice_Unmortgaged(t *testing.T) {
+	state := makeTestState(1)
+	ms := NewMonopolySensors()
+	ms.LoadState(state, 0, 0) // Brown1, price=60
+	assert.InDelta(t, 60.0/2000.0, ms[IN_PROPERTY_PRICE], 0.0001)
+}
+
+func TestLoadState_PropertyPrice_Mortgaged(t *testing.T) {
+	state := makeTestState(1)
+	state.Properties[0].IsMortgaged = true
+	// Effective price = 60 + GetBuyoutPrice() = 60 + int(60*0.55) = 60 + 33 = 93
+	ms := NewMonopolySensors()
+	ms.LoadState(state, 0, 0)
+	assert.InDelta(t, 93.0/2000.0, ms[IN_PROPERTY_PRICE], 0.0001)
+}
+
+func TestLoadState_Round(t *testing.T) {
+	tests := []struct {
+		round    int
+		expected float64
+	}{
+		{0, 0.0},
+		{25, 0.5},
+		{50, 1.0},
+	}
+	for _, tt := range tests {
+		state := makeTestState(1)
+		state.Round = tt.round
+		ms := NewMonopolySensors()
+		ms.LoadState(state, 0, 0)
+		assert.InDelta(t, tt.expected, ms[IN_ROUND], 0.0001, "round=%d", tt.round)
+	}
+}
+
+func TestLoadState_AvailableProperties(t *testing.T) {
+	state := makeTestState(2)
+	state.Properties[0].Owner = state.Players[0]
+	state.Properties[1].Owner = state.Players[1]
+
+	ms := NewMonopolySensors()
+	ms.LoadState(state, 0, 0)
+	// 28 total, 2 owned → 26 available; normalized by 28
+	assert.InDelta(t, 26.0/28.0, ms[IN_AVAILABLE_PROPERTIES], 0.0001)
+}
+
+func TestLoadState_EnemyNotLoadedByDefault(t *testing.T) {
+	state := makeTestState(1)
+	ms := NewMonopolySensors()
+	ms.LoadState(state, 0, 0)
+	// LoadState does not call LoadEnemyInputs — enemy inputs stay 0
+	assert.InDelta(t, 0.0, ms[IN_ENEMY_INVOLVED], 0.0001)
+	assert.InDelta(t, 0.0, ms[IN_ENEMY_MONEY], 0.0001)
+}
+
+func TestLoadSetInputs_Brown(t *testing.T) {
+	state := makeTestState(2)
+
+	// No one owns anything — player needs all 2 Brown properties
+	ms := NewMonopolySensors()
+	ms.LoadSetInputs(state, 0, 0) // property 0 = Brown, setId=0
+	assert.InDelta(t, 0.0, ms[IN_SET_ID], 0.0001)
+	assert.InDelta(t, 2.0/9.0, ms[IN_SET_PROPERTIES_NEEDED], 0.0001)
+	assert.InDelta(t, 0.0, ms[IN_SET_PROPERTIES_OCCUPIED], 0.0001)
+
+	// Player 0 owns Brown1 — needs 1 more
+	state.Properties[0].Owner = state.Players[0]
+	ms2 := NewMonopolySensors()
+	ms2.LoadSetInputs(state, 0, 0)
+	assert.InDelta(t, 1.0/9.0, ms2[IN_SET_PROPERTIES_NEEDED], 0.0001)
+	assert.InDelta(t, 0.0, ms2[IN_SET_PROPERTIES_OCCUPIED], 0.0001)
+
+	// Player 1 also owns Brown2 — enemy blocks the remaining property
+	state.Properties[1].Owner = state.Players[1]
+	ms3 := NewMonopolySensors()
+	ms3.LoadSetInputs(state, 0, 0)
+	assert.InDelta(t, 1.0/9.0, ms3[IN_SET_PROPERTIES_NEEDED], 0.0001)
+	assert.InDelta(t, 1.0/9.0, ms3[IN_SET_PROPERTIES_OCCUPIED], 0.0001)
+}
+
+func TestLoadSetInputs_Railroad(t *testing.T) {
+	state := makeTestState(1)
+	ms := NewMonopolySensors()
+	ms.LoadSetInputs(state, 2, 0) // Railroad1, setId=1
+	assert.InDelta(t, 1.0/9.0, ms[IN_SET_ID], 0.0001)
+	assert.InDelta(t, 4.0/9.0, ms[IN_SET_PROPERTIES_NEEDED], 0.0001) // needs all 4
+	assert.InDelta(t, 0.0, ms[IN_SET_PROPERTIES_OCCUPIED], 0.0001)
+}
+
+func TestLoadEnemyInputs(t *testing.T) {
+	state := makeTestState(2)
+	state.Players[1].Money = 500
+	state.Properties[1].Owner = state.Players[1] // enemy owns Brown2
+
+	ms := NewMonopolySensors()
+	ms.LoadEnemyInputs(state, 1, 0) // enemy=player1, property 0 (Brown set)
+
+	assert.InDelta(t, 1.0, ms[IN_ENEMY_INVOLVED], 0.0001)
+	assert.InDelta(t, 500.0/2000.0, ms[IN_ENEMY_MONEY], 0.0001)
+	// Enemy owns 1 of 2 Brown — needs 1 more
+	assert.InDelta(t, 1.0/9.0, ms[IN_ENEMY_SET_PROPERTIES_NEEDED], 0.0001)
+	// No other player owns Brown properties
+	assert.InDelta(t, 0.0, ms[IN_ENEMY_SET_PROPERTIES_OCCUPIED], 0.0001)
+}
+
+func TestLoadEnemyInputs_OtherPlayerBlocks(t *testing.T) {
+	state := makeTestState(2)
+	state.Properties[0].Owner = state.Players[0] // player 0 owns Brown1
+
+	ms := NewMonopolySensors()
+	ms.LoadEnemyInputs(state, 1, 0) // query from enemy=player1's perspective
+
+	// Enemy (player1) owns 0 Brown — needs 2
+	assert.InDelta(t, 2.0/9.0, ms[IN_ENEMY_SET_PROPERTIES_NEEDED], 0.0001)
+	// Player 0 counts as "others" from enemy's perspective
+	assert.InDelta(t, 1.0/9.0, ms[IN_ENEMY_SET_PROPERTIES_OCCUPIED], 0.0001)
+}
+
+func TestLoadBuyPriceInput(t *testing.T) {
+	tests := []struct {
+		price    int
+		expected float64
 	}{
 		{0, 0.0},
 		{500, 0.25},
 		{1000, 0.5},
 		{2000, 1.0},
+		{3000, 1.0}, // clipped to max
 		{10, 0.005},
-		{3000, 1.0},
 	}
 	for _, tt := range tests {
 		ms := NewMonopolySensors()
-		for i := range ms {
-			ms[i] = -1.23
-		}
-		ms.LoadPrice(tt.price)
-		assert.InDelta(t, tt.expectedPrice, ms[91], 0.0001)
+		ms.LoadBuyPriceInput(tt.price)
+		assert.InDelta(t, tt.expected, ms[IN_BUY_PRICE], 0.0001, "price=%d", tt.price)
+		assert.InDelta(t, 0.0, ms[IN_SELL_PRICE], 0.0001, "sell price must be unaffected")
 	}
 }
 
-func TestLoadBiddingInputs(t *testing.T) {
-	var tests = []struct {
-		currBid               int
-		currBidWinner         int
-		expectedCurrBid       float64
-		expectedCurrBidWinner float64
-	}{
-		{10, 0, 0.005, 0.25},
-		{0, 1, 0.0, 0.5},
-		{500, 2, 0.25, 0.75},
-		{1000, 3, 0.5, 1.0},
-	}
-	for _, tt := range tests {
-		ms := NewMonopolySensors()
-		for i := range ms {
-			ms[i] = -1.23
-		}
-		ms.LoadBiddingInputs(tt.currBid, tt.currBidWinner, 0)
-		assert.InDelta(t, tt.expectedCurrBid, ms[92], 0.0001)
-		assert.InDelta(t, tt.expectedCurrBidWinner, ms[93], 0.0001)
-	}
-}
-
-func TestLoadCharge(t *testing.T) {
-	var tests = []struct {
-		charge         int
-		expectedCharge float64
+func TestLoadSellPriceInput(t *testing.T) {
+	tests := []struct {
+		price    int
+		expected float64
 	}{
 		{0, 0.0},
 		{500, 0.25},
 		{1000, 0.5},
 		{2000, 1.0},
-		{10, 0.005},
-		{3000, 1.0},
+		{3000, 1.0}, // clipped to max
 	}
 	for _, tt := range tests {
 		ms := NewMonopolySensors()
-		for i := range ms {
-			ms[i] = -1.23
-		}
-		ms.LoadCharge(tt.charge)
-		assert.InDelta(t, tt.expectedCharge, ms[94], 0.0001)
+		ms.LoadSellPriceInput(tt.price)
+		assert.InDelta(t, tt.expected, ms[IN_SELL_PRICE], 0.0001, "price=%d", tt.price)
+		assert.InDelta(t, 0.0, ms[IN_BUY_PRICE], 0.0001, "buy price must be unaffected")
 	}
 }
 
-func TestLoadAvailableStdActions(t *testing.T) {
-	var tests = []struct {
-		availableActions  []monopoly.StdAction
-		expectedNoAction  float64
-		expectedMortgage  float64
-		expectedBuyout    float64
-		expectedSellOffer float64
-		expectedBuyOffer  float64
-		expectedBuyHouse  float64
-		expectedSellHouse float64
+func TestNormalize(t *testing.T) {
+	tests := []struct {
+		value    int
+		min      int
+		max      int
+		shift    bool
+		expected float64
 	}{
-		{
-			[]monopoly.StdAction{},
-			0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-		},
-		{
-			[]monopoly.StdAction{
-				monopoly.NOACTION,
-			},
-			1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-		},
-		{
-			[]monopoly.StdAction{
-				monopoly.MORTGAGE,
-			},
-			0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-		},
-		{
-			[]monopoly.StdAction{
-				monopoly.BUYOUT,
-			},
-			0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
-		},
-		{
-			[]monopoly.StdAction{
-				monopoly.SELLOFFER,
-			},
-			0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0,
-		},
-		{
-			[]monopoly.StdAction{
-				monopoly.BUYOFFER,
-			},
-			0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
-		},
-		{
-			[]monopoly.StdAction{
-				monopoly.BUYHOUSE,
-			},
-			0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0,
-		},
-		{
-			[]monopoly.StdAction{
-				monopoly.SELLHOUSE,
-			},
-			0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
-		},
-		{
-			[]monopoly.StdAction{
-				monopoly.NOACTION,
-				monopoly.MORTGAGE,
-				monopoly.BUYOUT,
-				monopoly.SELLOFFER,
-				monopoly.BUYOFFER,
-				monopoly.BUYHOUSE,
-				monopoly.SELLHOUSE,
-			},
-			1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-		},
+		{0, 0, 100, false, 0.0},
+		{50, 0, 100, false, 0.5},
+		{100, 0, 100, false, 1.0},
+		{150, 0, 100, false, 1.0},    // clipped to 1
+		{-10, 0, 100, false, 0.0},    // clipped to 0
+		{5, 5, 5, false, 0.0},        // max == min
+		{1, 0, 3, true, 2.0 / 4.0},   // (1-0+1)/(3-0+1) = 2/4
+		{0, 0, 39, false, 0.0},
+		{39, 0, 39, false, 1.0},
+		{2000, 0, 2000, false, 1.0},
 	}
 	for _, tt := range tests {
-		ms := NewMonopolySensors()
-		ms.LoadAvailableStdActions(tt.availableActions)
-		assert.InDelta(t, tt.expectedNoAction, ms[95], 0.0001)
-		assert.InDelta(t, tt.expectedMortgage, ms[96], 0.0001)
-		assert.InDelta(t, tt.expectedBuyout, ms[97], 0.0001)
-		assert.InDelta(t, tt.expectedSellOffer, ms[98], 0.0001)
-		assert.InDelta(t, tt.expectedBuyOffer, ms[99], 0.0001)
-		assert.InDelta(t, tt.expectedBuyHouse, ms[100], 0.0001)
-		assert.InDelta(t, tt.expectedSellHouse, ms[101], 0.0001)
+		result := normalize(tt.value, tt.min, tt.max, tt.shift)
+		assert.InDelta(t, tt.expected, result, 0.0001,
+			"normalize(%d, %d, %d, %v)", tt.value, tt.min, tt.max, tt.shift)
 	}
 }
 
-func TestGetOutputs(t *testing.T) {
-	output := []float64{
-		0.1,  // BUY_DECISION
-		0.2,  // BID_DECISION
-		0.3,  // BUY_FROM_PLAYER
-		0.4,  // SELL_TO_PLAYER
-		0.5,  // NO_ACTION
-		0.6,  // MORTGAGE
-		0.7,  // BUYOUT
-		0.8,  // SELL_OFFER
-		0.9,  // BUY_OFFER
-		0.10, // BUY_HOUSE
-		0.11, // SELL_HOUSE
-		0.12, // PLAYER_1
-		0.13, // PLAYER_2
-		0.14, // PLAYER_3
-		0.15, // PRICE
+func TestActivation(t *testing.T) {
+	// f(x) = x * (1 - ((1-x)/0.8)^2)
+	tests := []struct {
+		input    float64
+		expected float64
+	}{
+		{0.0, 0.0},                       // 0 * anything = 0
+		{1.0, 1.0},                       // 1 * (1 - 0) = 1
+		{0.8, 0.75},                      // 0.8 * (1 - 0.0625) = 0.75
+		{0.5, 0.3046875},                 // 0.5 * (1 - 0.390625)
 	}
-	stdActionValues := GetStdActionOutputValues(output)
-	assert.InDelta(t, 0.5, stdActionValues[monopoly.NOACTION], 0.0001)
-	assert.InDelta(t, 0.44999999999999996, stdActionValues[monopoly.MORTGAGE], 0.0001) //activation function
-	assert.InDelta(t, 0.7, stdActionValues[monopoly.BUYOUT], 0.0001)
-	assert.InDelta(t, 0.75, stdActionValues[monopoly.SELLOFFER], 0.0001)     //activation function
-	assert.InDelta(t, 0.8859375, stdActionValues[monopoly.BUYOFFER], 0.0001) //activation function
-	assert.InDelta(t, 0.10, stdActionValues[monopoly.BUYHOUSE], 0.0001)
-	assert.InDelta(t, -0.026142187500000014, stdActionValues[monopoly.SELLHOUSE], 0.0001) //activation function
-}
-
-func TestGetPlayerOutputs(t *testing.T) {
-	output := []float64{
-		0.1,  // BUY_DECISION
-		0.2,  // BID_DECISION
-		0.3,  // BUY_FROM_PLAYER
-		0.4,  // SELL_TO_PLAYER
-		0.5,  // NO_ACTION
-		0.6,  // MORTGAGE
-		0.7,  // BUYOUT
-		0.8,  // SELL_OFFER
-		0.9,  // BUY_OFFER
-		0.10, // BUY_HOUSE
-		0.11, // SELL_HOUSE
-		0.12, // PLAYER_1
-		0.13, // PLAYER_2
-		0.14, // PLAYER_3
-		0.15, // PRICE
+	for _, tt := range tests {
+		result := activation(tt.input)
+		assert.InDelta(t, tt.expected, result, 0.0001, "activation(%f)", tt.input)
 	}
-	playerMap := GetPlayerOutputValues(output)
-	assert.Equal(t, 0.12, playerMap[1])
-	assert.Equal(t, 0.13, playerMap[2])
-	assert.Equal(t, 0.14, playerMap[3])
-}
-
-func TestGetPriceOutput(t *testing.T) {
-	output := []float64{
-		0.1,  // BUY_DECISION
-		0.2,  // BID_DECISION
-		0.3,  // BUY_FROM_PLAYER
-		0.4,  // SELL_TO_PLAYER
-		0.5,  // NO_ACTION
-		0.6,  // MORTGAGE
-		0.7,  // BUYOUT
-		0.8,  // SELL_OFFER
-		0.9,  // BUY_OFFER
-		0.10, // BUY_HOUSE
-		0.11, // SELL_HOUSE
-		0.12, // PLAYER_1
-		0.13, // PLAYER_2
-		0.14, // PLAYER_3
-		0.15, // PRICE
-	}
-	price := GetPriceOutputValue(output)
-	assert.InDelta(t, 300, price, 0.0001)
 }
