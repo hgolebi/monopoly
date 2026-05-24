@@ -8,5 +8,7 @@ graph.json
 .claude/
 CLAUDE.md
 dev/
+PROJECT_INDEX.md
+
 
 .vscode/tasks.json

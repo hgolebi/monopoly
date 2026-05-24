@@ -34,6 +34,9 @@ const (
 	IN_BUY_PRICE  // price for the current action of buying (including bidding)
 	IN_SELL_PRICE // price for the current action of selling
 
+	IN_MORTGAGE_VALUE // value of mortgaging the property for the current action
+	IN_BUYOUT_PRICE   // value of buying out the property for the current action
+
 	INPUT_COUNT
 )
 
@@ -56,7 +59,7 @@ func NewMonopolySensors() MonopolySensors {
 func (s MonopolySensors) LoadState(state monopoly.GameState, playerID int, propertyID int) {
 	s.loadPlayerInputs(state, playerID)
 	s.loadPropertyInputs(state, propertyID)
-	s.LoadSetInputs(state, propertyID, playerID)
+	s.loadSetInputs(state, propertyID, playerID)
 	s.loadAvailablePropertiesInput(state)
 	s[IN_ROUND] = normalize(state.Round, 0, cfg.MAX_ROUNDS, false)
 
@@ -87,7 +90,7 @@ func (s MonopolySensors) loadPropertyInputs(state monopoly.GameState, propertyID
 	s[IN_PROPERTY_PRICE] = normalize(price, 0, cfg.MAX_MONEY, false)
 }
 
-func (s MonopolySensors) LoadSetInputs(state monopoly.GameState, propertyId int, playerID int) {
+func (s MonopolySensors) loadSetInputs(state monopoly.GameState, propertyId int, playerID int) {
 	property := state.Properties[propertyId]
 	setId := property.SetIndex
 	lastSetId := len(monopoly.Sets) - 1

@@ -102,41 +102,95 @@ func (p *NEATMonopolyPlayer) GetDecision(input []float64) []float64 {
 }
 
 func (p *NEATMonopolyPlayer) GetStdAction(player int, state monopoly.GameState, availableActions monopoly.FullActionList) monopoly.ActionDetails {
-	// response := monopoly.ActionDetails{
-	// 	Action: monopoly.NOACTION,
-	// }
+	decision, property, needMoney := p.getBuyHouseDecision(player, state, availableActions)
+	if decision {
+		return monopoly.ActionDetails{
+			Action:     monopoly.BUYHOUSE,
+			PropertyId: property,
+		}
+	} else if needMoney {
+		success, action := p.tryToGetMoney(player, state, availableActions)
+		if success {
+			return action
+		}
+	}
 
-	// decision, propertyId, needMoney := p.getBuyHouseDecision(player, state, availableActions)
-	// if decision {
-	// 	response.Action = monopoly.BUYHOUSE
-	// 	response.PropertyId = propertyId
-	// 	return response
-	// }
-	// if needMoney {
-	// 	p.getMoney(player, state, availableActions)
-	// }
+	decision, property, needMoney = p.getBuyOutDecision(player, state, availableActions)
+	if decision {
+		return monopoly.ActionDetails{
+			Action:     monopoly.BUYOUT,
+			PropertyId: property,
+		}
+	} else if needMoney {
+		success, action := p.tryToGetMoney(player, state, availableActions)
+		if success {
+			return action
+		}
+	}
 
-	// decision, propertyId, needMoney = p.getBuyOutDecision(player, state, availableActions)
-	// if decision {
-	// 	response.Action = monopoly.BUYOUT
-	// 	response.PropertyId = propertyId
-	// 	return response
-	// }
-	// if needMoney {
-	// 	p.getMoney(player, state, availableActions)
-	// }
+	decision, property, price, needMoney := p.getBuyKeyPropertyDecision(player, state, availableActions)
+	if decision {
+		return monopoly.ActionDetails{
+			Action:     monopoly.BUYOFFER,
+			PropertyId: property,
+			Price:      price,
+		}
+	} else if needMoney {
+		success, action := p.tryToGetMoney(player, state, availableActions)
+		if success {
+			return action
+		}
+	}
 
-	// decision, propertyId, price, needMoney = p.getBuyKeyPropertyDecision(player, state, availableActions)
-	// if decision {
-	// 	response.Action = monopoly.BUYOFFER
-	// 	response.PropertyId = propertyId
-	// 	response.Price = price
-	// 	return response
-	// }
-	// if needMoney {
-	// 	p.getMoney(player, state, availableActions)
-	// }
 	return monopoly.ActionDetails{}
+}
+
+func (p *NEATMonopolyPlayer) tryToGetMoney(player int, state monopoly.GameState, availableActions monopoly.FullActionList) (success bool, action monopoly.ActionDetails) {
+	success, property := p.tryMortgage(player, state, availableActions)
+	if success {
+		return true, monopoly.ActionDetails{
+			Action:     monopoly.MORTGAGE,
+			PropertyId: property,
+		}
+	}
+
+	success, property, price := p.trySellProperty(player, state, availableActions)
+	if success {
+		return true, monopoly.ActionDetails{
+			Action:     monopoly.SELLOFFER,
+			PropertyId: property,
+			Price:      price,
+		}
+	}
+
+	return false, monopoly.ActionDetails{}
+}
+
+func (p *NEATMonopolyPlayer) tryMortgage(player int, state monopoly.GameState, availableActions monopoly.FullActionList) (success bool, propertyId int) {
+	if len(availableActions.MortgageList) == 0 {
+		return false, 0
+	}
+	outputs := make(map[int]float64)
+	for _, propertyId := range availableActions.MortgageList {
+		setCount, ownedByPlayer, _ := getSetDetails(state, state.Properties[propertyId].SetIndex, player)
+		if setCount == ownedByPlayer {
+			continue
+		}
+		property := state.Properties[propertyId]
+
+		sensors := NewMonopolySensors()
+		sensors.LoadState(state, player, propertyId)
+		sensors.LoadSellPriceInput(property.Price / 2)
+
+		outputList := p.GetDecision(sensors)
+		outputs[propertyId] = outputList[OUT_MORTGAGE]
+	}
+	decision, propertyId, _ := getBestDecision(outputs)
+	return decision, propertyId
+}
+
+func (p *NEATMonopolyPlayer) trySellProperty(player int, state monopoly.GameState, availableActions monopoly.FullActionList) (success bool, propertyId int, price int) {
+	return false, 0, 0 // TO DO
 }
 
 func (p *NEATMonopolyPlayer) getBuyHouseDecision(playerId int, state monopoly.GameState, availableActions monopoly.FullActionList) (decision bool, propertyId int, needMoney bool) {

@@ -182,7 +182,7 @@ func TestLoadSetInputs_Brown(t *testing.T) {
 
 	// No one owns anything — player needs all 2 Brown properties
 	ms := NewMonopolySensors()
-	ms.LoadSetInputs(state, 0, 0) // property 0 = Brown, setId=0
+	ms.loadSetInputs(state, 0, 0) // property 0 = Brown, setId=0
 	assert.InDelta(t, 0.0, ms[IN_SET_ID], 0.0001)
 	assert.InDelta(t, 2.0/9.0, ms[IN_SET_PROPERTIES_NEEDED], 0.0001)
 	assert.InDelta(t, 0.0, ms[IN_SET_PROPERTIES_OCCUPIED], 0.0001)
@@ -190,14 +190,14 @@ func TestLoadSetInputs_Brown(t *testing.T) {
 	// Player 0 owns Brown1 — needs 1 more
 	state.Properties[0].Owner = state.Players[0]
 	ms2 := NewMonopolySensors()
-	ms2.LoadSetInputs(state, 0, 0)
+	ms2.loadSetInputs(state, 0, 0)
 	assert.InDelta(t, 1.0/9.0, ms2[IN_SET_PROPERTIES_NEEDED], 0.0001)
 	assert.InDelta(t, 0.0, ms2[IN_SET_PROPERTIES_OCCUPIED], 0.0001)
 
 	// Player 1 also owns Brown2 — enemy blocks the remaining property
 	state.Properties[1].Owner = state.Players[1]
 	ms3 := NewMonopolySensors()
-	ms3.LoadSetInputs(state, 0, 0)
+	ms3.loadSetInputs(state, 0, 0)
 	assert.InDelta(t, 1.0/9.0, ms3[IN_SET_PROPERTIES_NEEDED], 0.0001)
 	assert.InDelta(t, 1.0/9.0, ms3[IN_SET_PROPERTIES_OCCUPIED], 0.0001)
 }
@@ -205,7 +205,7 @@ func TestLoadSetInputs_Brown(t *testing.T) {
 func TestLoadSetInputs_Railroad(t *testing.T) {
 	state := makeTestState(1)
 	ms := NewMonopolySensors()
-	ms.LoadSetInputs(state, 2, 0) // Railroad1, setId=1
+	ms.loadSetInputs(state, 2, 0) // Railroad1, setId=1
 	assert.InDelta(t, 1.0/9.0, ms[IN_SET_ID], 0.0001)
 	assert.InDelta(t, 4.0/9.0, ms[IN_SET_PROPERTIES_NEEDED], 0.0001) // needs all 4
 	assert.InDelta(t, 0.0, ms[IN_SET_PROPERTIES_OCCUPIED], 0.0001)
@@ -290,10 +290,10 @@ func TestNormalize(t *testing.T) {
 		{0, 0, 100, false, 0.0},
 		{50, 0, 100, false, 0.5},
 		{100, 0, 100, false, 1.0},
-		{150, 0, 100, false, 1.0},    // clipped to 1
-		{-10, 0, 100, false, 0.0},    // clipped to 0
-		{5, 5, 5, false, 0.0},        // max == min
-		{1, 0, 3, true, 2.0 / 4.0},   // (1-0+1)/(3-0+1) = 2/4
+		{150, 0, 100, false, 1.0},  // clipped to 1
+		{-10, 0, 100, false, 0.0},  // clipped to 0
+		{5, 5, 5, false, 0.0},      // max == min
+		{1, 0, 3, true, 2.0 / 4.0}, // (1-0+1)/(3-0+1) = 2/4
 		{0, 0, 39, false, 0.0},
 		{39, 0, 39, false, 1.0},
 		{2000, 0, 2000, false, 1.0},
@@ -311,10 +311,10 @@ func TestActivation(t *testing.T) {
 		input    float64
 		expected float64
 	}{
-		{0.0, 0.0},                       // 0 * anything = 0
-		{1.0, 1.0},                       // 1 * (1 - 0) = 1
-		{0.8, 0.75},                      // 0.8 * (1 - 0.0625) = 0.75
-		{0.5, 0.3046875},                 // 0.5 * (1 - 0.390625)
+		{0.0, 0.0},       // 0 * anything = 0
+		{1.0, 1.0},       // 1 * (1 - 0) = 1
+		{0.8, 0.75},      // 0.8 * (1 - 0.0625) = 0.75
+		{0.5, 0.3046875}, // 0.5 * (1 - 0.390625)
 	}
 	for _, tt := range tests {
 		result := activation(tt.input)
