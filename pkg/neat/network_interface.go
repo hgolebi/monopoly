@@ -28,6 +28,10 @@ const (
 	IN_ENEMY_SET_PROPERTIES_NEEDED   // how many properties in the set the enemy player needs to complete the set
 	IN_ENEMY_SET_PROPERTIES_OCCUPIED // how many properties in the set are owned by players other than the enemy player
 
+	IN_ENEMY_SELL_COUNTEROFFER // price offered by the enemy player for selling the property to the agent (if the current action is buying from the enemy player)
+	IN_ENEMY_BUY_COUNTEROFFER  // price offered by the enemy player for buying the property from the agent (if the current action is selling to the enemy player)
+	IN_NEGOTIATION_LAST_TRY  // if current offer is last try (either because max rounds of negotiation reached or because there is an impasse) 
+
 	IN_AVAILABLE_PROPERTIES // how many properties are still available for purchase (not owned by any player)
 	IN_ROUND                // current round number
 
@@ -128,6 +132,14 @@ func (s MonopolySensors) LoadBuyPriceInput(price int) {
 
 func (s MonopolySensors) LoadSellPriceInput(price int) {
 	s[IN_SELL_PRICE] = normalize(price, 0, cfg.MAX_MONEY, false)
+}
+
+func (s MonopolySensors) LoadBuyCounterofferInput(price int) {
+	s[IN_ENEMY_BUY_COUNTEROFFER] = normalize(price, 0, cfg.MAX_MONEY, false)
+}
+
+func (s MonopolySensors) LoadSellCounterofferInput(price int) {
+	s[IN_ENEMY_SELL_COUNTEROFFER] = normalize(price, 0, cfg.MAX_MONEY, false)
 }
 
 func fromBool(value bool) float64 {

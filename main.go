@@ -62,8 +62,8 @@ func trainNEATNetwork() {
 }
 
 func main() {
-	// trainNEATNetwork()
-	runConsoleMonopoly()
+	trainNEATNetwork()
+	// runConsoleMonopoly()
 	// for range 10 {
 	// 	runBotMatch()
 	// }
