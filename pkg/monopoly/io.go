@@ -48,8 +48,11 @@ type GameState struct {
 	BuyOfferTries    int
 	StdActionsUsed   int
 	// Negotiation context — set by sendBuyOffer, zero outside active negotiation
+	NegotiationRound       int // Number of offer/counteroffer rounds in the current negotiation, starting at 1 for the initial offer
 	NegotiationBuyerOffer  int // Current buyer's offer
 	NegotiationSellerOffer int // Current seller's counteroffer
+	SellerImpasse          bool
+	BuyerImpasse           bool
 }
 
 func formatStr(str string, length int) string {

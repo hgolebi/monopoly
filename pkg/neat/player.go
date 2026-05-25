@@ -351,6 +351,9 @@ func (p *NEATMonopolyPlayer) BuyFromPlayerDecision(player int, state monopoly.Ga
 	property := state.Properties[propertyId]
 	sensors.LoadEnemyInputs(state, property.Owner.ID, propertyId)
 
+	isLastTry := state.NegotiationRound >= cfg.MAX_TRADE_ROUNDS || state.SellerImpasse
+	sensors.LoadBuyCounterofferInputs(sellerOffer, isLastTry)
+
 	outputList := p.GetDecision(sensors)
 	if outputList[OUT_BUY_PROPERTY] <= 0.5 {
 		return false, 0 // Withdraw
@@ -362,39 +365,37 @@ func (p *NEATMonopolyPlayer) SellToPlayerDecision(player int, state monopoly.Gam
 	// Called during BUYOFFER negotiation: buyer has made an offer.
 	// Returns (false, _) to hard-reject immediately.
 	// Returns (true, price): price <= buyerOffer = accept, price >= lastSellerPrice = impasse, in between = lower counteroffer.
-	sensors := NewMonopolySensors()
-	sensors.LoadState(state, player, propertyId)
-	sensors.LoadSellPriceInput(buyerOffer)
-	outputList := p.GetDecision(sensors)
-	if outputList[OUT_SELL_PROPERTY] <= 0.5 {
-		willing, minPrice := p.findMinSellPrice(state, player, propertyId)
-		if !willing {
-			return false, 0 // Hard reject
-		}
-		return true, minPrice // Counteroffer at minimum acceptable price
-	}
-	return true, buyerOffer // Accept the buyer's offer
+	isLastTry := state.NegotiationRound >= cfg.MAX_TRADE_ROUNDS || state.BuyerImpasse
+	sell, price := p.findMinSellPrice(state, player, propertyId, buyerOffer, buyerOffer, isLastTry)
+
+	return sell, price
 }
 
-func (p *NEATMonopolyPlayer) findMinSellPrice(state monopoly.GameState, playerId int, propertyId int) (bool, int) {
-	property := state.Properties[propertyId]
-	// Walk down from catalogue price to find minimum acceptable price
-	for price := property.Price; price >= 0; price -= 10 {
-		sensors := NewMonopolySensors()
-		sensors.LoadState(state, playerId, propertyId)
-		sensors.LoadSellPriceInput(price)
-		outputList := p.GetDecision(sensors)
-		if outputList[OUT_SELL_PROPERTY] <= 0.5 {
-			if price == property.Price {
-				return false, 0 // Not willing to sell at any price
-			}
-			return true, price + 10 // Minimum acceptable is one step above
+func (p *NEATMonopolyPlayer) findMinSellPrice(state monopoly.GameState, playerId int, propertyId int, minPrice int, counteroffer int, isLastTry bool) (bool, int) {
+	price := minPrice
+	decision := p.getSellDecision(playerId, state, propertyId, price, counteroffer, isLastTry)
+	for !decision {
+		price += 10
+		if price >= cfg.MAX_MONEY {
+			return false, 0
 		}
-		if price == 0 {
-			return true, 0 // Willing even for free
-		}
+		decision = p.getSellDecision(playerId, state, propertyId, price, counteroffer, isLastTry)
 	}
-	return false, 0
+	return true, price
+}
+
+func (p *NEATMonopolyPlayer) getSellDecision(playerId int, state monopoly.GameState, propertyId int, price int, counteroffer int, isLastTry bool) bool {
+	sensors := NewMonopolySensors()
+	sensors.LoadState(state, playerId, propertyId)
+	sensors.LoadSellPriceInput(price)
+	property := state.Properties[propertyId]
+	sensors.LoadEnemyInputs(state, property.Owner.ID, propertyId)
+
+	if counteroffer > 0 {
+		sensors.LoadSellCounterofferInputs(counteroffer, isLastTry)
+	}
+	outputList := p.GetDecision(sensors)
+	return outputList[OUT_SELL_PROPERTY] > 0.5
 }
 
 func (p *NEATMonopolyPlayer) AddScore(points int) {

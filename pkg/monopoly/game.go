@@ -29,7 +29,7 @@ type Game struct {
 	// A player cannot repeat the same action on the same property within one turn.
 	usedActions  map[StdAction]map[int]bool
 	randomSource *rand.Rand
-	finished         bool
+	finished     bool
 }
 
 func NewGame(ctx context.Context, io IMonopoly_IO, logger Logger, seed int64) *Game {
@@ -874,7 +874,7 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, initial_price int) {
 	g.logger.Log(fmt.Sprintf("%s initiates buy negotiation for %s, opening offer: %d$", buyer.Name, property.GetName(), initial_price))
 
 	buyerPrice := initial_price
-	sellerPrice := -1    // sentinel: seller has not yet made a counteroffer
+	sellerPrice := -1 // sentinel: seller has not yet made a counteroffer
 	buyerImpasse := false
 	sellerImpasse := false
 
@@ -885,6 +885,7 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, initial_price int) {
 
 		// --- Seller's turn ---
 		state := g.getState()
+		state.NegotiationRound = i + 1
 		state.NegotiationBuyerOffer = buyerPrice
 		state.NegotiationSellerOffer = sellerPrice
 
@@ -907,10 +908,12 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, initial_price int) {
 		if sellerPrice != -1 && sellerResponse >= sellerPrice {
 			// Rule b: seller responded at or above their last price → treat as repeat (seller impasse signal)
 			sellerImpasse = true
+			state.SellerImpasse = true
 			// sellerPrice stays unchanged
 		} else {
 			// First response, or rule d: seller lowered their price (between buyerPrice and last sellerPrice)
 			sellerImpasse = false
+			state.SellerImpasse = false
 			sellerPrice = sellerResponse
 		}
 
@@ -943,10 +946,12 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, initial_price int) {
 		if buyerResponse <= buyerPrice {
 			// Rules a & b: same or lower than last buyer offer → treat as repeat (buyer impasse signal)
 			buyerImpasse = true
+			state.BuyerImpasse = true
 			// buyerPrice stays unchanged
 		} else {
 			// Rule d: buyer raised their offer (between buyerPrice and sellerPrice) → negotiation continues
 			buyerImpasse = false
+			state.BuyerImpasse = false
 			buyerPrice = buyerResponse
 		}
 
