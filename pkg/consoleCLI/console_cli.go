@@ -245,7 +245,7 @@ func (c *ConsoleCLI) BuyDecision(player int, state monopoly.GameState, propertyI
 	}
 }
 
-func (c *ConsoleCLI) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int) (bool, int) {
+func (c *ConsoleCLI) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int, tradingPartnerId int) (bool, int) {
 	if err := keyboard.Open(); err != nil {
 		log.Fatal(err)
 	}
@@ -293,7 +293,7 @@ func (c *ConsoleCLI) BuyFromPlayerDecision(player int, state monopoly.GameState,
 	}
 }
 
-func (c *ConsoleCLI) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int) (bool, int) {
+func (c *ConsoleCLI) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int, tradingPartnerId int) (bool, int) {
 	if err := keyboard.Open(); err != nil {
 		log.Fatal(err)
 	}
@@ -402,10 +402,10 @@ func StartClient() {
 		case server.BuyDecision:
 			resp = c.BuyDecision(req.PlayerId, req.State, req.PropertyId)
 		case server.BuyFromPlayerDecision:
-			cont, price := c.BuyFromPlayerDecision(req.PlayerId, req.State, req.PropertyId, req.Price)
+			cont, price := c.BuyFromPlayerDecision(req.PlayerId, req.State, req.PropertyId, req.Price, req.TradingPartnerId)
 			resp = server.NegotiationResponse{Continue: cont, Price: price}
 		case server.SellToPlayerDecision:
-			cont, price := c.SellToPlayerDecision(req.PlayerId, req.State, req.PropertyId, req.Price)
+			cont, price := c.SellToPlayerDecision(req.PlayerId, req.State, req.PropertyId, req.Price, req.TradingPartnerId)
 			resp = server.NegotiationResponse{Continue: cont, Price: price}
 		case server.BiddingDecision:
 			resp = c.BiddingDecision(req.PlayerId, req.State, req.PropertyId, req.Price)

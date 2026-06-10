@@ -202,7 +202,7 @@ func (bot *SimplePlayerBot) BuyDecision(player int, state monopoly.GameState, pr
 	}
 	return false
 }
-func (bot *SimplePlayerBot) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int) (bool, int) {
+func (bot *SimplePlayerBot) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int, tradingPartnerId int) (bool, int) {
 	// Called when seller has made a counteroffer during BUYOFFER negotiation.
 	// Returns (false, _) to withdraw, or (true, price) to continue.
 	property := state.Properties[propertyId]
@@ -222,7 +222,7 @@ func (bot *SimplePlayerBot) BuyFromPlayerDecision(player int, state monopoly.Gam
 	return true, state.NegotiationBuyerOffer
 }
 
-func (bot *SimplePlayerBot) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int) (bool, int) {
+func (bot *SimplePlayerBot) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int, tradingPartnerId int) (bool, int) {
 	// Called when buyer has made an offer during BUYOFFER negotiation.
 	// Returns (false, _) to hard-reject, or (true, price) to continue.
 	property := state.Properties[propertyId]

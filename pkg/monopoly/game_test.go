@@ -35,13 +35,13 @@ func (m *MockMonopolyIO) BuyDecision(player int, state GameState, propertyId int
 	return args.Bool(0)
 }
 
-func (m *MockMonopolyIO) BuyFromPlayerDecision(player int, state GameState, propertyId int, sellerOffer int) (bool, int) {
-	args := m.Called(player, state, propertyId, sellerOffer)
+func (m *MockMonopolyIO) BuyFromPlayerDecision(player int, state GameState, propertyId int, sellerOffer int, tradingPartnerId int) (bool, int) {
+	args := m.Called(player, state, propertyId, sellerOffer, tradingPartnerId)
 	return args.Bool(0), args.Int(1)
 }
 
-func (m *MockMonopolyIO) SellToPlayerDecision(player int, state GameState, propertyId int, buyerOffer int) (bool, int) {
-	args := m.Called(player, state, propertyId, buyerOffer)
+func (m *MockMonopolyIO) SellToPlayerDecision(player int, state GameState, propertyId int, buyerOffer int, tradingPartnerId int) (bool, int) {
+	args := m.Called(player, state, propertyId, buyerOffer, tradingPartnerId)
 	return args.Bool(0), args.Int(1)
 }
 
@@ -1243,7 +1243,7 @@ func TestSendBuyOffer(t *testing.T) {
 		io := &MockMonopolyIO{}
 		io.On("Init").Return(playerNames[:4])
 		// SellToPlayerDecision: false = hard reject
-		io.On("SellToPlayerDecision", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(false, 0)
+		io.On("SellToPlayerDecision", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(false, 0)
 
 		logger := &MockLogger{}
 		logger.On("Init").Return()
@@ -1259,7 +1259,7 @@ func TestSendBuyOffer(t *testing.T) {
 		property.Owner = target
 		game.sendBuyOffer(test.playerId, test.propertyId, test.price)
 
-		io.AssertCalled(t, "SellToPlayerDecision", test.targetPlayer, mock.Anything, test.propertyId, test.price)
+		io.AssertCalled(t, "SellToPlayerDecision", test.targetPlayer, mock.Anything, test.propertyId, test.price, mock.Anything)
 	}
 }
 
@@ -1295,7 +1295,7 @@ func TestSendBuyOffer_HardRejectBySeller(t *testing.T) {
 	property := game.properties[propertyId]
 	property.Owner = seller
 
-	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything).Return(false, 0)
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything, mock.Anything).Return(false, 0)
 
 	game.sendBuyOffer(buyerId, propertyId, 300)
 
@@ -1303,7 +1303,7 @@ func TestSendBuyOffer_HardRejectBySeller(t *testing.T) {
 	assert.Equal(t, seller, property.Owner, "Property owner should not change after hard reject")
 	assert.Equal(t, buyerInitialMoney, buyer.Money, "Buyer money should be unchanged after hard reject")
 	assert.Equal(t, sellerInitialMoney, seller.Money, "Seller money should be unchanged after hard reject")
-	io.AssertNotCalled(t, "BuyFromPlayerDecision", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	io.AssertNotCalled(t, "BuyFromPlayerDecision", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 
 // TestSendBuyOffer_SellerAcceptsBuyerPrice — seller immediately responds with a price ≤ buyerPrice (rule c).
@@ -1322,7 +1322,7 @@ func TestSendBuyOffer_SellerAcceptsBuyerPrice(t *testing.T) {
 	property.Owner = seller
 
 	// Seller accepts: responds with exactly buyerPrice → ≤ buyerPrice
-	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, buyerPrice).Return(true, buyerPrice)
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, buyerPrice, mock.Anything).Return(true, buyerPrice)
 
 	game.sendBuyOffer(buyerId, propertyId, buyerPrice)
 
@@ -1330,7 +1330,7 @@ func TestSendBuyOffer_SellerAcceptsBuyerPrice(t *testing.T) {
 	assert.Equal(t, 1000-buyerPrice, buyer.Money, "Buyer should pay buyerPrice")
 	assert.Equal(t, 500+buyerPrice, seller.Money, "Seller should receive buyerPrice")
 	assert.Equal(t, buyer, property.Owner, "Property should transfer to buyer")
-	io.AssertNotCalled(t, "BuyFromPlayerDecision", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	io.AssertNotCalled(t, "BuyFromPlayerDecision", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 
 // TestSendBuyOffer_BuyerAcceptsSellerPrice — seller counters with sellerPrice > buyerPrice,
@@ -1349,9 +1349,9 @@ func TestSendBuyOffer_BuyerAcceptsSellerPrice(t *testing.T) {
 	property := game.properties[propertyId]
 	property.Owner = seller
 
-	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, buyerInitialOffer).Return(true, sellerCounter)
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, buyerInitialOffer, mock.Anything).Return(true, sellerCounter)
 	// Buyer accepts sellerCounter exactly (≥ sellerPrice → rule c)
-	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, sellerCounter).Return(true, sellerCounter)
+	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, sellerCounter, mock.Anything).Return(true, sellerCounter)
 
 	game.sendBuyOffer(buyerId, propertyId, buyerInitialOffer)
 
@@ -1376,8 +1376,8 @@ func TestSendBuyOffer_BuyerWithdraws(t *testing.T) {
 	property := game.properties[propertyId]
 	property.Owner = seller
 
-	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, buyerInitialOffer).Return(true, sellerCounter)
-	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, sellerCounter).Return(false, 0)
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, buyerInitialOffer, mock.Anything).Return(true, sellerCounter)
+	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, sellerCounter, mock.Anything).Return(false, 0)
 
 	game.sendBuyOffer(buyerId, propertyId, buyerInitialOffer)
 
@@ -1404,9 +1404,9 @@ func TestSendBuyOffer_ImpaseBothSides(t *testing.T) {
 	property.Owner = seller
 
 	// Seller counters with 500 every time (first call sets sellerPrice=500, subsequent ≥500 → impasse)
-	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything).Return(true, sellerOffer)
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything, mock.Anything).Return(true, sellerOffer)
 	// Buyer repeats its offer 300 (≤ buyerOffer=300 → buyerImpasse every time)
-	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, sellerOffer).Return(true, buyerOffer)
+	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, sellerOffer, mock.Anything).Return(true, buyerOffer)
 
 	game.sendBuyOffer(buyerId, propertyId, buyerOffer)
 
@@ -1431,11 +1431,11 @@ func TestSendBuyOffer_BuyerRaisesOfferRuleD(t *testing.T) {
 	property.Owner = seller
 
 	// Seller always responds 500
-	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything).Return(true, 500)
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything, mock.Anything).Return(true, 500)
 	// First buyer call: raise to 400 (rule d: 300 < 400 < 500)
-	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, 500).Return(true, 400).Once()
+	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, 500, mock.Anything).Return(true, 400).Once()
 	// Second buyer call: accept at 500 (≥ sellerPrice → rule c)
-	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, 500).Return(true, 500).Once()
+	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, 500, mock.Anything).Return(true, 500).Once()
 
 	game.sendBuyOffer(buyerId, propertyId, 300)
 
@@ -1463,14 +1463,14 @@ func TestSendBuyOffer_SellerRuleBImpasse(t *testing.T) {
 	property.Owner = seller
 
 	// First seller call: 500 → new sellerPrice = 500
-	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything).Return(true, 500).Once()
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything, mock.Anything).Return(true, 500).Once()
 	// Second seller call: 600 ≥ 500 → rule b, sellerImpasse, sellerPrice stays 500
-	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything).Return(true, 600).Once()
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything, mock.Anything).Return(true, 600).Once()
 
 	// First buyer call: 400 (300 < 400 < 500 → rule d, buyerPrice = 400)
-	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, mock.Anything).Return(true, 400).Once()
+	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, mock.Anything, mock.Anything).Return(true, 400).Once()
 	// Second buyer call: 400 ≤ buyerPrice (400) → buyerImpasse
-	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, mock.Anything).Return(true, 400).Once()
+	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, mock.Anything, mock.Anything).Return(true, 400).Once()
 
 	game.sendBuyOffer(buyerId, propertyId, 300)
 
@@ -1502,15 +1502,15 @@ func TestSendBuyOffer_FullExampleImpasse(t *testing.T) {
 	property.Owner = seller
 
 	// Seller responses: 700, 700, 650, 650
-	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything).Return(true, 700).Once()
-	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything).Return(true, 700).Once()
-	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything).Return(true, 650).Once()
-	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything).Return(true, 650).Once()
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything, mock.Anything).Return(true, 700).Once()
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything, mock.Anything).Return(true, 700).Once()
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything, mock.Anything).Return(true, 650).Once()
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything, mock.Anything).Return(true, 650).Once()
 
 	// Buyer responses: 400, 450, 450
-	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, mock.Anything).Return(true, 400).Once()
-	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, mock.Anything).Return(true, 450).Once()
-	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, mock.Anything).Return(true, 450).Once()
+	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, mock.Anything, mock.Anything).Return(true, 400).Once()
+	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, mock.Anything, mock.Anything).Return(true, 450).Once()
+	io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, mock.Anything, mock.Anything).Return(true, 450).Once()
 
 	game.sendBuyOffer(buyerId, propertyId, 300)
 

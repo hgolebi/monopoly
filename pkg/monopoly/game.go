@@ -889,7 +889,7 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, initial_price int) {
 		state.NegotiationBuyerOffer = buyerPrice
 		state.NegotiationSellerOffer = sellerPrice
 
-		sellerContinue, sellerResponse := g.io.SellToPlayerDecision(seller.ID, state, property_id, buyerPrice)
+		sellerContinue, sellerResponse := g.io.SellToPlayerDecision(seller.ID, state, property_id, buyerPrice, player_id)
 		g.logger.Log(fmt.Sprintf("%s responds to %d$ offer with: continue=%v price=%d$", seller.Name, buyerPrice, sellerContinue, sellerResponse))
 
 		if !sellerContinue {
@@ -927,7 +927,7 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, initial_price int) {
 		state.NegotiationBuyerOffer = buyerPrice
 		state.NegotiationSellerOffer = sellerPrice
 
-		buyerContinue, buyerResponse := g.io.BuyFromPlayerDecision(player_id, state, property_id, sellerPrice)
+		buyerContinue, buyerResponse := g.io.BuyFromPlayerDecision(player_id, state, property_id, sellerPrice, seller.ID)
 		g.logger.Log(fmt.Sprintf("%s responds to %d$ counteroffer with: continue=%v price=%d$", buyer.Name, sellerPrice, buyerContinue, buyerResponse))
 
 		if !buyerContinue {

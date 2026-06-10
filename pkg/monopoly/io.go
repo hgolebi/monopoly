@@ -134,11 +134,11 @@ type IMonopoly_IO interface {
 	// BuyFromPlayerDecision is called during BUYOFFER negotiation when the seller has made a counteroffer.
 	// Returns (false, _) to withdraw immediately.
 	// Returns (true, price) to continue: price >= sellerOffer = accept, price <= buyerPrice = impasse signal, in between = raise offer.
-	BuyFromPlayerDecision(player int, state GameState, propertyId int, sellerOffer int) (bool, int)
+	BuyFromPlayerDecision(player int, state GameState, propertyId int, sellerOffer int, tradingPartnerId int) (bool, int)
 	// SellToPlayerDecision is called during BUYOFFER negotiation when the buyer has made an offer.
 	// Returns (false, _) to hard-reject immediately.
 	// Returns (true, price) to continue: price <= buyerOffer = accept, price >= lastSellerPrice = impasse signal, in between = lower counteroffer.
-	SellToPlayerDecision(player int, state GameState, propertyId int, buyerOffer int) (bool, int)
+	SellToPlayerDecision(player int, state GameState, propertyId int, buyerOffer int, tradingPartnerId int) (bool, int)
 	BiddingDecision(player int, state GameState, propertyId int, currentPrice int, currentWinner int) int
 	Finish(f FinishOption, winner int, state GameState)
 }

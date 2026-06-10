@@ -28,21 +28,22 @@ type NegotiationResponse struct {
 }
 
 type ActionRequest struct {
-	Type           RequestType
-	PlayerId       int
-	State          monopoly.GameState
-	StdActionList  monopoly.FullActionList
-	JailActionList []monopoly.JailAction
-	PropertyId     int
-	Price          int
+	Type             RequestType
+	PlayerId         int
+	State            monopoly.GameState
+	StdActionList    monopoly.FullActionList
+	JailActionList   []monopoly.JailAction
+	PropertyId       int
+	Price            int
+	TradingPartnerId int
 }
 
 type PlayerIO interface {
 	GetStdAction(player int, state monopoly.GameState, availableActions monopoly.FullActionList) monopoly.ActionDetails
 	GetJailAction(player int, state monopoly.GameState, available []monopoly.JailAction) monopoly.JailAction
 	BuyDecision(player int, state monopoly.GameState, propertyId int) bool
-	BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int) (bool, int)
-	SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int) (bool, int)
+	BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int, tradingPartnerId int) (bool, int)
+	SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int, tradingPartnerId int) (bool, int)
 	BiddingDecision(player int, state monopoly.GameState, propertyId int, currentPrice int, currentWinner int) int
 }
 
@@ -199,17 +200,18 @@ func (s *ConsoleServer) BuyDecision(player int, state monopoly.GameState, proper
 	return resp
 }
 
-func (s *ConsoleServer) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int) (bool, int) {
+func (s *ConsoleServer) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int, tradingPartnerId int) (bool, int) {
 	playerInfo := s.PlayersInfoMap[player]
 	if !playerInfo.isHuman {
-		return playerInfo.bot.BuyFromPlayerDecision(player, state, propertyId, sellerOffer)
+		return playerInfo.bot.BuyFromPlayerDecision(player, state, propertyId, sellerOffer, tradingPartnerId)
 	}
 	req := ActionRequest{
-		Type:       BuyFromPlayerDecision,
-		PlayerId:   player,
-		State:      state,
-		PropertyId: propertyId,
-		Price:      sellerOffer,
+		Type:             BuyFromPlayerDecision,
+		PlayerId:         player,
+		State:            state,
+		PropertyId:       propertyId,
+		Price:            sellerOffer,
+		TradingPartnerId: tradingPartnerId,
 	}
 	encoder := json.NewEncoder(playerInfo.conn)
 	decoder := json.NewDecoder(playerInfo.conn)
@@ -227,17 +229,18 @@ func (s *ConsoleServer) BuyFromPlayerDecision(player int, state monopoly.GameSta
 	return resp.Continue, resp.Price
 }
 
-func (s *ConsoleServer) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int) (bool, int) {
+func (s *ConsoleServer) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int, tradingPartnerId int) (bool, int) {
 	playerInfo := s.PlayersInfoMap[player]
 	if !playerInfo.isHuman {
-		return playerInfo.bot.SellToPlayerDecision(player, state, propertyId, buyerOffer)
+		return playerInfo.bot.SellToPlayerDecision(player, state, propertyId, buyerOffer, tradingPartnerId)
 	}
 	req := ActionRequest{
-		Type:       SellToPlayerDecision,
-		PlayerId:   player,
-		State:      state,
-		PropertyId: propertyId,
-		Price:      buyerOffer,
+		Type:             SellToPlayerDecision,
+		PlayerId:         player,
+		State:            state,
+		PropertyId:       propertyId,
+		Price:            buyerOffer,
+		TradingPartnerId: tradingPartnerId,
 	}
 	encoder := json.NewEncoder(playerInfo.conn)
 	decoder := json.NewDecoder(playerInfo.conn)
