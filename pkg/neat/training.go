@@ -12,23 +12,17 @@ import (
 
 	"github.com/yaricom/goNEAT/v4/experiment"
 	"github.com/yaricom/goNEAT/v4/neat"
-	"github.com/yaricom/goNEAT/v4/neat/genetics"
 )
 
-func TrainNetwork(seed int64, neatOptionsFile string, genomeFile string, outputDir string) {
+// TrainNetwork runs a NEAT experiment. If genomeFile is non-empty the starting genome is loaded
+// from that file; otherwise NewStartGenome(1, allToAll) is used to build one automatically.
+func TrainNetwork(seed int64, neatOptionsFile string, outputDir string, allToAll bool, genomeFile string) {
 	rng := rand.New(rand.NewSource(seed))
 	neatOptions, err := neat.ReadNeatOptionsFromFile(neatOptionsFile)
 	if err != nil {
 		log.Fatal("Failed to load NEAT options:", err)
 	}
-	genomeReader, err := genetics.NewGenomeReaderFromFile(genomeFile)
-	if err != nil {
-		log.Fatal("Failed to create genome reader:", err)
-	}
-	startGenome, err := genomeReader.Read()
-	if err != nil {
-		log.Fatal("Failed to read start genome:", err)
-	}
+	startGenome := loadOrBuildGenome(genomeFile, allToAll)
 
 	err = os.MkdirAll(outputDir, os.ModePerm)
 	if err != nil {

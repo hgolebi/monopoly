@@ -27,11 +27,11 @@ const (
 	// PUNISHMENT_SECOND_THRESHOLD = 0 // if player bankrupts before this round he will receive SECOND_HIGHEST_PUNISHMENT
 	// HIGHEST_PUNISHMENT          = 0
 	// SECOND_HIGHEST_PUNISHMENT   = 0
-	ROUND_SCORE         = 1 // points for each round survived for non-winner players
-	FIRST_PLACE_SCORE   = 500
-	POINTS_PER_PROPERTY = 3  // points for each property owned by the player.
-	POINTS_PER_HOUSE    = 10 // points for each house owned by the player.
-	ALIVE_BONUS         = 50 // bonus points for not going bankrupt
+	ROUND_SCORE         = 0 // points for each round survived for non-winner players
+	FIRST_PLACE_SCORE   = 0
+	POINTS_PER_PROPERTY = 1 // points for each property owned by the player.
+	POINTS_PER_HOUSE    = 0 // points for each house owned by the player.
+	ALIVE_BONUS         = 0 // bonus points for not going bankrupt
 	// SECOND_PLACE_SCORE          = 0
 	// ROUND_LIMIT_WINNER_SCORE    = 0 // if player wins the game by reaching the round limit he will receive this score
 
