@@ -33,13 +33,14 @@ type MonopolyPlayer interface {
 }
 
 type NEATMonopolyPlayer struct {
-	network   *network.Network
-	organism  *genetics.Organism
-	max_depth int
-	score     int
-	mutex     sync.Mutex
-	wins      int
-	draws     int
+	network    *network.Network
+	organism   *genetics.Organism
+	max_depth  int
+	score      int
+	mutex      sync.Mutex
+	wins       int
+	draws      int
+	is_trading bool
 }
 
 func NewNEATMonopolyPlayer(organism *genetics.Organism) (*NEATMonopolyPlayer, error) {
@@ -102,6 +103,7 @@ func (p *NEATMonopolyPlayer) GetDecision(input []float64) []float64 {
 }
 
 func (p *NEATMonopolyPlayer) GetStdAction(player int, state monopoly.GameState, availableActions monopoly.FullActionList) monopoly.ActionDetails {
+	p.is_trading = false
 	decision, property, needMoney := p.getBuyHouseDecision(player, state, availableActions)
 	if decision {
 		return monopoly.ActionDetails{
@@ -252,7 +254,7 @@ func (p *NEATMonopolyPlayer) getBuyOutDecision(playerId int, state monopoly.Game
 }
 
 func (p *NEATMonopolyPlayer) getBuyKeyPropertyDecision(playerId int, state monopoly.GameState, availableActions monopoly.FullActionList) (decision bool, propertyId int, price int, needMoney bool) {
-	keyProperties := findKeyPropertiesToBuy(state, playerId)
+	keyProperties := findKeyPropertiesToBuy(state, playerId, availableActions.BuyPropertyList)
 	outputs := make(map[int]float64)
 	for propertyId := range keyProperties {
 		property := state.Properties[propertyId]
@@ -264,6 +266,7 @@ func (p *NEATMonopolyPlayer) getBuyKeyPropertyDecision(playerId int, state monop
 		sensors := NewMonopolySensors()
 		sensors.LoadState(state, playerId, propertyId)
 		sensors.LoadBuyPriceInput(minPrice)
+
 		sensors.LoadEnemyInputs(state, property.Owner.ID, propertyId)
 
 		outputList := p.GetDecision(sensors)
@@ -273,6 +276,9 @@ func (p *NEATMonopolyPlayer) getBuyKeyPropertyDecision(playerId int, state monop
 	}
 	decision, propertyId, _ = getBestDecision(outputs)
 	property := state.Properties[propertyId]
+	if !decision {
+		return decision, propertyId, 0, needMoney
+	}
 	price = p.findMaxBuyPrice(state, playerId, propertyId, property.Price/2, -1, false)
 	return decision, propertyId, price, needMoney
 
@@ -352,9 +358,6 @@ func (p *NEATMonopolyPlayer) BiddingDecision(player int, state monopoly.GameStat
 }
 
 func (p *NEATMonopolyPlayer) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int, tradingPartnerId int) (bool, int) {
-	// Called during BUYOFFER negotiation: seller has made a counteroffer.
-	// Returns (false, _) to withdraw immediately.
-	// Returns (true, price): price >= sellerOffer = accept, price <= buyerPrice = impasse, in between = raise offer.
 	isLastTry := state.NegotiationRound >= cfg.MAX_TRADE_ROUNDS || state.SellerImpasse
 	property := state.Properties[propertyId]
 	price := p.findMaxBuyPrice(state, player, propertyId, property.Price/2, sellerOffer, isLastTry)
@@ -365,9 +368,6 @@ func (p *NEATMonopolyPlayer) BuyFromPlayerDecision(player int, state monopoly.Ga
 }
 
 func (p *NEATMonopolyPlayer) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int, tradingPartnerId int) (bool, int) {
-	// Called during BUYOFFER negotiation: buyer has made an offer.
-	// Returns (false, _) to hard-reject immediately.
-	// Returns (true, price): price <= buyerOffer = accept, price >= lastSellerPrice = impasse, in between = lower counteroffer.
 	isLastTry := state.NegotiationRound >= cfg.MAX_TRADE_ROUNDS || state.BuyerImpasse
 	sell, price := p.findMinSellPrice(state, player, propertyId, buyerOffer, buyerOffer, tradingPartnerId, isLastTry)
 
@@ -464,10 +464,9 @@ func getSetDetails(state monopoly.GameState, setId int, playerId int) (propertie
 	return propertiesInSet, ownedByPlayer, ownedByOthers
 }
 
-func findKeyPropertiesToBuy(state monopoly.GameState, playerId int) map[int]bool {
+func findKeyPropertiesToBuy(state monopoly.GameState, playerId int, propertiesToBuy []int) map[int]bool {
 	keyProperties := make(map[int]bool)
-	player := state.Players[playerId]
-	for _, propertyId := range player.Properties {
+	for _, propertyId := range propertiesToBuy {
 		setCount, ownedByPlayer, ownedByOthers := getSetDetails(state, state.Properties[propertyId].SetIndex, playerId)
 		if ownedByPlayer == setCount-1 && ownedByOthers == 1 {
 			keyProperties[propertyId] = true

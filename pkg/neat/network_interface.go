@@ -38,9 +38,6 @@ const (
 	IN_BUY_PRICE  // price for the current action of buying (including bidding)
 	IN_SELL_PRICE // price for the current action of selling
 
-	IN_MORTGAGE_VALUE // value of mortgaging the property for the current action
-	IN_BUYOUT_PRICE   // value of buying out the property for the current action
-
 	INPUT_COUNT
 )
 
