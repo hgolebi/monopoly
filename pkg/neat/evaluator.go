@@ -285,6 +285,7 @@ func startGroup(ctx context.Context, gd GroupDetails, outputDir string) error {
 	if err != nil {
 		return fmt.Errorf("Error in group %d (round %d): %v", gd.GroupID, gd.Round, err)
 	}
+
 	game := monopoly.NewGame(ctx, playerGroup, logger, 0)
 	game.Start()
 	return nil
@@ -345,6 +346,23 @@ func appendChampionInfo(outputDir string, champion MonopolyPlayer, epoch int) er
 	if _, err := file.WriteString(line); err != nil {
 		return fmt.Errorf("failed to write to champions file: %v", err)
 	}
+	return nil
+}
+
+// RunDebugGame runs a single game between the given players.
+// Decision loggers should be set on individual players before calling this function via SetDecisionLogger.
+func RunDebugGame(ctx context.Context, players []MonopolyPlayer, outputDir string) error {
+	playerGroup, err := NewNEATPlayerGroup(0, players)
+	if err != nil {
+		return fmt.Errorf("failed to create player group: %w", err)
+	}
+	gameLogPath := filepath.Join(outputDir, fmt.Sprintf("game_%s", time.Now().Format("2006-01-02_15-04-05")))
+	logger, err := NewTrainerLogger(gameLogPath, false)
+	if err != nil {
+		return fmt.Errorf("failed to create game logger: %w", err)
+	}
+	game := monopoly.NewGame(ctx, playerGroup, logger, 0)
+	game.Start()
 	return nil
 }
 

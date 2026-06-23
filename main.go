@@ -94,6 +94,29 @@ func loadNEATPlayer(filePath string) *neatnetwork.NEATMonopolyPlayer {
 	return bot
 }
 
+func runDebugGame() {
+	logDir := "debug_logs"
+
+	bot1 := loadNEATPlayer(".\\genomes\\trained")
+	bot2 := loadNEATPlayer(".\\genomes\\trained")
+	bot3 := loadNEATPlayer(".\\genomes\\trained")
+	bot4 := loadNEATPlayer(".\\genomes\\trained")
+
+	// Enable decision logging for selected bots — comment out to disable for a given bot.
+	decisionLog1, err := neatnetwork.NewBotDecisionLogger(logDir, bot1.GetName())
+	if err != nil {
+		log.Fatal("Failed to create decision logger:", err)
+	}
+	defer decisionLog1.Close()
+	bot1.SetDecisionLogger(decisionLog1)
+
+	players := []neatnetwork.MonopolyPlayer{bot1, bot2, bot3, bot4}
+	ctx := context.Background()
+	if err := neatnetwork.RunDebugGame(ctx, players, logDir); err != nil {
+		log.Fatal("Game error:", err)
+	}
+}
+
 func runBotMatch() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	e := neatnetwork.NewMonopolyEvaluator("experiment", config.GROUP_SIZE, rng)

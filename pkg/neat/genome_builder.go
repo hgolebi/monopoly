@@ -46,13 +46,13 @@ func buildNodes(trait *neat.Trait) []*network.NNode {
 	nodes := make([]*network.NNode, 0, inputCount+1+outputCount)
 
 	for i := 0; i < inputCount; i++ {
-		n := network.NewNNode(i+1, network.InputNeuron)
+		n := network.NewNNode(i, network.InputNeuron)
 		n.ActivationType = neatmath.NullActivation
 		n.Trait = trait
 		nodes = append(nodes, n)
 	}
 
-	biasNode := network.NewNNode(inputCount+1, network.BiasNeuron)
+	biasNode := network.NewNNode(inputCount, network.BiasNeuron)
 	biasNode.ActivationType = neatmath.NullActivation
 	biasNode.Trait = trait
 	nodes = append(nodes, biasNode)

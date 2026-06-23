@@ -41,6 +41,7 @@ type NEATMonopolyPlayer struct {
 	wins       int
 	draws      int
 	is_trading bool
+	log        *BotDecisionLogger
 }
 
 func NewNEATMonopolyPlayer(organism *genetics.Organism) (*NEATMonopolyPlayer, error) {
@@ -71,6 +72,10 @@ func (p *NEATMonopolyPlayer) GetName() string {
 
 func (p *NEATMonopolyPlayer) GetId() int {
 	return p.organism.Genotype.Id
+}
+
+func (p *NEATMonopolyPlayer) SetDecisionLogger(l *BotDecisionLogger) {
+	p.log = l
 }
 
 func (p *NEATMonopolyPlayer) GetScore() int {
@@ -333,12 +338,26 @@ func (p *NEATMonopolyPlayer) GetJailAction(player int, state monopoly.GameState,
 }
 
 func (p *NEATMonopolyPlayer) BuyDecision(player int, state monopoly.GameState, propertyId int) bool {
+	property := state.Properties[propertyId]
+	price := property.Price
+	if p.log != nil {
+		p.log.Info("▶ BuyDecision", "propertyId", propertyId, "name", property.Name, "price", price)
+	}
 	sensors := NewMonopolySensors()
 	sensors.LoadState(state, player, propertyId)
-	price := state.Properties[propertyId].Price
 	sensors.LoadBuyPriceInput(price)
+	if p.log != nil {
+		p.log.Debug("network inputs", "values", formatFloatSlice(sensors))
+	}
 	outputList := p.GetDecision(sensors)
-	return outputList[OUT_BUY_PROPERTY] > 0.5
+	if p.log != nil {
+		p.log.Debug("network outputs", "values", formatFloatSlice(outputList))
+	}
+	result := outputList[OUT_BUY_PROPERTY] > 0.5
+	if p.log != nil {
+		p.log.Info("→ result", "OUT_BUY_PROPERTY", fmt.Sprintf("%.4f", outputList[OUT_BUY_PROPERTY]), "decision", boolToYesNo(result))
+	}
+	return result
 }
 
 func (p *NEATMonopolyPlayer) BiddingDecision(player int, state monopoly.GameState, propertyId int, currentPrice int, currentWinner int) int {
