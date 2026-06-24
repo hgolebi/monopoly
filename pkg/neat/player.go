@@ -347,17 +347,41 @@ func (p *NEATMonopolyPlayer) BuyDecision(player int, state monopoly.GameState, p
 	sensors.LoadState(state, player, propertyId)
 	sensors.LoadBuyPriceInput(price)
 	if p.log != nil {
-		p.log.Debug("network inputs", "values", formatFloatSlice(sensors))
+		pl := state.Players[player]
+		setCount, ownedByPlayer, ownedByOthers := getSetDetails(state, property.SetIndex, player)
+		availableProps := 0
+		for _, prop := range state.Properties {
+			if prop.Owner == nil {
+				availableProps++
+			}
+		}
+		propType := "street"
+		if property.SetIndex == monopoly.RailroadSetIndex {
+			propType = "railroad"
+		} else if property.SetIndex == monopoly.UtilitySetIndex {
+			propType = "utility"
+		}
+		p.log.Debug("game state",
+			"round", state.Round,
+			"player_jailed", pl.IsJailed,
+			"player_position", pl.CurrentPosition,
+			"player_money", pl.Money,
+			"property", property.Name,
+			"property_type", propType,
+			"property_price", price,
+			"set_id", property.SetIndex,
+			"set_needed", setCount-ownedByPlayer,
+			"set_occupied", ownedByOthers,
+			"available_properties", availableProps,
+		)
+		p.log.Info("network inputs", "values", formatFloatSlice(sensors))
 	}
 	outputList := p.GetDecision(sensors)
 	if p.log != nil {
-		p.log.Debug("network outputs", "values", formatFloatSlice(outputList))
+		p.log.Info("network outputs", "values", formatFloatSlice(outputList))
+		p.log.Info("→ result", "OUT_BUY_PROPERTY", fmt.Sprintf("%.4f", outputList[OUT_BUY_PROPERTY]), "decision", boolToYesNo(outputList[OUT_BUY_PROPERTY] > 0.5))
 	}
-	result := outputList[OUT_BUY_PROPERTY] > 0.5
-	if p.log != nil {
-		p.log.Info("→ result", "OUT_BUY_PROPERTY", fmt.Sprintf("%.4f", outputList[OUT_BUY_PROPERTY]), "decision", boolToYesNo(result))
-	}
-	return result
+	return outputList[OUT_BUY_PROPERTY] > 0.5
 }
 
 func (p *NEATMonopolyPlayer) BiddingDecision(player int, state monopoly.GameState, propertyId int, currentPrice int, currentWinner int) int {

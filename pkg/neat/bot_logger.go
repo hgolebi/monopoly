@@ -23,7 +23,7 @@ func NewBotDecisionLogger(outputDir string, botName string) (*BotDecisionLogger,
 	}
 
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
-	filename := fmt.Sprintf("%s_%s.log", timestamp, botName)
+	filename := fmt.Sprintf("%s_%s.ans", timestamp, botName)
 	path := filepath.Join(dir, filename)
 
 	file, err := os.Create(path)
@@ -35,7 +35,7 @@ func NewBotDecisionLogger(outputDir string, botName string) (*BotDecisionLogger,
 		Level:           charmlog.DebugLevel,
 		ReportTimestamp: false,
 	})
-	logger.SetColorProfile(termenv.TrueColor)
+	logger.SetColorProfile(termenv.ANSI256)
 
 	return &BotDecisionLogger{
 		logger: logger,
