@@ -58,6 +58,14 @@ func (l *BotDecisionLogger) Debug(msg string, keyvals ...interface{}) {
 	l.logger.Debug(msg, keyvals...)
 }
 
+func (l *BotDecisionLogger) Warn(msg string, keyvals ...interface{}) {
+	l.logger.Warn(msg, keyvals...)
+}
+
+func (l *BotDecisionLogger) Error(msg string, keyvals ...interface{}) {
+	l.logger.Error(msg, keyvals...)
+}
+
 func formatFloatSlice(fs []float64) string {
 	strs := make([]string, len(fs))
 	for i, f := range fs {

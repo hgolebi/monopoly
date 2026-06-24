@@ -98,10 +98,10 @@ func loadNEATPlayer(filePath string) *neatnetwork.NEATMonopolyPlayer {
 func runDebugGame() {
 	logDir := "debug_logs"
 
-	bot1 := loadNEATPlayer(".\\genomes\\debug")
-	bot2 := loadNEATPlayer(".\\genomes\\debug")
-	bot3 := loadNEATPlayer(".\\genomes\\debug")
-	bot4 := loadNEATPlayer(".\\genomes\\debug")
+	bot1 := loadNEATPlayer(".\\genomes\\to_debug")
+	bot2 := loadNEATPlayer(".\\genomes\\to_debug")
+	bot3 := loadNEATPlayer(".\\genomes\\to_debug")
+	bot4 := loadNEATPlayer(".\\genomes\\to_debug")
 
 	// Enable decision logging for selected bots — comment out to disable for a given bot.
 	decisionLog1, err := neatnetwork.NewBotDecisionLogger(logDir, bot1.GetName())
