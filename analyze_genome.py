@@ -15,7 +15,9 @@ output_id:
 Options:
   --steps N       sweep steps per input (default: 100)
   --iters N       network activation iterations (default: 10)
-  --baseline V    default value for non-swept inputs, 0.0-1.0 (default: 0.5)
+  --baseline V    single float 0.0-1.0 used for all non-swept inputs (default: 0.5)
+                  OR a full vector of 20 values in JSON-array notation:
+                  --baseline [0.00,0.41,0.66,0.85,1.00,0.15,0.89,0.33,0.00,1.00,0.70,0.33,0.00,0.00,0.00,0.00,0.79,0.06,0.02,0.00]
   --top N         how many inputs to show in the plot (default: 8)
   --no-plot       skip matplotlib plot
   --all-plots     generate a plot for every output, not just the selected one
@@ -23,9 +25,11 @@ Options:
 Examples:
   python analyze_genome.py genomes/to_debug 0
   python analyze_genome.py genomes/to_debug 2 --steps 200 --baseline 0.0
+  python analyze_genome.py genomes/to_debug 0 --baseline "[0,0.5,1,0,1,0.3,0.5,0,0,1,0.7,0,0,0,0,0,0.8,0.1,0.05,0]"
 """
 
 import sys
+import json
 import math
 import argparse
 from collections import defaultdict
@@ -220,9 +224,7 @@ def sweep_input(nodes, incoming, process_order, output_node_id: int,
 
 
 def run_sensitivity(nodes, incoming, process_order, output_node_id: int,
-                    baseline_val: float, n_steps: int, n_iters: int):
-    n_inputs = len(INPUT_NAMES)
-    baseline = [baseline_val] * n_inputs
+                    baseline: list, n_steps: int, n_iters: int):
     results = {}
     for i, name in enumerate(INPUT_NAMES):
         xs, ys = sweep_input(nodes, incoming, process_order,
@@ -325,6 +327,42 @@ def plot_sensitivity(results, stats, output_name: str, top_n: int, save_path: st
     plt.show()
 
 
+# ── Argument type ────────────────────────────────────────────────────────────
+
+def _baseline_type(value: str):
+    """
+    Accepts either a single float  (e.g. "0.5")
+    or a JSON array of 20 floats   (e.g. "[0.0, 0.5, 1.0, ...]").
+    Returns float | list[float].
+    """
+    v = value.strip()
+    if v.startswith('['):
+        try:
+            parsed = json.loads(v)
+        except json.JSONDecodeError as exc:
+            raise argparse.ArgumentTypeError(
+                f"Could not parse baseline list as JSON: {exc}"
+            )
+        if not isinstance(parsed, list) or not all(isinstance(x, (int, float)) for x in parsed):
+            raise argparse.ArgumentTypeError("--baseline list must contain only numbers")
+        for x in parsed:
+            if not 0.0 <= x <= 1.0:
+                raise argparse.ArgumentTypeError(
+                    f"All baseline values must be in [0, 1], got {x}"
+                )
+        return [float(x) for x in parsed]
+    else:
+        try:
+            f = float(v)
+        except ValueError:
+            raise argparse.ArgumentTypeError(
+                f"Expected a float or a JSON array, got {value!r}"
+            )
+        if not 0.0 <= f <= 1.0:
+            raise argparse.ArgumentTypeError(f"Baseline must be in [0, 1], got {f}")
+        return f
+
+
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 def main():
@@ -340,8 +378,8 @@ def main():
                         help="Sweep steps per input (default: 100)")
     parser.add_argument("--iters",    type=int,   default=10,
                         help="Forward-pass iterations for recurrent stability (default: 10)")
-    parser.add_argument("--baseline", type=float, default=0.5,
-                        help="Default value for non-swept inputs [0,1] (default: 0.5)")
+    parser.add_argument("--baseline", type=_baseline_type, default=0.5,
+                        help="Single float [0,1] (default: 0.5) or JSON array of 20 floats")
     parser.add_argument("--top",      type=int,   default=8,
                         help="Top N inputs shown in plot (default: 8)")
     parser.add_argument("--no-plot",  action="store_true",  help="Skip plot")
@@ -350,7 +388,7 @@ def main():
     args = parser.parse_args()
 
     if not 0 <= args.output_id < len(OUTPUT_NAMES):
-        parser.error(f"output_id must be 0–{len(OUTPUT_NAMES)-1}")
+        parser.error(f"output_id must be 0-{len(OUTPUT_NAMES)-1}")
 
     # ── Parse & build ──
     nodes, connections = parse_genome(args.genome)
@@ -361,12 +399,26 @@ def main():
     hidden_nodes = [nid for nid, n in nodes.items() if n['type'] == NTYPE_HIDDEN]
     active_conns = sum(1 for *_, enabled in connections if enabled)
 
+    # ── Resolve baseline to a list ──
+    n_inputs = len(INPUT_NAMES)
+    if isinstance(args.baseline, list):
+        if len(args.baseline) != n_inputs:
+            parser.error(
+                f"--baseline list must have exactly {n_inputs} values, "
+                f"got {len(args.baseline)}"
+            )
+        baseline = args.baseline
+        baseline_display = f"[{', '.join(f'{v:.2f}' for v in baseline)}]"
+    else:
+        baseline = [args.baseline] * n_inputs
+        baseline_display = str(args.baseline)
+
     print(f"\n  Genome : {args.genome}")
     print(f"  Nodes  : {len(nodes)} total  "
           f"({len(input_nodes)} inputs, {len(hidden_nodes)} hidden, "
           f"{len(OUTPUT_NAMES)} outputs, 1 bias)")
     print(f"  Edges  : {active_conns} active / {len(connections)} total")
-    print(f"  Baseline: {args.baseline}  Steps: {args.steps}  Iters: {args.iters}")
+    print(f"  Baseline: {baseline_display}  Steps: {args.steps}  Iters: {args.iters}")
 
     output_ids = list(range(len(OUTPUT_NAMES))) if args.all_plots else [args.output_id]
 
@@ -378,9 +430,14 @@ def main():
             print(f"  WARNING: node {output_node_id} not found — skipping {output_name}")
             continue
 
+        col = max(len(n) for n in INPUT_NAMES)
+        print(f"\n  Baseline input values:")
+        for name, val in zip(INPUT_NAMES, baseline):
+            print(f"    {name:<{col}} = {val:.2f}")
+
         print(f"\n  Sweeping inputs for {output_name} (node {output_node_id}) ...")
         results    = run_sensitivity(nodes, incoming, process_order,
-                                     output_node_id, args.baseline,
+                                     output_node_id, baseline,
                                      args.steps, args.iters)
         importance = compute_importance(results)
         print_report(output_name, importance)
