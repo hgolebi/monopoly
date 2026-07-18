@@ -71,9 +71,9 @@ func chooseProperty(properties []int, state monopoly.GameState) int {
 	page := 0
 	max_page := (len(properties) - 1) / 8
 	for {
-		fmt.Println("Choose property (index):")
+		fmt.Println("Choose property:")
 		for idx, property := range properties[page*8 : min(page*8+8, len(properties))] {
-			fmt.Printf("%d. Property index: %d\n", idx+1, property)
+			fmt.Printf("%d. %s\n", idx+1, state.Properties[property].Name)
 		}
 		if page > 0 {
 			fmt.Println("9. Previous page")
@@ -223,7 +223,7 @@ func (c *ConsoleCLI) BuyDecision(player int, state monopoly.GameState, propertyI
 	}
 	defer keyboard.Close()
 
-	fmt.Printf("Player %d, do you want to buy property %d? (y/n) \n", player, propertyId)
+	fmt.Printf("Player %d, do you want to buy %s? (y/n) \n", player, state.Properties[propertyId].Name)
 	for {
 		char, key, err := keyboard.GetKey()
 		if err != nil {
@@ -349,7 +349,7 @@ func (c *ConsoleCLI) BiddingDecision(player int, state monopoly.GameState, prope
 	}
 	defer keyboard.Close()
 
-	fmt.Printf("Auction bidding for property %d. Current price is %d. Do you want to bid? (y/n)\n", propertyId, currentPrice)
+	fmt.Printf("Auction bidding for %s. Current price is %d. Do you want to bid? (y/n)\n", state.Properties[propertyId].Name, currentPrice)
 	for {
 		char, key, err := keyboard.GetKey()
 		if err != nil {

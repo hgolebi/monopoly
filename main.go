@@ -24,7 +24,7 @@ func runConsoleMonopoly() {
 		consoleCLI.StartClient()
 		return
 	}
-	filePath := ".\\genomes\\trained"
+	filePath := ".\\genomes\\bestForNow"
 	neat.InitLogger("debug")
 	bots := []server.PlayerIO{
 		loadNEATPlayer(filePath),
@@ -61,11 +61,11 @@ func trainNEATNetwork() {
 }
 
 func main() {
-	runDebugGame()
+	// runDebugGame()
 	// trainNEATNetwork()
-	// runConsoleMonopoly()
+	runConsoleMonopoly()
 	// for range 10 {
-	// 	runBotMatch()
+	// runBotMatch()
 	// }
 }
 
@@ -98,10 +98,10 @@ func loadNEATPlayer(filePath string) *neatnetwork.NEATMonopolyPlayer {
 func runDebugGame() {
 	logDir := "debug_logs"
 
-	bot1 := loadNEATPlayer(".\\genomes\\to_debug")
-	bot2 := loadNEATPlayer(".\\genomes\\to_debug")
-	bot3 := loadNEATPlayer(".\\genomes\\to_debug")
-	bot4 := loadNEATPlayer(".\\genomes\\to_debug")
+	bot1 := loadNEATPlayer(".\\genomes\\" + "bestForNow")
+	bot2 := loadNEATPlayer(".\\genomes\\" + "bestForNow copy")
+	bot3 := loadNEATPlayer(".\\genomes\\" + "bestForNow copy 2")
+	bot4 := loadNEATPlayer(".\\genomes\\" + "bestForNow copy 3")
 
 	// Enable decision logging for selected bots — comment out to disable for a given bot.
 	decisionLog1, err := neatnetwork.NewBotDecisionLogger(logDir, bot1.GetName())
@@ -122,23 +122,23 @@ func runBotMatch() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	e := neatnetwork.NewMonopolyEvaluator("experiment", config.GROUP_SIZE, rng)
 
-	bot1_name := "first_good"
-	bot2_name := "bracket_with_bot767"
-	bot3_name := "bracket133"
-	bot4_name := "bracket796"
+	bot1_name := "bot0"
+	bot2_name := "bot1"
+	bot3_name := "bot2"
+	bot4_name := "bot3"
 
-	bot1 := loadNEATPlayer(".\\genomes\\" + bot1_name)
-	bot2 := loadNEATPlayer(".\\genomes\\" + bot2_name)
-	bot3 := loadNEATPlayer(".\\genomes\\" + bot3_name)
-	bot4 := loadNEATPlayer(".\\genomes\\" + bot4_name)
+	bot1 := loadNEATPlayer(".\\genomes\\" + "bestForNow")
+	bot2 := loadNEATPlayer(".\\genomes\\" + "bestForNow copy")
+	bot3 := loadNEATPlayer(".\\genomes\\" + "bestForNow copy 2")
+	bot4 := loadNEATPlayer(".\\genomes\\" + "bestForNow copy 3")
 
 	if bot1 == nil || bot2 == nil || bot3 == nil || bot4 == nil {
 
 	}
 
-	simpleBot := neatnetwork.SimplePlayerBot{}
+	// simpleBot := neatnetwork.SimplePlayerBot{}
 
-	players := []neatnetwork.MonopolyPlayer{bot3, &simpleBot}
+	players := []neatnetwork.MonopolyPlayer{bot1, bot2, bot3, bot4}
 
 	neatOptionsFile := "neat_options.yaml"
 	neatOptions, err := neat.ReadNeatOptionsFromFile(neatOptionsFile)
@@ -152,10 +152,10 @@ func runBotMatch() {
 	}
 
 	fmt.Printf("Games played: %d\n", config.GAMES_PER_EPOCH)
-	// fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot1_name, bot1.GetScore()/config.GAMES_PER_EPOCH, bot1.GetWins(), bot1.GetDraws())
-	// fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot2_name, bot2.GetScore()/config.GAMES_PER_EPOCH, bot2.GetWins(), bot2.GetDraws())
+	fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot1_name, bot1.GetScore()/config.GAMES_PER_EPOCH, bot1.GetWins(), bot1.GetDraws())
+	fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot2_name, bot2.GetScore()/config.GAMES_PER_EPOCH, bot2.GetWins(), bot2.GetDraws())
 	fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot3_name, bot3.GetScore()/config.GAMES_PER_EPOCH, bot3.GetWins(), bot3.GetDraws())
-	// fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot4_name, bot4.GetScore()/config.GAMES_PER_EPOCH, bot4.GetWins(), bot4.GetDraws())
+	fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot4_name, bot4.GetScore()/config.GAMES_PER_EPOCH, bot4.GetWins(), bot4.GetDraws())
 
-	fmt.Printf("simpleBot: AvgScore=%d Wins=%d Draws=%d\n", simpleBot.GetScore()/config.GAMES_PER_EPOCH, simpleBot.GetWins(), simpleBot.GetDraws())
+	// fmt.Printf("simpleBot: AvgScore=%d Wins=%d Draws=%d\n", simpleBot.GetScore()/config.GAMES_PER_EPOCH, simpleBot.GetWins(), simpleBot.GetDraws())
 }

@@ -55,6 +55,7 @@ type PlayerInfo struct {
 
 type ConsoleServer struct {
 	PlayersInfoMap map[int]PlayerInfo
+	listener       net.Listener
 }
 
 func NewConsoleServer(humanPlayers int, bots []PlayerIO) *ConsoleServer {
@@ -99,6 +100,56 @@ func NewConsoleServer(humanPlayers int, bots []PlayerIO) *ConsoleServer {
 	fmt.Println("All players connected!")
 	return &ConsoleServer{
 		PlayersInfoMap: playerMap,
+		listener:       ln,
+	}
+}
+
+// reconnect blocks until some client connects, then treats that connection as
+// the replacement for the given (disconnected) player. It does not verify the
+// identity of the reconnecting client — whoever connects next takes the slot.
+func (s *ConsoleServer) reconnect(player int) {
+	fmt.Printf("Player %d disconnected. Waiting for a client to reconnect...\n", player)
+	for {
+		conn, err := s.listener.Accept()
+		if err != nil {
+			fmt.Println("Connection error while waiting for reconnection:", err)
+			continue
+		}
+		encoder := json.NewEncoder(conn)
+		if err := encoder.Encode(player); err != nil {
+			fmt.Println("Error sending player ID to reconnected client:", err)
+			conn.Close()
+			continue
+		}
+		info := s.PlayersInfoMap[player]
+		info.conn = conn
+		s.PlayersInfoMap[player] = info
+		fmt.Printf("Player %d reconnected\n", player)
+		return
+	}
+}
+
+// sendAndDecode sends req to player's connection and decodes the response into resp.
+// If the connection has dropped (send or decode error), it waits for a reconnection
+// and retries instead of panicking.
+func (s *ConsoleServer) sendAndDecode(player int, req ActionRequest, resp interface{}) {
+	for {
+		playerInfo := s.PlayersInfoMap[player]
+		encoder := json.NewEncoder(playerInfo.conn)
+		decoder := json.NewDecoder(playerInfo.conn)
+		if err := encoder.Encode(req); err != nil {
+			fmt.Printf("Error sending request to player %d: %v\n", player, err)
+			playerInfo.conn.Close()
+			s.reconnect(player)
+			continue
+		}
+		if err := decoder.Decode(resp); err != nil {
+			fmt.Printf("Error decoding response from player %d: %v\n", player, err)
+			playerInfo.conn.Close()
+			s.reconnect(player)
+			continue
+		}
+		return
 	}
 }
 
@@ -126,19 +177,8 @@ func (s *ConsoleServer) GetStdAction(player int, state monopoly.GameState, avail
 		State:         state,
 		StdActionList: availableActions,
 	}
-	encoder := json.NewEncoder(playerInfo.conn)
-	decoder := json.NewDecoder(playerInfo.conn)
-	if err := encoder.Encode(req); err != nil {
-		fmt.Println("Error sending request to player:", err)
-		panic(err)
-	}
-
 	var resp monopoly.ActionDetails
-	err := decoder.Decode(&resp)
-	if err != nil {
-		fmt.Println("Error decoding response:", err)
-		panic("Cannot read response from player")
-	}
+	s.sendAndDecode(player, req, &resp)
 	fmt.Printf("Player %d chose action: %s\n", player, monopoly.StdActionNames[resp.Action])
 	return resp
 }
@@ -154,19 +194,8 @@ func (s *ConsoleServer) GetJailAction(player int, state monopoly.GameState, avai
 		State:          state,
 		JailActionList: available,
 	}
-	encoder := json.NewEncoder(playerInfo.conn)
-	decoder := json.NewDecoder(playerInfo.conn)
-	if err := encoder.Encode(req); err != nil {
-		fmt.Println("Error sending request to player:", err)
-		panic(err)
-	}
-
 	var resp monopoly.JailAction
-	err := decoder.Decode(&resp)
-	if err != nil {
-		fmt.Println("Error decoding response:", err)
-		panic("Cannot read response from player")
-	}
+	s.sendAndDecode(player, req, &resp)
 	fmt.Printf("Player %d chose jail action: %s\n", player, monopoly.JailActionNames[resp])
 	return resp
 }
@@ -182,20 +211,8 @@ func (s *ConsoleServer) BuyDecision(player int, state monopoly.GameState, proper
 		State:      state,
 		PropertyId: propertyId,
 	}
-
-	encoder := json.NewEncoder(playerInfo.conn)
-	decoder := json.NewDecoder(playerInfo.conn)
-	if err := encoder.Encode(req); err != nil {
-		fmt.Println("Error sending request to player:", err)
-		panic(err)
-	}
-
 	var resp bool
-	err := decoder.Decode(&resp)
-	if err != nil {
-		fmt.Println("Error decoding response:", err)
-		panic("Cannot read response from player")
-	}
+	s.sendAndDecode(player, req, &resp)
 	fmt.Printf("Player %d decided to buy: %t\n", player, resp)
 	return resp
 }
@@ -213,18 +230,8 @@ func (s *ConsoleServer) BuyFromPlayerDecision(player int, state monopoly.GameSta
 		Price:            sellerOffer,
 		TradingPartnerId: tradingPartnerId,
 	}
-	encoder := json.NewEncoder(playerInfo.conn)
-	decoder := json.NewDecoder(playerInfo.conn)
-	if err := encoder.Encode(req); err != nil {
-		fmt.Println("Error sending request to player:", err)
-		panic(err)
-	}
-
 	var resp NegotiationResponse
-	if err := decoder.Decode(&resp); err != nil {
-		fmt.Println("Error decoding response:", err)
-		panic("Cannot read response from player")
-	}
+	s.sendAndDecode(player, req, &resp)
 	fmt.Printf("Player %d responded to counteroffer: continue=%v price=%d$\n", player, resp.Continue, resp.Price)
 	return resp.Continue, resp.Price
 }
@@ -242,18 +249,8 @@ func (s *ConsoleServer) SellToPlayerDecision(player int, state monopoly.GameStat
 		Price:            buyerOffer,
 		TradingPartnerId: tradingPartnerId,
 	}
-	encoder := json.NewEncoder(playerInfo.conn)
-	decoder := json.NewDecoder(playerInfo.conn)
-	if err := encoder.Encode(req); err != nil {
-		fmt.Println("Error sending request to player:", err)
-		panic(err)
-	}
-
 	var resp NegotiationResponse
-	if err := decoder.Decode(&resp); err != nil {
-		fmt.Println("Error decoding response:", err)
-		panic("Cannot read response from player")
-	}
+	s.sendAndDecode(player, req, &resp)
 	fmt.Printf("Player %d responded to buy offer: continue=%v price=%d$\n", player, resp.Continue, resp.Price)
 	return resp.Continue, resp.Price
 }
@@ -270,19 +267,8 @@ func (s *ConsoleServer) BiddingDecision(player int, state monopoly.GameState, pr
 		PropertyId: propertyId,
 		Price:      currentPrice,
 	}
-	encoder := json.NewEncoder(playerInfo.conn)
-	decoder := json.NewDecoder(playerInfo.conn)
-	if err := encoder.Encode(req); err != nil {
-		fmt.Println("Error sending request to player:", err)
-		panic(err)
-	}
-
 	var resp int
-	err := decoder.Decode(&resp)
-	if err != nil {
-		fmt.Println("Error decoding response:", err)
-		panic("Cannot read response from player")
-	}
+	s.sendAndDecode(player, req, &resp)
 	fmt.Printf("Player %d made a bid: %d\n", player, resp)
 	return resp
 }
