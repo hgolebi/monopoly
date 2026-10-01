@@ -764,15 +764,28 @@ func (g *Game) chargePlayer(player_id int, amount int, target *Player) {
 		state := g.getState()
 		state.Charge = amount
 		action_details := g.io.GetStdAction(player_id, state, action_list)
+		if !isValidChargeAction(action_details, action_list) {
+			// invalid decision during forced liquidation: the creditor takes over all assets
+			g.logger.Log(fmt.Sprintf("%s attempted an invalid action while raising money: %v", player.Name, action_details.Action))
+			g.bankrupt(player, target)
+			return
+		}
 		g.resolveStandardAction(player_id, action_details, action_list)
 		if !g.continueRound(player_id) {
-			if target != nil {
-				g.addMoney(target, amount) // situation where player has properties to sell but goes bankrupt because of wrong decision. Target should still receive the money
-			}
 			return
 		}
 	}
 	g.charge(player, amount, target)
+}
+
+func isValidChargeAction(action_details ActionDetails, available FullActionList) bool {
+	switch action_details.Action {
+	case MORTGAGE:
+		return slices.Contains(available.MortgageList, action_details.PropertyId)
+	case SELLHOUSE:
+		return slices.Contains(available.SellHouseList, action_details.PropertyId)
+	}
+	return false
 }
 
 func (g *Game) mortgage(player_id int, propertyId int) {

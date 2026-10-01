@@ -112,6 +112,14 @@ func (p *NEATMonopolyPlayer) GetStdAction(player int, state monopoly.GameState, 
 		p.log.Warn("▶ GetStdAction", "player", player, "round", state.Round, "money", state.Players[player].Money)
 	}
 
+	if state.Charge > 0 {
+		action := getChargeAction(player, state, availableActions)
+		if p.log != nil {
+			p.log.Info("→ result (charge)", "charge", state.Charge, "action", action.Action, "propertyId", action.PropertyId)
+		}
+		return action
+	}
+
 	decision, property, needMoney := p.getBuyHouseDecision(player, state, availableActions)
 	if decision {
 		if p.log != nil {
@@ -174,6 +182,24 @@ func (p *NEATMonopolyPlayer) GetStdAction(player int, state monopoly.GameState, 
 		p.log.Info("→ result", "action", "NONE")
 	}
 	return monopoly.ActionDetails{}
+}
+
+func getChargeAction(playerId int, state monopoly.GameState, availableActions monopoly.FullActionList) monopoly.ActionDetails {
+	mortgageList := slices.Sorted(slices.Values(availableActions.MortgageList))
+	for _, propertyId := range mortgageList {
+		setCount, ownedByPlayer, _ := getSetDetails(state, state.Properties[propertyId].SetIndex, playerId)
+		if setCount != ownedByPlayer {
+			return monopoly.ActionDetails{Action: monopoly.MORTGAGE, PropertyId: propertyId}
+		}
+	}
+	if len(mortgageList) > 0 {
+		return monopoly.ActionDetails{Action: monopoly.MORTGAGE, PropertyId: mortgageList[0]}
+	}
+
+	if len(availableActions.SellHouseList) > 0 {
+		return monopoly.ActionDetails{Action: monopoly.SELLHOUSE, PropertyId: slices.Min(availableActions.SellHouseList)}
+	}
+	return monopoly.ActionDetails{Action: monopoly.NOACTION}
 }
 
 func (p *NEATMonopolyPlayer) tryToGetMoney(player int, state monopoly.GameState, availableActions monopoly.FullActionList) (success bool, action monopoly.ActionDetails) {

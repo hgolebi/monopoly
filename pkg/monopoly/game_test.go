@@ -1824,3 +1824,47 @@ func TestSetPosition(t *testing.T) {
 		assert.Equal(t, test.expectedPosition, player.CurrentPosition, "Player's position should match expected after setting position")
 	}
 }
+
+// TestChargePlayer_Liquidation — player lacks cash but has assets: the engine asks for liquidation steps
+// until the debt can be paid, then transfers the money to the creditor.
+func TestChargePlayer_Liquidation(t *testing.T) {
+	game, io := newTestGame(t, 0)
+	debtor := game.players[0]
+	creditor := game.players[1]
+	debtor.Money = 10
+	creditorMoney := creditor.Money
+	game.addProperty(debtor, 26) // Dark Blue 1, mortgage value 175$
+
+	io.On("GetStdAction", 0, mock.Anything, mock.Anything).
+		Return(ActionDetails{Action: MORTGAGE, PropertyId: 26}).Once()
+
+	game.chargePlayer(0, 100, creditor)
+
+	assert.False(t, debtor.IsBankrupt)
+	assert.True(t, game.properties[26].IsMortgaged)
+	assert.Equal(t, 10+175-100, debtor.Money)
+	assert.Equal(t, creditorMoney+100, creditor.Money)
+	io.AssertExpectations(t)
+}
+
+// TestChargePlayer_InvalidLiquidationAction — an invalid decision during liquidation bankrupts the debtor
+// in favour of the creditor: the creditor takes over cash and properties, no money is created.
+func TestChargePlayer_InvalidLiquidationAction(t *testing.T) {
+	game, io := newTestGame(t, 0)
+	debtor := game.players[0]
+	creditor := game.players[1]
+	debtor.Money = 10
+	creditorMoney := creditor.Money
+	game.addProperty(debtor, 26)
+	game.addProperty(debtor, 27)
+
+	io.On("GetStdAction", 0, mock.Anything, mock.Anything).Return(ActionDetails{Action: NOACTION}).Once()
+
+	game.chargePlayer(0, 100, creditor)
+
+	assert.True(t, debtor.IsBankrupt)
+	assert.Equal(t, creditorMoney+10, creditor.Money)
+	assert.Equal(t, creditor, game.properties[26].Owner)
+	assert.Equal(t, creditor, game.properties[27].Owner)
+	io.AssertExpectations(t)
+}
