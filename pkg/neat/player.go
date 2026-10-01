@@ -29,18 +29,25 @@ type MonopolyPlayer interface {
 	GetId() int
 	GetScore() int
 	GetOrganism() *genetics.Organism
+	// ForGame returns an instance of the player for a single game. Instances share the score statistics,
+	// but each one has its own state, so they can play different games concurrently.
+	ForGame() (MonopolyPlayer, error)
+}
+
+// playerStats are the score statistics of an organism, shared by all of its game instances.
+type playerStats struct {
+	mutex sync.Mutex
+	score int
+	wins  int
+	draws int
 }
 
 type NEATMonopolyPlayer struct {
-	network    *network.Network
-	organism   *genetics.Organism
-	max_depth  int
-	score      int
-	mutex      sync.Mutex
-	wins       int
-	draws      int
-	is_trading bool
-	log        *BotDecisionLogger
+	network   *network.Network // activation state lives in the network nodes, so it must not be shared between games
+	organism  *genetics.Organism
+	max_depth int
+	stats     *playerStats
+	log       *BotDecisionLogger
 }
 
 func NewNEATMonopolyPlayer(organism *genetics.Organism) (*NEATMonopolyPlayer, error) {
@@ -61,7 +68,23 @@ func NewNEATMonopolyPlayer(organism *genetics.Organism) (*NEATMonopolyPlayer, er
 		network:   network,
 		organism:  organism,
 		max_depth: max_depth,
-		score:     0,
+		stats:     &playerStats{},
+	}, nil
+}
+
+// ForGame builds a fresh network from the organism's genome for one game.
+// Genesis modifies the genome, so it must not be called concurrently for the same organism.
+func (p *NEATMonopolyPlayer) ForGame() (MonopolyPlayer, error) {
+	network, err := p.organism.Genotype.Genesis(p.organism.Genotype.Id)
+	if err != nil {
+		return nil, fmt.Errorf("error building network for organism %d: %w", p.organism.Genotype.Id, err)
+	}
+	return &NEATMonopolyPlayer{
+		network:   network,
+		organism:  p.organism,
+		max_depth: p.max_depth,
+		stats:     p.stats,
+		log:       p.log,
 	}, nil
 }
 
@@ -78,9 +101,9 @@ func (p *NEATMonopolyPlayer) SetDecisionLogger(l *BotDecisionLogger) {
 }
 
 func (p *NEATMonopolyPlayer) GetScore() int {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-	return p.score
+	p.stats.mutex.Lock()
+	defer p.stats.mutex.Unlock()
+	return p.stats.score
 }
 
 func (p *NEATMonopolyPlayer) GetOrganism() *genetics.Organism {
@@ -107,7 +130,6 @@ func (p *NEATMonopolyPlayer) GetDecision(input []float64) []float64 {
 }
 
 func (p *NEATMonopolyPlayer) GetStdAction(player int, state monopoly.GameState, availableActions monopoly.FullActionList) monopoly.ActionDetails {
-	p.is_trading = false
 	if p.log != nil {
 		p.log.Warn("▶ GetStdAction", "player", player, "round", state.Round, "money", state.Players[player].Money)
 	}
@@ -749,32 +771,32 @@ func (p *NEATMonopolyPlayer) getSellDecision(playerId int, state monopoly.GameSt
 }
 
 func (p *NEATMonopolyPlayer) AddScore(points int) {
-	p.mutex.Lock()
-	p.score += points
-	p.mutex.Unlock()
+	p.stats.mutex.Lock()
+	p.stats.score += points
+	p.stats.mutex.Unlock()
 }
 
 func (p *NEATMonopolyPlayer) AddWin() {
-	p.mutex.Lock()
-	p.wins++
-	p.mutex.Unlock()
+	p.stats.mutex.Lock()
+	p.stats.wins++
+	p.stats.mutex.Unlock()
 }
 
 func (p *NEATMonopolyPlayer) AddDraw() {
-	p.mutex.Lock()
-	p.draws++
-	p.mutex.Unlock()
+	p.stats.mutex.Lock()
+	p.stats.draws++
+	p.stats.mutex.Unlock()
 }
 
 func (p *NEATMonopolyPlayer) GetWins() int {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-	return p.wins
+	p.stats.mutex.Lock()
+	defer p.stats.mutex.Unlock()
+	return p.stats.wins
 }
 func (p *NEATMonopolyPlayer) GetDraws() int {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-	return p.draws
+	p.stats.mutex.Lock()
+	defer p.stats.mutex.Unlock()
+	return p.stats.draws
 }
 
 func getBestDecision(decisions map[int]float64) (bestFound bool, bestId int, bestValue float64) {
@@ -785,7 +807,8 @@ func getBestDecision(decisions map[int]float64) (bestFound bool, bestId int, bes
 	bestId = -1
 	bestValue = -1.0
 	for id, value := range decisions {
-		if value > bestValue {
+		// ties go to the lower id, so the choice does not depend on the map iteration order
+		if value > bestValue || (value == bestValue && id < bestId) {
 			bestValue = value
 			bestId = id
 		}

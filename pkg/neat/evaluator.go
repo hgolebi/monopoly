@@ -108,6 +108,8 @@ func (e *MonopolyEvaluator) PlayRound(ctx context.Context, players []MonopolyPla
 	}
 
 	// starting rounds
+	var err error
+rounds:
 	for roundID := range cfg.GAMES_PER_EPOCH {
 		// prepare groups
 		groups := e.prepareGroups(players)
@@ -118,19 +120,35 @@ func (e *MonopolyEvaluator) PlayRound(ctx context.Context, players []MonopolyPla
 
 		// create job for every group
 		for groupID, group := range groups {
-
+			gamePlayers, gameErr := playersForGame(group)
+			if gameErr != nil {
+				err = fmt.Errorf("group %d (round %d): %w", groupID, roundID, gameErr)
+				break rounds
+			}
 			gd := GroupDetails{
 				Epoch:   epoch,
 				Round:   roundID,
 				GroupID: groupID,
-				Players: group,
+				Players: gamePlayers,
 			}
 			jobsCh <- gd
 		}
 	}
 	close(jobsCh)
 	wg.Wait()
-	return nil
+	return err
+}
+
+func playersForGame(group []MonopolyPlayer) ([]MonopolyPlayer, error) {
+	gamePlayers := make([]MonopolyPlayer, len(group))
+	for i, player := range group {
+		gamePlayer, err := player.ForGame()
+		if err != nil {
+			return nil, err
+		}
+		gamePlayers[i] = gamePlayer
+	}
+	return gamePlayers, nil
 }
 
 func startWorker(ctx context.Context, id int, jobsCh <-chan GroupDetails, wg *sync.WaitGroup, outputDir string) {
