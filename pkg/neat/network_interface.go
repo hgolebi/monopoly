@@ -97,8 +97,8 @@ func (s MonopolySensors) loadSetInputs(state monopoly.GameState, propertyId int,
 	lastSetId := len(monopoly.Sets) - 1
 	s[IN_SET_ID] = normalize(setId, 0, lastSetId, false)
 	setCount, ownedByPlayer, ownedByOthers := getSetDetails(state, setId, playerID)
-	s[IN_SET_PROPERTIES_NEEDED] = normalize(setCount-ownedByPlayer, 0, lastSetId, false)
-	s[IN_SET_PROPERTIES_OCCUPIED] = normalize(ownedByOthers, 0, lastSetId, false)
+	s[IN_SET_PROPERTIES_NEEDED] = normalize(setCount-ownedByPlayer, 0, 3, false)
+	s[IN_SET_PROPERTIES_OCCUPIED] = normalize(ownedByOthers, 0, 3, false)
 }
 
 func (s MonopolySensors) loadAvailablePropertiesInput(state monopoly.GameState) {
@@ -117,10 +117,9 @@ func (s MonopolySensors) LoadEnemyInputs(state monopoly.GameState, enemyPlayerID
 	s[IN_ENEMY_MONEY] = normalize(enemy.Money, 0, cfg.MAX_MONEY, false)
 	property := state.Properties[propertyID]
 	setId := property.SetIndex
-	lastSetId := len(monopoly.Sets) - 1
 	setCount, ownedByEnemy, ownedByOthers := getSetDetails(state, setId, enemyPlayerID)
-	s[IN_ENEMY_SET_PROPERTIES_NEEDED] = normalize(setCount-ownedByEnemy, 0, lastSetId, false)
-	s[IN_ENEMY_SET_PROPERTIES_OCCUPIED] = normalize(ownedByOthers, 0, lastSetId, false)
+	s[IN_ENEMY_SET_PROPERTIES_NEEDED] = normalize(setCount-ownedByEnemy, 0, 3, false)
+	s[IN_ENEMY_SET_PROPERTIES_OCCUPIED] = normalize(ownedByOthers, 0, 3, false)
 }
 
 func (s MonopolySensors) LoadBuyPriceInput(price int) {

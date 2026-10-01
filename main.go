@@ -61,9 +61,9 @@ func trainNEATNetwork() {
 }
 
 func main() {
-	// runDebugGame()
+	runDebugGame()
 	// trainNEATNetwork()
-	runConsoleMonopoly()
+	// runConsoleMonopoly()
 	// for range 10 {
 	// runBotMatch()
 	// }
@@ -136,8 +136,6 @@ func runBotMatch() {
 
 	}
 
-	// simpleBot := neatnetwork.SimplePlayerBot{}
-
 	players := []neatnetwork.MonopolyPlayer{bot1, bot2, bot3, bot4}
 
 	neatOptionsFile := "neat_options.yaml"
@@ -156,6 +154,4 @@ func runBotMatch() {
 	fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot2_name, bot2.GetScore()/config.GAMES_PER_EPOCH, bot2.GetWins(), bot2.GetDraws())
 	fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot3_name, bot3.GetScore()/config.GAMES_PER_EPOCH, bot3.GetWins(), bot3.GetDraws())
 	fmt.Printf("%s: AvgScore=%d Wins=%d Draws=%d\n", bot4_name, bot4.GetScore()/config.GAMES_PER_EPOCH, bot4.GetWins(), bot4.GetDraws())
-
-	// fmt.Printf("simpleBot: AvgScore=%d Wins=%d Draws=%d\n", simpleBot.GetScore()/config.GAMES_PER_EPOCH, simpleBot.GetWins(), simpleBot.GetDraws())
 }

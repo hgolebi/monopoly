@@ -3,11 +3,9 @@ package neatnetwork
 import (
 	"context"
 	"fmt"
-	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
-	"slices"
 	"sync"
 	"time"
 
@@ -20,19 +18,10 @@ import (
 	"github.com/yaricom/goNEAT/v4/neat/genetics"
 )
 
-type RoundDetails struct {
-	Epoch        int
-	PlayersCount int
-	Group        int
-	Game         int
-}
-
 type MonopolyEvaluator struct {
-	outputDir           string
-	groupSize           int
-	lastChampion        MonopolyPlayer
-	lastChampionFitness float64
-	rng                 *rand.Rand
+	outputDir string
+	groupSize int
+	rng       *rand.Rand
 }
 
 func NewMonopolyEvaluator(outputDir string, groupSize int, rng *rand.Rand) *MonopolyEvaluator {
@@ -66,14 +55,11 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 		return fmt.Errorf("failed to create players from population: %v", err)
 	}
 
-	switch cfg.TOURNAMENT_TYPE {
-	case "bracket":
-		err = e.bracketTournament(ctx, players, epoch)
-	case "single_round":
-		err = e.singleRoundTournament(ctx, players, epoch)
+	if err := e.PlayRound(ctx, players, epoch.Id); err != nil {
+		return fmt.Errorf("failed to play round: %v", err)
 	}
-	if err != nil {
-		return fmt.Errorf("failed to run tournament: %v", err)
+	for _, player := range players {
+		player.GetOrganism().Fitness = float64(player.GetScore()) / cfg.GAMES_PER_EPOCH
 	}
 	epoch.FillPopulationStatistics(pop)
 	numberOfSpecies := len(pop.Species)
@@ -108,70 +94,6 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 	return nil
 }
 
-func (e *MonopolyEvaluator) singleRoundTournament(ctx context.Context, players []MonopolyPlayer, epoch *experiment.Generation) error {
-	err := e.PlayRound(ctx, players, epoch.Id)
-	if err != nil {
-		return fmt.Errorf("failed to play round: %v", err)
-	}
-
-	for _, player := range players {
-		org := player.GetOrganism()
-		if org == nil {
-			continue
-		}
-		org.Fitness += float64(player.GetScore()) / cfg.GAMES_PER_EPOCH
-	}
-
-	return nil
-}
-
-func (e *MonopolyEvaluator) bracketTournament(ctx context.Context, players []MonopolyPlayer, epoch *experiment.Generation) error {
-	playersLeft := make([]MonopolyPlayer, len(players))
-	copy(playersLeft, players)
-	if e.lastChampion != nil {
-		playersLeft = append(playersLeft, e.lastChampion)
-	} else {
-		playersLeft = append(playersLeft, players[0])
-	}
-	round := 1
-	var orderedPlayers []MonopolyPlayer
-	for len(playersLeft) > 1 {
-		for _, player := range playersLeft {
-			player.ResetScore()
-		}
-		neat.InfoLog(fmt.Sprintf("Starting round %d with %d players\n", round, len(playersLeft)))
-		err := e.PlayRound(ctx, playersLeft, epoch.Id)
-		if err != nil {
-			return fmt.Errorf("failed to play round %d: %v", round, err)
-		}
-
-		slices.SortFunc(playersLeft, func(a, b MonopolyPlayer) int {
-			return a.GetScore() - b.GetScore()
-		})
-		border := int(math.Round(4.0 / 5.0 * float64(len(playersLeft))))
-		orderedPlayers = append(orderedPlayers, playersLeft[:border]...)
-		playersLeft = playersLeft[border:]
-		round++
-	}
-	orderedPlayers = append(orderedPlayers, playersLeft...)
-	lastChampionPlace := 0
-	for i, player := range orderedPlayers {
-		if player == e.lastChampion {
-			lastChampionPlace = i
-		}
-	}
-	for i, player := range orderedPlayers {
-		org := player.GetOrganism()
-		if org == nil {
-			continue
-		}
-		org.Fitness = e.lastChampionFitness + float64(i-lastChampionPlace) + 1.0
-	}
-	e.lastChampion = orderedPlayers[len(orderedPlayers)-1]
-	e.lastChampionFitness = e.lastChampion.GetOrganism().Fitness
-	return nil
-}
-
 func (e *MonopolyEvaluator) PlayRound(ctx context.Context, players []MonopolyPlayer, epoch int) error {
 	options, ok := neat.FromContext(ctx)
 	if !ok {
@@ -188,12 +110,7 @@ func (e *MonopolyEvaluator) PlayRound(ctx context.Context, players []MonopolyPla
 	// starting rounds
 	for roundID := range cfg.GAMES_PER_EPOCH {
 		// prepare groups
-		var groups [][]MonopolyPlayer
-		if cfg.INCLUDE_HEURISTIC_BOT {
-			groups = e.prepareGroupsWithHeuristicBot(players, e.groupSize)
-		} else {
-			groups = e.prepareGroups(players, e.groupSize)
-		}
+		groups := e.prepareGroups(players)
 
 		if roundID == 0 && (epoch == options.NumGenerations-1 || (epoch+1)%cfg.PRINT_EVERY == 0) {
 			dumpGroupAssignments(e.outputDir, epoch, roundID, groups)
@@ -228,7 +145,7 @@ func startWorker(ctx context.Context, id int, jobsCh <-chan GroupDetails, wg *sy
 	}
 }
 
-func (e *MonopolyEvaluator) prepareGroups(players []MonopolyPlayer, groupSize int) [][]MonopolyPlayer {
+func (e *MonopolyEvaluator) prepareGroups(players []MonopolyPlayer) [][]MonopolyPlayer {
 	e.rng.Shuffle(len(players), func(i, j int) {
 		players[i], players[j] = players[j], players[i]
 	})
@@ -242,24 +159,6 @@ func (e *MonopolyEvaluator) prepareGroups(players []MonopolyPlayer, groupSize in
 	return groups
 }
 
-func (e *MonopolyEvaluator) prepareGroupsWithHeuristicBot(players []MonopolyPlayer, groupSize int) [][]MonopolyPlayer {
-	e.rng.Shuffle(len(players), func(i, j int) {
-		players[i], players[j] = players[j], players[i]
-	})
-	var groups [][]MonopolyPlayer
-	for i := 0; i < len(players); i += (e.groupSize - 1) {
-		end := min(i+e.groupSize-1, len(players))
-		group := make([]MonopolyPlayer, 0, e.groupSize)
-		group = append(group, players[i:end]...)
-		group = append(group, new(SimplePlayerBot))
-		e.rng.Shuffle(len(group), func(i, j int) {
-			group[i], group[j] = group[j], group[i]
-		})
-		groups = append(groups, group)
-	}
-	return groups
-}
-
 func startGroup(ctx context.Context, gd GroupDetails, outputDir string) error {
 	neat.DebugLog(fmt.Sprintf("Starting group %d (round %d)\n", gd.GroupID, gd.Round))
 	options, ok := neat.FromContext(ctx)
@@ -267,10 +166,6 @@ func startGroup(ctx context.Context, gd GroupDetails, outputDir string) error {
 		return fmt.Errorf("Error in group %d (round %d): %s", gd.GroupID, gd.Round, "failed to get options from context")
 	}
 	playerGroup, err := NewNEATPlayerGroup(gd.GroupID, gd.Players)
-	if err != nil {
-		return fmt.Errorf("Error in group %d (round %d): %v", gd.GroupID, gd.Round, err)
-	}
-	playerGroup, err = NewNEATPlayerGroup(gd.GroupID, gd.Players)
 	if err != nil {
 		return fmt.Errorf("Error in group %d (round %d): %v", gd.GroupID, gd.Round, err)
 	}
@@ -371,9 +266,6 @@ func findBestPlayer(players []MonopolyPlayer) MonopolyPlayer {
 	var bestFitness *float64
 	for _, player := range players {
 		org := player.GetOrganism()
-		if org == nil {
-			continue
-		}
 		if bestFitness == nil || org.Fitness > *bestFitness {
 			bestFitness = &org.Fitness
 			bestPlayer = player
