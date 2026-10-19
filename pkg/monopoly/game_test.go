@@ -1868,3 +1868,50 @@ func TestChargePlayer_InvalidLiquidationAction(t *testing.T) {
 	assert.Equal(t, creditor, game.properties[27].Owner)
 	io.AssertExpectations(t)
 }
+
+// TestCheckCharge_Utility — utility rent is 4× the dice sum with one utility and 10× with both.
+func TestCheckCharge_Utility(t *testing.T) {
+	tests := []struct {
+		ownedUtilities []int
+		diceSum        int
+		expectedCharge int
+	}{
+		{[]int{7}, 7, 28},
+		{[]int{20}, 12, 48},
+		{[]int{7, 20}, 7, 70},
+		{[]int{7, 20}, 2, 20},
+	}
+	for _, test := range tests {
+		game, _ := newTestGame(t, 0)
+		owner := game.players[1]
+		for _, propertyId := range test.ownedUtilities {
+			game.addProperty(owner, propertyId)
+		}
+		game.lastDiceSum = test.diceSum
+
+		charge := game.checkCharge(game.properties[test.ownedUtilities[0]])
+		assert.Equal(t, test.expectedCharge, charge, "utilities %v, dice sum %d", test.ownedUtilities, test.diceSum)
+	}
+}
+
+// TestCheckCharge_MortgagedUtility — a mortgaged utility charges no rent.
+func TestCheckCharge_MortgagedUtility(t *testing.T) {
+	game, _ := newTestGame(t, 0)
+	game.addProperty(game.players[1], 7)
+	game.properties[7].IsMortgaged = true
+	game.lastDiceSum = 8
+
+	assert.Equal(t, 0, game.checkCharge(game.properties[7]))
+}
+
+// TestMakeMove_StoresDiceSum — the sum of the move roll is kept for the utility rent.
+func TestMakeMove_StoresDiceSum(t *testing.T) {
+	game, io := newTestGame(t, 0)
+	io.On("GetStdAction", mock.Anything, mock.Anything, mock.Anything).Return(ActionDetails{Action: NOACTION}).Maybe()
+	io.On("BuyDecision", mock.Anything, mock.Anything, mock.Anything).Return(false).Maybe()
+	io.On("BiddingDecision", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(0).Maybe()
+
+	game.makeMove(1, 3, 1)
+
+	assert.Equal(t, 4, game.lastDiceSum)
+}

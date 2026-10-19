@@ -30,6 +30,8 @@ type Game struct {
 	usedActions  map[StdAction]map[int]bool
 	randomSource *rand.Rand
 	finished     bool
+	// lastDiceSum is the sum of the most recent move roll, used for the utility rent.
+	lastDiceSum int
 }
 
 func NewGame(ctx context.Context, io IMonopoly_IO, logger Logger, seed int64) *Game {
@@ -177,7 +179,7 @@ func NewGame(ctx context.Context, io IMonopoly_IO, logger Logger, seed int64) *G
 		25: {25, 50, 100, 200}, // Short Line
 
 		// Utilities (special: rent = dice × multiplier)
-		7:  {4, 10}, // Electric Company: 4× or 10× dice roll
+		7:  {4, 10}, // Electric Company: 4× or 10× dice roll (multipliers, see checkCharge)
 		20: {4, 10}, // Water Works
 	}
 
@@ -313,6 +315,7 @@ func (g *Game) makeMove(moves_in_a_row int, d1 int, d2 int) {
 		}
 		d1, d2 = g.rollDice()
 	}
+	g.lastDiceSum = d1 + d2
 	if moves_in_a_row >= 3 && d1 == d2 {
 		g.logger.Log(fmt.Sprintf("%s rolled doubles 3 times in a row", g.getCurrPlayer().Name))
 		g.jailPlayer()
@@ -1116,7 +1119,7 @@ func (g *Game) checkCharge(p *Property) int {
 				charge_idx++
 			}
 		}
-		return charges[charge_idx]
+		return charges[charge_idx] * g.lastDiceSum
 	}
 
 	set := Sets[p.SetIndex]
