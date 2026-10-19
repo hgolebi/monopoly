@@ -18,6 +18,8 @@ import (
 // from that file; otherwise NewStartGenome(1, allToAll) is used to build one automatically.
 func TrainNetwork(seed int64, neatOptionsFile string, outputDir string, allToAll bool, genomeFile string) {
 	rng := rand.New(rand.NewSource(seed))
+	// goNEAT draws mutations and crossovers from the global math/rand source and does not seed it with RandSeed
+	rand.Seed(seed) //nolint:staticcheck // still effective, go.mod targets go 1.23
 	neatOptions, err := neat.ReadNeatOptionsFromFile(neatOptionsFile)
 	if err != nil {
 		log.Fatal("Failed to load NEAT options:", err)

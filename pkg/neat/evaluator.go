@@ -3,6 +3,7 @@ package neatnetwork
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -40,6 +41,7 @@ type GroupDetails struct {
 	Round   int
 	GroupID int
 	Players []MonopolyPlayer
+	Seed    int64 // seed of the game's random source, drawn from the evaluator's rng
 }
 
 func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetics.Population, epoch *experiment.Generation) error {
@@ -130,6 +132,7 @@ rounds:
 				Round:   roundID,
 				GroupID: groupID,
 				Players: gamePlayers,
+				Seed:    e.nextGameSeed(),
 			}
 			jobsCh <- gd
 		}
@@ -137,6 +140,12 @@ rounds:
 	close(jobsCh)
 	wg.Wait()
 	return err
+}
+
+// nextGameSeed draws a game seed from the evaluator's rng, so every game gets its own seed and the whole
+// evaluation is reproducible from the evaluator's seed. Zero is skipped, because NewGame treats it as "use the clock".
+func (e *MonopolyEvaluator) nextGameSeed() int64 {
+	return e.rng.Int63n(math.MaxInt64) + 1
 }
 
 func playersForGame(group []MonopolyPlayer) ([]MonopolyPlayer, error) {
@@ -199,7 +208,7 @@ func startGroup(ctx context.Context, gd GroupDetails, outputDir string) error {
 		return fmt.Errorf("Error in group %d (round %d): %v", gd.GroupID, gd.Round, err)
 	}
 
-	game := monopoly.NewGame(ctx, playerGroup, logger, 0)
+	game := monopoly.NewGame(ctx, playerGroup, logger, gd.Seed)
 	game.Start()
 	return nil
 }

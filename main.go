@@ -57,6 +57,9 @@ func runConsoleMonopoly() {
 func trainNEATNetwork() {
 	neatOptionsFile := "neat_options.yaml"
 	outputDir := "output"
+	// The seed determines the whole training run (group draws, game dice, NEAT mutations and crossovers),
+	// so the same seed reproduces the same result. Use a different seed for each independent run
+	// and record it together with the run's results.
 	neatnetwork.TrainNetwork(0, neatOptionsFile, outputDir, true, "")
 }
 

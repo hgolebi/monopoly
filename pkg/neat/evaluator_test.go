@@ -3,12 +3,15 @@ package neatnetwork
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"monopoly/pkg/monopoly"
+	"slices"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/yaricom/goNEAT/v4/neat"
 	"github.com/yaricom/goNEAT/v4/neat/genetics"
 )
 
@@ -116,4 +119,56 @@ func TestForGame_SharesStats(t *testing.T) {
 	assert.Equal(t, 1, player.GetDraws())
 	assert.NotSame(t, player.network, first.(*NEATMonopolyPlayer).network)
 	assert.NotSame(t, first.(*NEATMonopolyPlayer).network, second.(*NEATMonopolyPlayer).network)
+}
+
+// TestNextGameSeed — game seeds come from the evaluator's rng: the same evaluator seed gives the same
+// sequence, and no seed is 0 (NewGame would replace it with the clock).
+func TestNextGameSeed(t *testing.T) {
+	first := NewMonopolyEvaluator(t.TempDir(), 4, rand.New(rand.NewSource(7)))
+	second := NewMonopolyEvaluator(t.TempDir(), 4, rand.New(rand.NewSource(7)))
+	seen := make(map[int64]bool)
+	for range 1000 {
+		seed := first.nextGameSeed()
+		assert.Equal(t, seed, second.nextGameSeed())
+		assert.Positive(t, seed)
+		seen[seed] = true
+	}
+	assert.Len(t, seen, 1000)
+}
+
+// TestPlayRound_Reproducible — two evaluations with the same evaluator seed give the same scores,
+// although the games run concurrently.
+func TestPlayRound_Reproducible(t *testing.T) {
+	genomes := []string{
+		"../../genomes/bestForNow",
+		"../../genomes/bestForNow copy",
+		"../../genomes/bestForNow copy 2",
+		"../../genomes/bestForNow copy 3",
+	}
+	ctx := neat.NewContext(context.Background(), &neat.Options{NumGenerations: 1000})
+	evaluate := func() []int {
+		players := make([]MonopolyPlayer, len(genomes))
+		for i, genome := range genomes {
+			players[i] = loadTestPlayer(t, genome)
+		}
+		scored := slices.Clone(players)
+		e := NewMonopolyEvaluator(t.TempDir(), 4, rand.New(rand.NewSource(42)))
+		require.NoError(t, e.PlayRound(ctx, players, 0))
+		scores := make([]int, len(scored))
+		for i, player := range scored {
+			scores[i] = player.GetScore()
+		}
+		return scores
+	}
+
+	assert.Equal(t, evaluate(), evaluate())
+}
+
+// TestTrainNetworkSeed_GlobalRand — goNEAT uses the global math/rand source, so rand.Seed must still
+// take effect (it becomes a no-op when go.mod targets go 1.24+ without GODEBUG=randseednop=0).
+func TestTrainNetworkSeed_GlobalRand(t *testing.T) {
+	rand.Seed(5) //nolint:staticcheck
+	first := rand.Int63()
+	rand.Seed(5) //nolint:staticcheck
+	assert.Equal(t, first, rand.Int63())
 }
