@@ -16,6 +16,7 @@ const (
 	// game settings used for normalization of NEAT input/outputs
 	LAST_FIELD_ID    = 39
 	LAST_PROPERTY_ID = 27
+	MAX_SET_SIZE     = 4
 	MAX_MONEY        = 2000
 	MAX_JAIL_CARDS   = 10
 	LAST_PLAYER_ID   = MAX_PLAYERS - 1

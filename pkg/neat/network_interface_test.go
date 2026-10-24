@@ -184,22 +184,22 @@ func TestLoadSetInputs_Brown(t *testing.T) {
 	ms := NewMonopolySensors()
 	ms.loadSetInputs(state, 0, 0) // property 0 = Brown, setId=0
 	assert.InDelta(t, 0.0, ms[IN_SET_ID], 0.0001)
-	assert.InDelta(t, 2.0/9.0, ms[IN_SET_PROPERTIES_NEEDED], 0.0001)
+	assert.InDelta(t, 2.0/4.0, ms[IN_SET_PROPERTIES_NEEDED], 0.0001)
 	assert.InDelta(t, 0.0, ms[IN_SET_PROPERTIES_OCCUPIED], 0.0001)
 
 	// Player 0 owns Brown1 — needs 1 more
 	state.Properties[0].Owner = state.Players[0]
 	ms2 := NewMonopolySensors()
 	ms2.loadSetInputs(state, 0, 0)
-	assert.InDelta(t, 1.0/9.0, ms2[IN_SET_PROPERTIES_NEEDED], 0.0001)
+	assert.InDelta(t, 1.0/4.0, ms2[IN_SET_PROPERTIES_NEEDED], 0.0001)
 	assert.InDelta(t, 0.0, ms2[IN_SET_PROPERTIES_OCCUPIED], 0.0001)
 
 	// Player 1 also owns Brown2 — enemy blocks the remaining property
 	state.Properties[1].Owner = state.Players[1]
 	ms3 := NewMonopolySensors()
 	ms3.loadSetInputs(state, 0, 0)
-	assert.InDelta(t, 1.0/9.0, ms3[IN_SET_PROPERTIES_NEEDED], 0.0001)
-	assert.InDelta(t, 1.0/9.0, ms3[IN_SET_PROPERTIES_OCCUPIED], 0.0001)
+	assert.InDelta(t, 1.0/4.0, ms3[IN_SET_PROPERTIES_NEEDED], 0.0001)
+	assert.InDelta(t, 1.0/4.0, ms3[IN_SET_PROPERTIES_OCCUPIED], 0.0001)
 }
 
 func TestLoadSetInputs_Railroad(t *testing.T) {
@@ -207,7 +207,7 @@ func TestLoadSetInputs_Railroad(t *testing.T) {
 	ms := NewMonopolySensors()
 	ms.loadSetInputs(state, 2, 0) // Railroad1, setId=1
 	assert.InDelta(t, 1.0/9.0, ms[IN_SET_ID], 0.0001)
-	assert.InDelta(t, 4.0/9.0, ms[IN_SET_PROPERTIES_NEEDED], 0.0001) // needs all 4
+	assert.InDelta(t, 1.0, ms[IN_SET_PROPERTIES_NEEDED], 0.0001) // needs all 4
 	assert.InDelta(t, 0.0, ms[IN_SET_PROPERTIES_OCCUPIED], 0.0001)
 }
 
@@ -222,7 +222,7 @@ func TestLoadEnemyInputs(t *testing.T) {
 	assert.InDelta(t, 1.0, ms[IN_ENEMY_INVOLVED], 0.0001)
 	assert.InDelta(t, 500.0/2000.0, ms[IN_ENEMY_MONEY], 0.0001)
 	// Enemy owns 1 of 2 Brown — needs 1 more
-	assert.InDelta(t, 1.0/9.0, ms[IN_ENEMY_SET_PROPERTIES_NEEDED], 0.0001)
+	assert.InDelta(t, 1.0/4.0, ms[IN_ENEMY_SET_PROPERTIES_NEEDED], 0.0001)
 	// No other player owns Brown properties
 	assert.InDelta(t, 0.0, ms[IN_ENEMY_SET_PROPERTIES_OCCUPIED], 0.0001)
 }
@@ -235,9 +235,9 @@ func TestLoadEnemyInputs_OtherPlayerBlocks(t *testing.T) {
 	ms.LoadEnemyInputs(state, 1, 0) // query from enemy=player1's perspective
 
 	// Enemy (player1) owns 0 Brown — needs 2
-	assert.InDelta(t, 2.0/9.0, ms[IN_ENEMY_SET_PROPERTIES_NEEDED], 0.0001)
+	assert.InDelta(t, 2.0/4.0, ms[IN_ENEMY_SET_PROPERTIES_NEEDED], 0.0001)
 	// Player 0 counts as "others" from enemy's perspective
-	assert.InDelta(t, 1.0/9.0, ms[IN_ENEMY_SET_PROPERTIES_OCCUPIED], 0.0001)
+	assert.InDelta(t, 1.0/4.0, ms[IN_ENEMY_SET_PROPERTIES_OCCUPIED], 0.0001)
 }
 
 func TestLoadBuyPriceInput(t *testing.T) {
