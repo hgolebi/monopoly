@@ -570,8 +570,11 @@ func (p *NEATMonopolyPlayer) GetJailAction(player int, state monopoly.GameState,
 		action = monopoly.ROLL_DICE
 	} else if slices.Contains(available, monopoly.CARD) {
 		action = monopoly.CARD
-	} else {
+	} else if slices.Contains(available, monopoly.BAIL) && state.Players[player].Money >= cfg.JAIL_BAIL {
 		action = monopoly.BAIL
+	} else {
+		// Paying bail without cash would force mortgaging — rolling is free
+		action = monopoly.ROLL_DICE
 	}
 	if p.log != nil {
 		p.log.Error("→ result", "action", action)

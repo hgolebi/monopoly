@@ -132,3 +132,31 @@ func TestGetChargeAction_FullLiquidation(t *testing.T) {
 	}
 	assert.Equal(t, expected, sequence)
 }
+
+func TestGetJailAction(t *testing.T) {
+	all := []monopoly.JailAction{monopoly.ROLL_DICE, monopoly.BAIL}
+	tests := []struct {
+		name      string
+		round     int
+		money     int
+		available []monopoly.JailAction
+		expected  monopoly.JailAction
+	}{
+		{"early round, enough cash pays bail", 5, 1000, all, monopoly.BAIL},
+		{"early round, exactly bail amount pays bail", 5, 50, all, monopoly.BAIL},
+		{"early round, not enough cash rolls dice", 5, 49, all, monopoly.ROLL_DICE},
+		{"early round, card preferred", 5, 0, []monopoly.JailAction{monopoly.ROLL_DICE, monopoly.CARD, monopoly.BAIL}, monopoly.CARD},
+		{"late round rolls dice", 25, 1000, all, monopoly.ROLL_DICE},
+		{"forced exit without card pays bail even without cash", 5, 0, []monopoly.JailAction{monopoly.BAIL}, monopoly.BAIL},
+		{"forced exit uses card", 25, 0, []monopoly.JailAction{monopoly.CARD, monopoly.BAIL}, monopoly.CARD},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			state := makeTestState(1)
+			state.Round = tt.round
+			state.Players[0].Money = tt.money
+			p := &NEATMonopolyPlayer{}
+			assert.Equal(t, tt.expected, p.GetJailAction(0, state, tt.available))
+		})
+	}
+}
