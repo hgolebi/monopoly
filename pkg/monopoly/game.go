@@ -810,9 +810,12 @@ func (g *Game) sellHouse(player_id int, propertyId int) {
 
 func (g *Game) buyHouse(player_id int, propertyId int) {
 	property := g.properties[propertyId]
-	g.chargePlayer(player_id, property.HousePrice, nil)
-	property.Houses++
 	player := g.players[player_id]
+	g.chargePlayer(player_id, property.HousePrice, nil)
+	if player.IsBankrupt {
+		return
+	}
+	property.Houses++
 	player.SetMaxHouses(g.getHouseCount(player_id))
 	g.logger.LogWithState(fmt.Sprintf("%s buys house on %s for %d$", player.Name, property.GetName(), property.HousePrice), g.getState())
 }
@@ -997,9 +1000,12 @@ func (g *Game) finalizeTrade(buyer *Player, seller *Player, property_id int, pri
 func (g *Game) buyOut(player_id int, propertyId int) {
 	property := g.properties[propertyId]
 	price := property.GetBuyoutPrice()
-	g.chargePlayer(player_id, price, nil)
-	property.IsMortgaged = false
 	player := g.players[player_id]
+	g.chargePlayer(player_id, price, nil)
+	if player.IsBankrupt {
+		return
+	}
+	property.IsMortgaged = false
 	g.logger.LogWithState(fmt.Sprintf("%s buys out %s for %d$", player.Name, property.GetName(), price), g.getState())
 }
 

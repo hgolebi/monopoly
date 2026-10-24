@@ -1189,6 +1189,27 @@ func TestBuyHouse(t *testing.T) {
 	}
 }
 
+// TestBuyHouse_BankruptPlayerGetsNoHouse — player cannot pay for the house even after liquidation,
+// goes bankrupt and the property returns to the bank without a "phantom" house.
+func TestBuyHouse_BankruptPlayerGetsNoHouse(t *testing.T) {
+	game, io := newTestGame(t, 42)
+	io.On("BiddingDecision", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(0)
+
+	playerId, propertyId := 0, 1
+	player := game.players[playerId]
+	property := game.properties[propertyId]
+	player.Money = 0
+	player.Properties = []int{propertyId}
+	property.Owner = player
+	property.IsMortgaged = true // net worth 0, so the house cannot be paid for
+
+	game.buyHouse(playerId, propertyId)
+
+	assert.True(t, player.IsBankrupt)
+	assert.Equal(t, 0, property.Houses, "bankrupt player must not get a house")
+	assert.Equal(t, 0, player.MaxHouses, "no points for a house that was never built")
+}
+
 func TestSendSellOffer(t *testing.T) {
 	tests := []struct {
 		playerId      int
