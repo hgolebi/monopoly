@@ -206,6 +206,31 @@ func (p *NEATMonopolyPlayer) GetStdAction(player int, state monopoly.GameState, 
 	return monopoly.ActionDetails{}
 }
 
+// getBuyOutCandidates returns mortgaged properties the network is asked to buy out, and whether raising money
+// (mortgaging) would unblock a buyout.
+//   - Streets: base rent without a full set rarely pays back the buyout, so only full sets (needed to build houses).
+//   - Railroads and utilities never get houses and their rent grows with the number owned, so every one is a candidate.
+//     They are bought out only with cash at hand — raising money could mortgage one railroad to buy out another.
+func getBuyOutCandidates(playerId int, state monopoly.GameState, buyOutList []int) (candidates []int, needMoney bool) {
+	player := state.Players[playerId]
+	for _, propertyId := range buyOutList {
+		property := state.Properties[propertyId]
+		isStreet := property.SetIndex != monopoly.RailroadSetIndex && property.SetIndex != monopoly.UtilitySetIndex
+		if isStreet {
+			setCount, ownedByPlayer, _ := getSetDetails(state, property.SetIndex, playerId)
+			if setCount != ownedByPlayer {
+				continue
+			}
+		}
+		if property.GetBuyoutPrice() >= player.Money {
+			needMoney = needMoney || isStreet
+			continue
+		}
+		candidates = append(candidates, propertyId)
+	}
+	return candidates, needMoney
+}
+
 func getChargeAction(playerId int, state monopoly.GameState, availableActions monopoly.FullActionList) monopoly.ActionDetails {
 	mortgageList := slices.Sorted(slices.Values(availableActions.MortgageList))
 	for _, propertyId := range mortgageList {
@@ -369,17 +394,11 @@ func (p *NEATMonopolyPlayer) getBuyOutDecision(playerId int, state monopoly.Game
 	outputs := make(map[int]float64)
 
 	player := state.Players[playerId]
-	for _, propertyId := range availableActions.BuyOutList {
-		setCount, ownedByPlayer, ownedByOthers := getSetDetails(state, state.Properties[propertyId].SetIndex, playerId)
-		if setCount != ownedByPlayer {
-			continue
-		}
+	candidates, needMoney := getBuyOutCandidates(playerId, state, availableActions.BuyOutList)
+	for _, propertyId := range candidates {
 		property := state.Properties[propertyId]
+		setCount, ownedByPlayer, ownedByOthers := getSetDetails(state, property.SetIndex, playerId)
 		buyoutPrice := property.GetBuyoutPrice()
-		if buyoutPrice >= player.Money {
-			needMoney = true
-			continue
-		}
 
 		sensors := NewMonopolySensors()
 		sensors.LoadState(state, playerId, propertyId)

@@ -160,3 +160,40 @@ func TestGetJailAction(t *testing.T) {
 		})
 	}
 }
+
+func TestGetBuyOutCandidates(t *testing.T) {
+	// buyout prices: Brown (0,1) 33$, Railroad 110$, Utility 82$
+	tests := []struct {
+		name              string
+		owned             []int
+		mortgaged         []int
+		money             int
+		expected          []int
+		expectedNeedMoney bool
+	}{
+		{"street in incomplete set is skipped", []int{0}, []int{0}, 1000, nil, false},
+		{"street in full set is a candidate", []int{0, 1}, []int{0}, 1000, []int{0}, false},
+		{"street in full set without cash needs money", []int{0, 1}, []int{0}, 33, nil, true},
+		{"single railroad is a candidate", []int{2}, []int{2}, 1000, []int{2}, false},
+		{"railroads in incomplete set are candidates", []int{2, 10, 17}, []int{2, 10}, 1000, []int{2, 10}, false},
+		{"single utility is a candidate", []int{7}, []int{7}, 1000, []int{7}, false},
+		{"railroad without cash does not need money", []int{2, 10}, []int{2}, 110, nil, false},
+		{"utility without cash does not need money", []int{7}, []int{7}, 82, nil, false},
+		{"mixed: affordable railroad, unaffordable full-set street", []int{2, 26, 27}, []int{2, 27}, 200, []int{2}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			state := makeTestState(2)
+			state.Players[0].Money = tt.money
+			for _, id := range tt.owned {
+				state.Properties[id].Owner = state.Players[0]
+			}
+			for _, id := range tt.mortgaged {
+				state.Properties[id].IsMortgaged = true
+			}
+			candidates, needMoney := getBuyOutCandidates(0, state, tt.mortgaged)
+			assert.Equal(t, tt.expected, candidates)
+			assert.Equal(t, tt.expectedNeedMoney, needMoney)
+		})
+	}
+}
