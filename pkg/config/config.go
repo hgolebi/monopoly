@@ -24,17 +24,8 @@ const (
 
 // Evaluator settings
 const (
-	// PUNISHMENT_FIRST_THRESHOLD  = 0 // if player bankrupts before this round he will receive HIGHEST_PUNISHMENT
-	// PUNISHMENT_SECOND_THRESHOLD = 0 // if player bankrupts before this round he will receive SECOND_HIGHEST_PUNISHMENT
-	// HIGHEST_PUNISHMENT          = 0
-	// SECOND_HIGHEST_PUNISHMENT   = 0
-	ROUND_SCORE         = 0 // points for each round survived for non-winner players
-	FIRST_PLACE_SCORE   = 400
-	POINTS_PER_PROPERTY = 0  // points for each property owned by the player.
-	POINTS_PER_HOUSE    = 10 // points for each house owned by the player.
-	ALIVE_BONUS         = 0  // bonus points for not going bankrupt
-	// SECOND_PLACE_SCORE          = 0
-	// ROUND_LIMIT_WINNER_SCORE    = 0 // if player wins the game by reaching the round limit he will receive this score
+	FIRST_PLACE_SCORE = 400 // points for winning a game (last player not bankrupt)
+	DRAW_WINNER_SCORE = 200 // points for the player with the highest net worth when the game ends by the round limit
 
 	GAMES_PER_EPOCH = 1000 // number of games every organism has to play during one epoch
 	GROUP_SIZE      = 4    // number of players in each game

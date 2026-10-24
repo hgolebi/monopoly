@@ -86,38 +86,24 @@ func (t *NEATPlayerGroup) BiddingDecision(player int, state monopoly.GameState, 
 	return p.BiddingDecision(player, state, propertyId, currentPrice, currentWinner)
 }
 
+// Finish scores the game. The winner (last player not bankrupt) gets FIRST_PLACE_SCORE points.
+// When the game ends by the round limit, the player with the highest net worth (chosen by the engine)
+// gets DRAW_WINNER_SCORE points and all players alive get a draw. A draw without survivors gives no points.
 func (t *NEATPlayerGroup) Finish(f monopoly.FinishOption, winner int, state monopoly.GameState) {
-	pointsMap := map[int]int{
-		0: 0,
-		1: 0,
-		2: 0,
-		3: 0,
-	}
 	if t.gameFinished {
 		return
 	}
 	t.gameFinished = true
-	for i, player := range state.Players {
-		pointsMap[i] += cfg.ROUND_SCORE * player.RoundsPlayed
-		// fmt.Printf("Max properties: %d", player.MaxProperties)
-		pointsMap[i] += player.MaxProperties * cfg.POINTS_PER_PROPERTY
-		pointsMap[i] += player.MaxHouses * cfg.POINTS_PER_HOUSE
-		if !player.IsBankrupt {
-			pointsMap[i] += cfg.ALIVE_BONUS
-		}
-	}
-	if f == monopoly.WIN {
-		pointsMap[winner] = cfg.FIRST_PLACE_SCORE
+	switch f {
+	case monopoly.WIN:
+		t.players[winner].AddScore(cfg.FIRST_PLACE_SCORE)
 		t.players[winner].AddWin()
-	}
-	if f == monopoly.ROUND_LIMIT {
+	case monopoly.ROUND_LIMIT:
+		t.players[winner].AddScore(cfg.DRAW_WINNER_SCORE)
 		for i, p := range state.Players {
 			if !p.IsBankrupt {
 				t.players[i].AddDraw()
 			}
 		}
-	}
-	for i, p := range t.players {
-		p.AddScore(pointsMap[i])
 	}
 }

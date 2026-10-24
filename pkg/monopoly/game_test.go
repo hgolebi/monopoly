@@ -1207,7 +1207,6 @@ func TestBuyHouse_BankruptPlayerGetsNoHouse(t *testing.T) {
 
 	assert.True(t, player.IsBankrupt)
 	assert.Equal(t, 0, property.Houses, "bankrupt player must not get a house")
-	assert.Equal(t, 0, player.MaxHouses, "no points for a house that was never built")
 }
 
 func TestSendSellOffer(t *testing.T) {
@@ -2005,4 +2004,25 @@ func TestMakeMove_StoresDiceSum(t *testing.T) {
 	game.makeMove(1, 3, 1)
 
 	assert.Equal(t, 4, game.lastDiceSum)
+}
+
+// TestEndRoundLimit_WinnerHasHighestNetWorth — at the round limit the winner passed to Finish is the active
+// player with the highest net worth (cash + liquidation value of properties), bankrupt players are skipped.
+func TestEndRoundLimit_WinnerHasHighestNetWorth(t *testing.T) {
+	game, io := newTestGame(t, 42)
+
+	game.players[0].Money = 500
+	game.players[1].Money = 400
+	game.players[1].Properties = []int{26, 27} // Dark Blue, liquidation value 175 + 200
+	game.properties[26].Owner = game.players[1]
+	game.properties[27].Owner = game.players[1]
+	game.players[2].Money = 600
+	game.players[3].Money = 5000
+	game.players[3].IsBankrupt = true
+
+	io.On("Finish", ROUND_LIMIT, 1, mock.Anything).Return()
+
+	game.endRoundLimit()
+
+	io.AssertCalled(t, "Finish", ROUND_LIMIT, 1, mock.Anything)
 }

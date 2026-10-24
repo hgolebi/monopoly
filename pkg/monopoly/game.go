@@ -231,7 +231,6 @@ func (g *Game) Start() {
 			if !g.continueRound(idx) {
 				continue
 			}
-			player.RoundsPlayed++
 			g.resetRoundState(idx, player)
 			field_name := g.fields[player.CurrentPosition].GetName()
 			g.logger.LogWithState(fmt.Sprintf("%s making a move. Current position: %s", player.Name, field_name), g.getState())
@@ -816,18 +815,7 @@ func (g *Game) buyHouse(player_id int, propertyId int) {
 		return
 	}
 	property.Houses++
-	player.SetMaxHouses(g.getHouseCount(player_id))
 	g.logger.LogWithState(fmt.Sprintf("%s buys house on %s for %d$", player.Name, property.GetName(), property.HousePrice), g.getState())
-}
-
-func (g *Game) getHouseCount(player_id int) int {
-	player := g.players[player_id]
-	total_houses := 0
-	for _, propertyId := range player.Properties {
-		property := g.properties[propertyId]
-		total_houses += property.Houses
-	}
-	return total_houses
 }
 
 func (g *Game) sendSellOffer(player_id int, targets []int, property_id int, start_price int) {
@@ -1233,7 +1221,6 @@ func (g *Game) bankrupt(player *Player, creditor *Player) {
 		return
 	}
 	player.IsBankrupt = true
-	player.RoundsPlayed = g.round
 
 	active_players := g.getActivePlayers()
 	if len(active_players) <= 1 {
