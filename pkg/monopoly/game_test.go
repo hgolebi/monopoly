@@ -1522,6 +1522,76 @@ func TestSendBuyOffer_FullExampleImpasse(t *testing.T) {
 	io.AssertExpectations(t)
 }
 
+// TestSendBuyOffer_NegotiationStatePassedToPlayers — same sequence as TestSendBuyOffer_FullExampleImpasse,
+// but checks the state each side receives: round number and the impasse flag of the other side.
+func TestSendBuyOffer_NegotiationStatePassedToPlayers(t *testing.T) {
+	game, io := newTestGame(t, 42)
+
+	buyerId, sellerId, propertyId := 0, 1, 3
+	buyer := game.players[buyerId]
+	seller := game.players[sellerId]
+	buyer.Money = 2000
+	seller.Money = 200
+	seller.Properties = []int{propertyId}
+	game.properties[propertyId].Owner = seller
+
+	var sellerStates, buyerStates []GameState
+	recordSeller := func(args mock.Arguments) { sellerStates = append(sellerStates, args.Get(1).(GameState)) }
+	recordBuyer := func(args mock.Arguments) { buyerStates = append(buyerStates, args.Get(1).(GameState)) }
+
+	for _, price := range []int{700, 700, 650, 650} {
+		io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything, mock.Anything).Return(true, price).Run(recordSeller).Once()
+	}
+	for _, price := range []int{400, 450, 450} {
+		io.On("BuyFromPlayerDecision", buyerId, mock.Anything, propertyId, mock.Anything, mock.Anything).Return(true, price).Run(recordBuyer).Once()
+	}
+
+	game.sendBuyOffer(buyerId, propertyId, 300)
+
+	assert.Len(t, sellerStates, 4)
+	assert.Len(t, buyerStates, 3)
+	for i, s := range sellerStates {
+		assert.Equal(t, i+1, s.NegotiationRound, "seller state round %d", i+1)
+	}
+	for i, s := range buyerStates {
+		assert.Equal(t, i+1, s.NegotiationRound, "buyer state round %d", i+1)
+	}
+	// Buyer sees the seller's impasse: seller repeated 700 in iter 2, lowered to 650 in iter 3.
+	assert.Equal(t, []bool{false, true, false}, []bool{buyerStates[0].SellerImpasse, buyerStates[1].SellerImpasse, buyerStates[2].SellerImpasse})
+	// Seller sees the buyer's impasse: buyer raised in iters 1-2, repeated 450 in iter 3.
+	assert.Equal(t, []bool{false, false, false, true}, []bool{sellerStates[0].BuyerImpasse, sellerStates[1].BuyerImpasse, sellerStates[2].BuyerImpasse, sellerStates[3].BuyerImpasse})
+	assert.Equal(t, 450, sellerStates[3].NegotiationBuyerOffer)
+	assert.Equal(t, 650, buyerStates[2].NegotiationSellerOffer)
+}
+
+// TestResolveStandardAction_BuyOfferIncrementsTries — BUYOFFER counts towards MaxOfferTries,
+// so a second offer in the same turn is rejected (bankruptcy for an invalid action).
+func TestResolveStandardAction_BuyOfferIncrementsTries(t *testing.T) {
+	game, io := newTestGame(t, 42)
+
+	buyerId, sellerId, propertyId := 0, 1, 3
+	buyer := game.players[buyerId]
+	seller := game.players[sellerId]
+	buyer.Money = 1000
+	seller.Properties = []int{propertyId}
+	game.properties[propertyId].Owner = seller
+
+	io.On("SellToPlayerDecision", sellerId, mock.Anything, propertyId, mock.Anything, mock.Anything).Return(false, 0)
+
+	action := ActionDetails{Action: BUYOFFER, PropertyId: propertyId, Price: 100}
+	available := FullActionList{Actions: []StdAction{BUYOFFER}, BuyPropertyList: []int{propertyId}}
+
+	game.resolveStandardAction(buyerId, action, available)
+	assert.Equal(t, 1, game.buy_offer_tries)
+	assert.Equal(t, 1, game.getState().BuyOfferTries)
+	assert.False(t, buyer.IsBankrupt)
+
+	if game.settings.MaxOfferTries == 1 {
+		game.resolveStandardAction(buyerId, action, available)
+		assert.True(t, buyer.IsBankrupt, "second buy offer in a turn exceeds MaxOfferTries")
+	}
+}
+
 func TestBuyOut(t *testing.T) {
 	tests := []struct {
 		playerId     int

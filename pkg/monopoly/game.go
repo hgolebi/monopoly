@@ -612,6 +612,7 @@ func (g *Game) resolveStandardAction(player_id int, action_details ActionDetails
 			g.bankrupt(player, nil)
 			return
 		}
+		g.buy_offer_tries++
 		g.sendBuyOffer(player_id, action_details.PropertyId, action_details.Price)
 		return
 	case BUYOUT:
@@ -894,16 +895,25 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, initial_price int) {
 	buyerImpasse := false
 	sellerImpasse := false
 
+	// Every state handed to a player is rebuilt from the current negotiation variables,
+	// so the impasse flags set by one side are visible to the other.
+	negotiationState := func(round int) GameState {
+		state := g.getState()
+		state.NegotiationRound = round
+		state.NegotiationBuyerOffer = buyerPrice
+		state.NegotiationSellerOffer = sellerPrice
+		state.BuyerImpasse = buyerImpasse
+		state.SellerImpasse = sellerImpasse
+		return state
+	}
+
 	for i := 0; i < g.settings.MaxTradeRounds; i++ {
 		if !g.continueRound(player_id) || !g.continueRound(seller.ID) {
 			return
 		}
 
 		// --- Seller's turn ---
-		state := g.getState()
-		state.NegotiationRound = i + 1
-		state.NegotiationBuyerOffer = buyerPrice
-		state.NegotiationSellerOffer = sellerPrice
+		state := negotiationState(i + 1)
 
 		sellerContinue, sellerResponse := g.io.SellToPlayerDecision(seller.ID, state, property_id, buyerPrice, player_id)
 		g.logger.Log(fmt.Sprintf("%s responds to %d$ offer with: continue=%v price=%d$", seller.Name, buyerPrice, sellerContinue, sellerResponse))
@@ -924,12 +934,10 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, initial_price int) {
 		if sellerPrice != -1 && sellerResponse >= sellerPrice {
 			// Rule b: seller responded at or above their last price → treat as repeat (seller impasse signal)
 			sellerImpasse = true
-			state.SellerImpasse = true
 			// sellerPrice stays unchanged
 		} else {
 			// First response, or rule d: seller lowered their price (between buyerPrice and last sellerPrice)
 			sellerImpasse = false
-			state.SellerImpasse = false
 			sellerPrice = sellerResponse
 		}
 
@@ -939,9 +947,7 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, initial_price int) {
 		}
 
 		// --- Buyer's turn ---
-		state = g.getState()
-		state.NegotiationBuyerOffer = buyerPrice
-		state.NegotiationSellerOffer = sellerPrice
+		state = negotiationState(i + 1)
 
 		buyerContinue, buyerResponse := g.io.BuyFromPlayerDecision(player_id, state, property_id, sellerPrice, seller.ID)
 		g.logger.Log(fmt.Sprintf("%s responds to %d$ counteroffer with: continue=%v price=%d$", buyer.Name, sellerPrice, buyerContinue, buyerResponse))
@@ -962,12 +968,10 @@ func (g *Game) sendBuyOffer(player_id int, property_id int, initial_price int) {
 		if buyerResponse <= buyerPrice {
 			// Rules a & b: same or lower than last buyer offer → treat as repeat (buyer impasse signal)
 			buyerImpasse = true
-			state.BuyerImpasse = true
 			// buyerPrice stays unchanged
 		} else {
 			// Rule d: buyer raised their offer (between buyerPrice and sellerPrice) → negotiation continues
 			buyerImpasse = false
-			state.BuyerImpasse = false
 			buyerPrice = buyerResponse
 		}
 
