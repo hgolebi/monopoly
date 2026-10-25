@@ -43,7 +43,8 @@ type playerStats struct {
 }
 
 type NEATMonopolyPlayer struct {
-	network   *network.Network // activation state lives in the network nodes, so it must not be shared between games
+	fast      *fastNetwork     // compiled network, nil for networks with recurrent links
+	network   *network.Network // used when fast is nil; activation state lives in the nodes, so it must not be shared between games
 	organism  *genetics.Organism
 	max_depth int
 	stats     *playerStats
@@ -77,17 +78,34 @@ func NewNEATMonopolyPlayer(organism *genetics.Organism) (*NEATMonopolyPlayer, er
 		return nil, errors.New("Invalid network depth: " + fmt.Sprint(max_depth))
 	}
 
-	return &NEATMonopolyPlayer{
+	player := &NEATMonopolyPlayer{
 		network:   network,
 		organism:  organism,
 		max_depth: max_depth,
 		stats:     &playerStats{},
-	}, nil
+	}
+	fast, err := compileFastNetwork(organism.Genotype)
+	if err == nil {
+		player.fast, player.network = fast, nil
+	} else if !errors.Is(err, errRecurrentNetwork) {
+		neat.DebugLog(fmt.Sprintf("Organism %d uses the goNEAT network: %v", organism.Genotype.Id, err))
+	}
+	return player, nil
 }
 
-// ForGame builds a fresh network from the organism's genome for one game.
+// ForGame returns an instance of the player with its own network state for one game.
+// A compiled network only needs new values; otherwise the network is built again from the genome.
 // Genesis modifies the genome, so it must not be called concurrently for the same organism.
 func (p *NEATMonopolyPlayer) ForGame() (MonopolyPlayer, error) {
+	if p.fast != nil {
+		return &NEATMonopolyPlayer{
+			fast:      p.fast.newInstance(),
+			organism:  p.organism,
+			max_depth: p.max_depth,
+			stats:     p.stats,
+			log:       p.log,
+		}, nil
+	}
 	network, err := p.organism.Genotype.Genesis(p.organism.Genotype.Id)
 	if err != nil {
 		return nil, fmt.Errorf("error building network for organism %d: %w", p.organism.Genotype.Id, err)
@@ -130,6 +148,13 @@ var decisionHook func(p *NEATMonopolyPlayer)
 func (p *NEATMonopolyPlayer) GetDecision(input []float64) []float64 {
 	if decisionHook != nil {
 		decisionHook(p)
+	}
+	if p.fast != nil {
+		output, err := p.fast.activate(input)
+		if err != nil {
+			panic("Error activating network: " + err.Error())
+		}
+		return output
 	}
 	err := p.network.LoadSensors(input)
 	if err != nil {

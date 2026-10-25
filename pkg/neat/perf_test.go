@@ -114,7 +114,6 @@ func newPerfWorkload(tb testing.TB) *perfWorkload {
 	return w
 }
 
-
 // newPerfGenome builds a genome with weights drawn from rng: inputs and bias connected to every output and,
 // if hidden > 0, to every hidden node, which is connected to every output.
 func newPerfGenome(id int, hidden int, rng *rand.Rand) *genetics.Genome {
@@ -234,7 +233,7 @@ func (w *perfWorkload) fingerprint() string {
 type gameStats struct {
 	calls   map[string]int64 // calls of each MonopolyPlayer decision method
 	actions map[string]int64 // standard actions chosen by the players
-	games []*gameRounds
+	games   []*gameRounds
 }
 
 type gameRounds struct {
@@ -295,7 +294,7 @@ func (c *countingPlayer) BiddingDecision(player int, state monopoly.GameState, p
 
 type activationCounts struct {
 	total     int64
-	cost      int64            // connection evaluations: genes × activation depth, summed over activations
+	cost      int64            // connection evaluations: links of a compiled network (one pass) or genes × depth (goNEAT network)
 	byPath    map[string]int64 // "entry ← direct caller of GetDecision"
 	byEntry   map[string]int64 // decision requested by the game (interface method)
 	byProfile map[string]int64 // kind of network
@@ -318,7 +317,10 @@ func countActivations(tb testing.TB, outputDir string) (activationCounts, string
 	decisionHook = func(p *NEATMonopolyPlayer) {
 		entry, direct := decisionPath(pcs)
 		profile := perfProfile(p.GetId())
-		cost := int64(len(p.organism.Genotype.Genes) * p.max_depth)
+		cost := int64(len(p.organism.Genotype.Genes) * p.max_depth) // goNEAT: every link in each of depth passes
+		if p.fast != nil {
+			cost = int64(len(p.fast.links)) // compiled: every needed link once
+		}
 		counts.total++
 		counts.cost += cost
 		counts.byEntry[entry]++
@@ -398,7 +400,7 @@ func TestPerfWorkload(t *testing.T) {
 	fmt.Fprintf(&sb, "rounds played:  %d (%.1f per game)\n", rounds, float64(rounds)/float64(games))
 	fmt.Fprintf(&sb, "activations:    %d (%.1f per game, %.1f per round)\n", counts.total,
 		float64(counts.total)/float64(games), float64(counts.total)/float64(rounds))
-	fmt.Fprintf(&sb, "conn. evals:    %d (%.0f per round): genes × depth summed over activations, ~ cost of activations\n",
+	fmt.Fprintf(&sb, "conn. evals:    %d (%.0f per round): links computed, summed over activations (one pass if compiled, genes × depth otherwise)\n",
 		counts.cost, float64(counts.cost)/float64(rounds))
 	sb.WriteString("\ndecisions requested by the game (calls):\n")
 	writeCounts(&sb, counts.stats.calls, sumCounts(counts.stats.calls))

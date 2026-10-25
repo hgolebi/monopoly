@@ -117,8 +117,10 @@ func TestForGame_SharesStats(t *testing.T) {
 	assert.Equal(t, 15, player.GetScore())
 	assert.Equal(t, 1, player.GetWins())
 	assert.Equal(t, 1, player.GetDraws())
-	assert.NotSame(t, player.network, first.(*NEATMonopolyPlayer).network)
-	assert.NotSame(t, first.(*NEATMonopolyPlayer).network, second.(*NEATMonopolyPlayer).network)
+	// every instance has its own network state
+	require.NotNil(t, player.fast)
+	assert.NotSame(t, &player.fast.values[0], &first.(*NEATMonopolyPlayer).fast.values[0])
+	assert.NotSame(t, &first.(*NEATMonopolyPlayer).fast.values[0], &second.(*NEATMonopolyPlayer).fast.values[0])
 }
 
 // TestNextGameSeed — game seeds come from the evaluator's rng: the same evaluator seed gives the same
