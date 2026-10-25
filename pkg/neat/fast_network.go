@@ -45,9 +45,6 @@ func compileFastNetwork(genome *genetics.Genome) (*fastNetwork, error) {
 	if len(genome.ControlGenes) > 0 {
 		return nil, errors.New("networks with control genes are not supported")
 	}
-	if len(genome.Genes) == 0 {
-		return nil, errors.New("network without genes")
-	}
 
 	// incoming links per node, in gene order (like Genesis)
 	incoming := make(map[int][]*network.Link)

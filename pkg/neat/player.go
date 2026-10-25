@@ -65,6 +65,19 @@ type auctionBids struct {
 }
 
 func NewNEATMonopolyPlayer(organism *genetics.Organism) (*NEATMonopolyPlayer, error) {
+	player := &NEATMonopolyPlayer{
+		organism: organism,
+		stats:    &playerStats{},
+	}
+	fast, err := compileFastNetwork(organism.Genotype)
+	if err == nil {
+		player.fast = fast
+		return player, nil
+	}
+	if !errors.Is(err, errRecurrentNetwork) {
+		neat.DebugLog(fmt.Sprintf("Organism %d uses the goNEAT network: %v", organism.Genotype.Id, err))
+	}
+
 	network, err := organism.Phenotype()
 	if err != nil {
 		errorMsg := fmt.Sprintf("Error getting phenotype for organism %d: %v\n", organism.Genotype.Id, err)
@@ -77,19 +90,7 @@ func NewNEATMonopolyPlayer(organism *genetics.Organism) (*NEATMonopolyPlayer, er
 	if max_depth <= 0 {
 		return nil, errors.New("Invalid network depth: " + fmt.Sprint(max_depth))
 	}
-
-	player := &NEATMonopolyPlayer{
-		network:   network,
-		organism:  organism,
-		max_depth: max_depth,
-		stats:     &playerStats{},
-	}
-	fast, err := compileFastNetwork(organism.Genotype)
-	if err == nil {
-		player.fast, player.network = fast, nil
-	} else if !errors.Is(err, errRecurrentNetwork) {
-		neat.DebugLog(fmt.Sprintf("Organism %d uses the goNEAT network: %v", organism.Genotype.Id, err))
-	}
+	player.network, player.max_depth = network, max_depth
 	return player, nil
 }
 

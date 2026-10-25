@@ -174,3 +174,32 @@ func TestTrainNetworkSeed_GlobalRand(t *testing.T) {
 	rand.Seed(5) //nolint:staticcheck
 	assert.Equal(t, first, rand.Int63())
 }
+
+func TestCheckGroupSize(t *testing.T) {
+	for _, players := range []int{4, 8, 20, 100} {
+		assert.NoError(t, checkGroupSize(players, 4), "players=%d", players)
+	}
+	for _, players := range []int{0, 1, 2, 3, 5, 21, 30} {
+		assert.Error(t, checkGroupSize(players, 4), "players=%d", players)
+	}
+}
+
+// TestPlayRound_RejectsIncompleteGroups — a population that does not split into groups of 4 is reported
+// as an error before any game, instead of a game with fewer players or a panic in a worker.
+func TestPlayRound_RejectsIncompleteGroups(t *testing.T) {
+	rng := rand.New(rand.NewSource(1))
+	var players []MonopolyPlayer
+	for id := range 5 {
+		organism, err := genetics.NewOrganism(0, newPerfGenome(id+1, 0, rng), 0)
+		require.NoError(t, err)
+		player, err := NewNEATMonopolyPlayer(organism)
+		require.NoError(t, err)
+		players = append(players, player)
+	}
+	ctx := neat.NewContext(context.Background(), &neat.Options{NumGenerations: 1000})
+	e := NewMonopolyEvaluator(t.TempDir(), 4, rand.New(rand.NewSource(1)))
+	assert.Error(t, e.PlayRound(ctx, players, 0))
+	for _, player := range players {
+		assert.Zero(t, player.GetScore(), "no game was played")
+	}
+}

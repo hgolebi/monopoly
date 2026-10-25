@@ -200,3 +200,46 @@ func TestPlayerUsesCompiledNetwork(t *testing.T) {
 	assert.Same(t, player.fast.fastStructure, gamePlayer.fast.fastStructure, "the structure is shared")
 	assert.NotSame(t, &player.fast.values[0], &gamePlayer.fast.values[0], "the values are not")
 }
+
+// TestPlayerWithDisconnectedOutputs — evolution can disable every link to the outputs. goNEAT reports depth 0 for
+// such a network, which used to make NewNEATMonopolyPlayer fail and abort the training; now the player is created,
+// always answers "no" and plays a whole game.
+func TestPlayerWithDisconnectedOutputs(t *testing.T) {
+	rng := rand.New(rand.NewSource(6))
+	disconnected := newPerfGenome(1, perfHiddenNodes, rng)
+	for _, gene := range disconnected.Genes {
+		if gene.Link.OutNode.NeuronType == network.OutputNeuron {
+			gene.IsEnabled = false
+		}
+	}
+	net, err := disconnected.Genesis(1)
+	require.NoError(t, err)
+	depth, err := net.MaxActivationDepthWithCap(0)
+	require.NoError(t, err)
+	require.Zero(t, depth, "goNEAT reports depth 0 for this network")
+
+	noGenes := newPerfGenome(2, 0, rng)
+	noGenes.Genes = nil
+
+	for _, genome := range []*genetics.Genome{disconnected, noGenes} {
+		organism, err := genetics.NewOrganism(0, genome, 0)
+		require.NoError(t, err)
+		player, err := NewNEATMonopolyPlayer(organism)
+		require.NoError(t, err, "genome %d", genome.Id)
+		require.NotNil(t, player.fast)
+		assert.Equal(t, make([]float64, int(OUTPUT_COUNT)), player.GetDecision(randomInputs(rng)))
+
+		group := []MonopolyPlayer{player}
+		for id := range 3 {
+			other, err := genetics.NewOrganism(0, newPerfGenome(10+id, 0, rng), 0)
+			require.NoError(t, err)
+			otherPlayer, err := NewNEATMonopolyPlayer(other)
+			require.NoError(t, err)
+			group = append(group, otherPlayer)
+		}
+		gamePlayers, err := playersForGame(group)
+		require.NoError(t, err)
+		gd := GroupDetails{Players: gamePlayers, Seed: 1}
+		require.NoError(t, startGroup(perfContext(), gd, t.TempDir()))
+	}
+}

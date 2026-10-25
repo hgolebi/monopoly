@@ -24,6 +24,9 @@ func TrainNetwork(seed int64, neatOptionsFile string, outputDir string, allToAll
 	if err != nil {
 		log.Fatal("Failed to load NEAT options:", err)
 	}
+	if err := checkGroupSize(neatOptions.PopSize, cfg.GROUP_SIZE); err != nil {
+		log.Fatal("Invalid NEAT options: ", err)
+	}
 	startGenome := loadOrBuildGenome(genomeFile, allToAll)
 
 	err = os.MkdirAll(outputDir, os.ModePerm)

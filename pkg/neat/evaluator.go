@@ -101,6 +101,9 @@ func (e *MonopolyEvaluator) PlayRound(ctx context.Context, players []MonopolyPla
 	if !ok {
 		return fmt.Errorf("failed to get options from context")
 	}
+	if err := checkGroupSize(len(players), e.groupSize); err != nil {
+		return err
+	}
 	// start workers
 	jobsCh := make(chan GroupDetails, 100)
 	var wg sync.WaitGroup
@@ -140,6 +143,16 @@ rounds:
 	close(jobsCh)
 	wg.Wait()
 	return err
+}
+
+// checkGroupSize requires the players to split into full groups. Otherwise the last group would play with fewer
+// players (an unfair fitness) or alone, which the game does not allow (panic in a worker, ending the training).
+func checkGroupSize(players int, groupSize int) error {
+	if players == 0 || players%groupSize != 0 {
+		return fmt.Errorf("the number of players (%d) must be a positive multiple of the group size (%d); "+
+			"set pop_size in the NEAT options accordingly", players, groupSize)
+	}
+	return nil
 }
 
 // nextGameSeed draws a game seed from the evaluator's rng, so every game gets its own seed and the whole
