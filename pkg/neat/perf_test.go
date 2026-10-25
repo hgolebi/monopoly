@@ -26,6 +26,8 @@ import (
 	"sync"
 	"testing"
 
+	"monopoly/pkg/monopoly"
+
 	"github.com/yaricom/goNEAT/v4/neat"
 	"github.com/yaricom/goNEAT/v4/neat/genetics"
 	"github.com/yaricom/goNEAT/v4/neat/network"
@@ -50,6 +52,19 @@ type perfGame struct {
 type perfWorkload struct {
 	players []MonopolyPlayer
 	games   []perfGame
+	stats   *gameStats // when set, every call the game makes to the players is counted
+}
+
+// perfProfile names the kind of network of a workload player (players are created in this order).
+func perfProfile(id int) string {
+	switch {
+	case id <= perfFlatPlayers:
+		return "flat"
+	case id <= perfFlatPlayers+perfHiddenPlayers:
+		return "hidden"
+	default:
+		return "trained"
+	}
 }
 
 // newPerfWorkload builds the players and the list of games. Everything is derived from perfSeed.
@@ -162,6 +177,13 @@ func (w *perfWorkload) gameDetails(tb testing.TB, id int) GroupDetails {
 	if err != nil {
 		tb.Fatal(err)
 	}
+	if w.stats != nil {
+		game := &gameRounds{}
+		w.stats.games = append(w.stats.games, game)
+		for i, p := range gamePlayers {
+			gamePlayers[i] = &countingPlayer{MonopolyPlayer: p, stats: w.stats, game: game}
+		}
+	}
 	return GroupDetails{Epoch: 0, Round: id, GroupID: 0, Players: gamePlayers, Seed: game.seed}
 }
 
@@ -207,23 +229,103 @@ func (w *perfWorkload) fingerprint() string {
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(sb.String())))[:16]
 }
 
+// gameStats counts what the games asked the players for. Decisions change the length of the games
+// (and so the amount of work), so these numbers are needed to compare workloads with different fingerprints.
+type gameStats struct {
+	calls   map[string]int64 // calls of each MonopolyPlayer decision method
+	actions map[string]int64 // standard actions chosen by the players
+	games []*gameRounds
+}
+
+type gameRounds struct {
+	rounds int // highest round seen in the game
+}
+
+func (s *gameStats) rounds() int64 {
+	var total int64
+	for _, g := range s.games {
+		total += int64(g.rounds)
+	}
+	return total
+}
+
+// countingPlayer counts the decisions the game asks for (sequential runs only, the counters are not synchronized).
+type countingPlayer struct {
+	MonopolyPlayer
+	stats *gameStats
+	game  *gameRounds
+}
+
+func (c *countingPlayer) count(method string, state monopoly.GameState) {
+	c.stats.calls[method]++
+	c.game.rounds = max(c.game.rounds, state.Round)
+}
+
+func (c *countingPlayer) GetStdAction(player int, state monopoly.GameState, available monopoly.FullActionList) monopoly.ActionDetails {
+	c.count("GetStdAction", state)
+	action := c.MonopolyPlayer.GetStdAction(player, state, available)
+	c.stats.actions[monopoly.StdActionNames[action.Action]]++
+	return action
+}
+
+func (c *countingPlayer) GetJailAction(player int, state monopoly.GameState, available []monopoly.JailAction) monopoly.JailAction {
+	c.count("GetJailAction", state)
+	return c.MonopolyPlayer.GetJailAction(player, state, available)
+}
+
+func (c *countingPlayer) BuyDecision(player int, state monopoly.GameState, propertyId int) bool {
+	c.count("BuyDecision", state)
+	return c.MonopolyPlayer.BuyDecision(player, state, propertyId)
+}
+
+func (c *countingPlayer) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int, partner int) (bool, int) {
+	c.count("BuyFromPlayerDecision", state)
+	return c.MonopolyPlayer.BuyFromPlayerDecision(player, state, propertyId, sellerOffer, partner)
+}
+
+func (c *countingPlayer) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int, partner int) (bool, int) {
+	c.count("SellToPlayerDecision", state)
+	return c.MonopolyPlayer.SellToPlayerDecision(player, state, propertyId, buyerOffer, partner)
+}
+
+func (c *countingPlayer) BiddingDecision(player int, state monopoly.GameState, propertyId int, currentPrice int, currentWinner int) int {
+	c.count("BiddingDecision", state)
+	return c.MonopolyPlayer.BiddingDecision(player, state, propertyId, currentPrice, currentWinner)
+}
+
 type activationCounts struct {
-	total   int64
-	byPath  map[string]int64 // "entry ← direct caller of GetDecision"
-	byEntry map[string]int64 // decision requested by the game (interface method)
+	total     int64
+	cost      int64            // connection evaluations: genes × activation depth, summed over activations
+	byPath    map[string]int64 // "entry ← direct caller of GetDecision"
+	byEntry   map[string]int64 // decision requested by the game (interface method)
+	byProfile map[string]int64 // kind of network
+	costOf    map[string]int64 // connection evaluations by kind of network
+	pathCost  map[string]int64 // connection evaluations by "network: entry ← caller of GetDecision"
+	stats     *gameStats
 }
 
 // countActivations plays the workload sequentially with decisionHook set and attributes every activation
-// to the decision path it came from.
+// to the decision path it came from and the network that made it.
 func countActivations(tb testing.TB, outputDir string) (activationCounts, string) {
 	w := newPerfWorkload(tb)
-	counts := activationCounts{byPath: map[string]int64{}, byEntry: map[string]int64{}}
+	w.stats = &gameStats{calls: map[string]int64{}, actions: map[string]int64{}}
+	counts := activationCounts{
+		byPath: map[string]int64{}, byEntry: map[string]int64{},
+		byProfile: map[string]int64{}, costOf: map[string]int64{}, pathCost: map[string]int64{},
+		stats: w.stats,
+	}
 	pcs := make([]uintptr, 64)
-	decisionHook = func() {
+	decisionHook = func(p *NEATMonopolyPlayer) {
 		entry, direct := decisionPath(pcs)
+		profile := perfProfile(p.GetId())
+		cost := int64(len(p.organism.Genotype.Genes) * p.max_depth)
 		counts.total++
+		counts.cost += cost
 		counts.byEntry[entry]++
 		counts.byPath[entry+" ← "+direct]++
+		counts.byProfile[profile]++
+		counts.costOf[profile] += cost
+		counts.pathCost[profile+": "+entry+" ← "+direct] += cost
 	}
 	defer func() { decisionHook = nil }()
 	w.runSequential(perfContext(), tb, outputDir)
@@ -289,15 +391,38 @@ func TestPerfWorkload(t *testing.T) {
 	w := newPerfWorkload(t)
 	games := int64(len(w.games))
 
+	rounds := counts.stats.rounds()
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "games:          %d\n", games)
 	fmt.Fprintf(&sb, "fingerprint:    %s\n", fingerprint)
-	fmt.Fprintf(&sb, "activations:    %d (%.1f per game)\n", counts.total, float64(counts.total)/float64(games))
+	fmt.Fprintf(&sb, "rounds played:  %d (%.1f per game)\n", rounds, float64(rounds)/float64(games))
+	fmt.Fprintf(&sb, "activations:    %d (%.1f per game, %.1f per round)\n", counts.total,
+		float64(counts.total)/float64(games), float64(counts.total)/float64(rounds))
+	fmt.Fprintf(&sb, "conn. evals:    %d (%.0f per round): genes × depth summed over activations, ~ cost of activations\n",
+		counts.cost, float64(counts.cost)/float64(rounds))
+	sb.WriteString("\ndecisions requested by the game (calls):\n")
+	writeCounts(&sb, counts.stats.calls, sumCounts(counts.stats.calls))
+	sb.WriteString("\nstandard actions chosen (GetStdAction results):\n")
+	writeCounts(&sb, counts.stats.actions, sumCounts(counts.stats.actions))
+	sb.WriteString("\nactivations by network:\n")
+	writeCounts(&sb, counts.byProfile, counts.total)
+	sb.WriteString("\nconnection evaluations by network:\n")
+	writeCounts(&sb, counts.costOf, counts.cost)
 	sb.WriteString("\nactivations by decision requested by the game:\n")
 	writeCounts(&sb, counts.byEntry, counts.total)
 	sb.WriteString("\nactivations by path (entry ← caller of GetDecision):\n")
 	writeCounts(&sb, counts.byPath, counts.total)
+	sb.WriteString("\nconnection evaluations by network and path:\n")
+	writeCounts(&sb, counts.pathCost, counts.cost)
 	t.Log("\n" + sb.String())
+}
+
+func sumCounts(counts map[string]int64) int64 {
+	var total int64
+	for _, c := range counts {
+		total += c
+	}
+	return total
 }
 
 func writeCounts(sb *strings.Builder, counts map[string]int64, total int64) {
@@ -347,6 +472,8 @@ func BenchmarkPerfWorkload(b *testing.B) {
 			}
 			b.ReportMetric(float64(b.Elapsed().Nanoseconds())/float64(b.N*games), "ns/game")
 			b.ReportMetric(float64(counts.total), "activations/op")
+			b.ReportMetric(float64(counts.cost), "connevals/op")
+			b.ReportMetric(float64(counts.stats.rounds()), "rounds/op")
 		})
 	}
 }

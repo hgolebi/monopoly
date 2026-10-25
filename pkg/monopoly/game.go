@@ -32,6 +32,9 @@ type Game struct {
 	finished     bool
 	// lastDiceSum is the sum of the most recent move roll, used for the utility rent.
 	lastDiceSum int
+	// auctionId is the id of the auction in progress (0 outside of an auction), auctionCount the number of auctions so far
+	auctionId    int
+	auctionCount int
 }
 
 func NewGame(ctx context.Context, io IMonopoly_IO, logger Logger, seed int64) *Game {
@@ -198,6 +201,7 @@ func (g *Game) getState() GameState {
 		SellOfferTries:   g.sell_offer_tries,
 		BuyOfferTries:    g.buy_offer_tries,
 		StdActionsUsed:   g.std_actions_used,
+		AuctionId:        g.auctionId,
 	}
 }
 
@@ -834,6 +838,8 @@ func (g *Game) sendSellOffer(player_id int, targets []int, property_id int, star
 
 	curr_price := start_price
 	auction_winner := -1
+	g.startAuction()
+	defer g.endAuction()
 	for queue.Len() > 0 {
 		bidderID := queue.Front().Value.(int)
 		queue.Remove(queue.Front())
@@ -858,6 +864,7 @@ func (g *Game) sendSellOffer(player_id int, targets []int, property_id int, star
 		}
 	}
 
+	g.endAuction()
 	if auction_winner == -1 {
 		g.logger.Log(fmt.Sprintf("Sell auction for %s ended with no bids — no sale", property.GetName()))
 		return
@@ -1157,6 +1164,8 @@ func (g *Game) auction(property *Property, player_queue *list.List, min_price in
 
 	curr_price := min_price
 	auction_winner := -1
+	g.startAuction()
+	defer g.endAuction()
 	for queue.Len() > 0 {
 		bidderID := queue.Front().Value.(int)
 		queue.Remove(queue.Front())
@@ -1180,6 +1189,7 @@ func (g *Game) auction(property *Property, player_queue *list.List, min_price in
 			return -1, 0
 		}
 	}
+	g.endAuction()
 	if auction_winner == -1 {
 		g.logger.Log("Auction ended without any bids.")
 		return -1, 0
@@ -1189,6 +1199,18 @@ func (g *Game) auction(property *Property, player_queue *list.List, min_price in
 	g.charge(winner, curr_price, nil)
 	g.addProperty(winner, property.PropertyIndex)
 	return auction_winner, curr_price
+}
+
+// startAuction gives the auction in progress a new id, so the players can tell consecutive auctions apart.
+func (g *Game) startAuction() {
+	g.auctionCount++
+	g.auctionId = g.auctionCount
+}
+
+// endAuction is called when the bidding is over, before the winner is charged
+// (charging can bankrupt the winner and start auctions of their properties).
+func (g *Game) endAuction() {
+	g.auctionId = 0
 }
 
 func (g *Game) addProperty(player *Player, property_id int) {

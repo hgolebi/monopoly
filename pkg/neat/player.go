@@ -48,6 +48,19 @@ type NEATMonopolyPlayer struct {
 	max_depth int
 	stats     *playerStats
 	log       *BotDecisionLogger
+	auction   auctionBids // per game: the network's answers in the auction in progress
+}
+
+// auctionBids remembers the network's answers within one auction. The inputs do not change during an auction,
+// only the price, so with a monotonic answer an accepted price answers every lower one and a rejected price every higher one.
+type auctionBids struct {
+	auctionId    int
+	propertyId   int
+	round        int
+	sensors      MonopolySensors
+	acceptedUpTo int // highest price accepted so far, -1 if none
+	rejectedFrom int // lowest price rejected so far, above MAX_MONEY if none
+	lookahead    int // until a price is rejected, the next query asks this many steps above the bid; doubles after every accepted query
 }
 
 func NewNEATMonopolyPlayer(organism *genetics.Organism) (*NEATMonopolyPlayer, error) {
@@ -111,12 +124,12 @@ func (p *NEATMonopolyPlayer) GetOrganism() *genetics.Organism {
 }
 
 // decisionHook is called on every network activation. It is nil outside of the performance tests,
-// which set it while no game is running to count activations per decision path.
-var decisionHook func()
+// which set it while no game is running to count activations per decision path and network.
+var decisionHook func(p *NEATMonopolyPlayer)
 
 func (p *NEATMonopolyPlayer) GetDecision(input []float64) []float64 {
 	if decisionHook != nil {
-		decisionHook()
+		decisionHook(p)
 	}
 	err := p.network.LoadSensors(input)
 	if err != nil {
@@ -271,6 +284,7 @@ func (p *NEATMonopolyPlayer) tryToGetMoney(player int, state monopoly.GameState,
 			Action:     monopoly.SELLOFFER,
 			PropertyId: property,
 			Price:      price,
+			Players:    opponents(player, state), // the engine skips the ones who cannot afford the starting price
 		}
 	}
 
@@ -331,8 +345,117 @@ func (p *NEATMonopolyPlayer) tryMortgage(player int, state monopoly.GameState, a
 	return decision, propertyId
 }
 
+// sellCandidate is a property the bot can put up for a sell auction.
+type sellCandidate struct {
+	propertyId int
+	minPrice   int // below this price mortgaging is better than selling
+	maxPrice   int // nominal value, capped by the cash of the richest opponent
+	buyerId    int // opponent who gains the most from buying it, shown to the network as the enemy
+}
+
+// getSellCandidates returns the properties the bot may sell in an auction:
+//   - properties in the player's full sets are skipped, like in tryMortgage, because selling one breaks the set;
+//   - mortgaged properties are allowed (the buyer takes over the mortgage), so their value is half the price;
+//   - a property is skipped when no opponent can pay its minimum price.
+func getSellCandidates(playerId int, state monopoly.GameState, sellList []int) []sellCandidate {
+	var candidates []sellCandidate
+	for _, propertyId := range sellList {
+		property := state.Properties[propertyId]
+		setCount, ownedByPlayer, _ := getSetDetails(state, property.SetIndex, playerId)
+		if setCount == ownedByPlayer {
+			continue
+		}
+		minPrice, nominal := property.Price/2, property.Price
+		if property.IsMortgaged {
+			minPrice, nominal = cfg.PRICE_STEP, property.Price/2
+		}
+
+		buyerId, buyerNeeds, richest := -1, 0, 0
+		for _, opponentId := range opponents(playerId, state) {
+			money := state.Players[opponentId].Money
+			richest = max(richest, money)
+			if money < minPrice {
+				continue
+			}
+			_, ownedByOpponent, _ := getSetDetails(state, property.SetIndex, opponentId)
+			needs := setCount - ownedByOpponent
+			if buyerId == -1 || needs < buyerNeeds || (needs == buyerNeeds && money > state.Players[buyerId].Money) {
+				buyerId, buyerNeeds = opponentId, needs
+			}
+		}
+		if buyerId == -1 {
+			continue
+		}
+		candidates = append(candidates, sellCandidate{
+			propertyId: propertyId,
+			minPrice:   minPrice,
+			maxPrice:   max(minPrice, min(nominal, richest)),
+			buyerId:    buyerId,
+		})
+	}
+	return candidates
+}
+
+// opponents returns the players that are still in the game, except playerId.
+func opponents(playerId int, state monopoly.GameState) []int {
+	var ids []int
+	for id, player := range state.Players {
+		if id != playerId && !player.IsBankrupt {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+// trySellProperty picks the property to put up for a sell auction and its starting price.
+// The network is asked once per candidate at the candidate's maximum price, the argmax above 0.5 is chosen,
+// and the starting price is the lowest price the network still accepts. The seller has to sell to the highest
+// bidder, so the starting price is the only protection; buyers who value the property more bid it up.
 func (p *NEATMonopolyPlayer) trySellProperty(player int, state monopoly.GameState, availableActions monopoly.FullActionList) (decision bool, propertyId int, price int) {
-	return false, 0, 0 // TO DO
+	if !slices.Contains(availableActions.Actions, monopoly.SELLOFFER) {
+		return false, 0, 0
+	}
+	candidates := getSellCandidates(player, state, availableActions.SellPropertyList)
+	if len(candidates) == 0 {
+		return false, 0, 0
+	}
+	if p.log != nil {
+		p.log.Info("▶ trySellProperty", "candidates", len(candidates))
+	}
+	outputs := make(map[int]float64)
+	chosen := make(map[int]sellCandidate)
+	sensorsOf := make(map[int]MonopolySensors)
+	for _, c := range candidates {
+		sensors := p.sellToPlayerSensors(player, state, c.propertyId, c.buyerId, 0, false)
+		sensors.LoadSellPriceInput(c.maxPrice)
+		outputList := p.GetDecision(sensors)
+		if p.log != nil {
+			p.log.Info("  sell candidate", "propertyId", c.propertyId, "maxPrice", c.maxPrice, "buyer", c.buyerId,
+				"OUT_SELL_PROPERTY", fmt.Sprintf("%.4f", outputList[OUT_SELL_PROPERTY]))
+		}
+		if outputList[OUT_SELL_PROPERTY] > 0.5 {
+			outputs[c.propertyId] = outputList[OUT_SELL_PROPERTY]
+			chosen[c.propertyId] = c
+			sensorsOf[c.propertyId] = sensors
+		}
+	}
+	decision, propertyId, _ = getBestDecision(outputs)
+	if !decision {
+		if p.log != nil {
+			p.log.Info("→ result", "decision", "NO")
+		}
+		return false, 0, 0
+	}
+	c := chosen[propertyId]
+	sensors := sensorsOf[propertyId]
+	accept := p.priceAcceptor(sensors, sensors.LoadSellPriceInput, OUT_SELL_PROPERTY)
+	price, _ = lowestAcceptedPrice(c.minPrice, c.maxPrice, func(price int) bool {
+		return price == c.maxPrice || accept(price) // the maximum price was accepted above
+	})
+	if p.log != nil {
+		p.log.Info("→ result", "decision", "YES", "propertyId", propertyId, "price", price)
+	}
+	return true, propertyId, price
 }
 
 func (p *NEATMonopolyPlayer) getBuyHouseDecision(playerId int, state monopoly.GameState, availableActions monopoly.FullActionList) (decision bool, propertyId int, needMoney bool) {
@@ -454,96 +577,54 @@ func (p *NEATMonopolyPlayer) getBuyKeyPropertyDecision(playerId int, state monop
 		}
 		p.log.Info("▶ getBuyKeyPropertyDecision", "keyProperties", keys)
 	}
+	money := state.Players[playerId].Money
 	outputs := make(map[int]float64)
+	sensorsOf := make(map[int]MonopolySensors)
 	for propertyId := range keyProperties {
 		property := state.Properties[propertyId]
 		minPrice := property.Price / 2
-		if minPrice >= state.Players[playerId].Money {
+		if minPrice >= money {
 			needMoney = true
 			continue
 		}
-		setCount, ownedByPlayer, ownedByOthers := getSetDetails(state, property.SetIndex, playerId)
-		enemy := state.Players[property.Owner.ID]
-
-		sensors := NewMonopolySensors()
-		sensors.LoadState(state, playerId, propertyId)
+		sensors := p.buyFromPlayerSensors(playerId, state, propertyId, -1, false)
 		sensors.LoadBuyPriceInput(minPrice)
-		sensors.LoadEnemyInputs(state, property.Owner.ID, propertyId)
-
-		if p.log != nil {
-			pl := state.Players[playerId]
-			availableProps := countAvailableProperties(state)
-			_, enemyOwned, _ := getSetDetails(state, property.SetIndex, property.Owner.ID)
-			p.log.Info("  key property candidate", "propertyId", propertyId, "name", property.Name, "minPrice", minPrice)
-			p.log.Debug("game state",
-				"round", state.Round,
-				"player_jailed", pl.IsJailed,
-				"player_position", pl.CurrentPosition,
-				"player_money", pl.Money,
-				"property", property.Name,
-				"property_price", property.Price,
-				"min_buy_price", minPrice,
-				"set_id", property.SetIndex,
-				"set_needed", setCount-ownedByPlayer,
-				"set_occupied", ownedByOthers,
-				"available_properties", availableProps,
-				"enemy_money", enemy.Money,
-				"enemy_set_needed", setCount-enemyOwned,
-			)
-			p.log.Info("  network inputs", "values", formatFloatSlice(sensors))
-		}
 		outputList := p.GetDecision(sensors)
 		if p.log != nil {
-			p.log.Info("  network outputs", "values", formatFloatSlice(outputList))
-			p.log.Info("  OUT_BUY_PROPERTY", "value", fmt.Sprintf("%.4f", outputList[OUT_BUY_PROPERTY]), "decision", boolToYesNo(outputList[OUT_BUY_PROPERTY] > 0.5))
+			p.log.Info("  key property candidate", "propertyId", propertyId, "name", property.Name, "minPrice", minPrice,
+				"OUT_BUY_PROPERTY", fmt.Sprintf("%.4f", outputList[OUT_BUY_PROPERTY]))
 		}
 		if outputList[OUT_BUY_PROPERTY] > 0.5 {
 			outputs[propertyId] = outputList[OUT_BUY_PROPERTY]
+			sensorsOf[propertyId] = sensors
 		}
 	}
 	decision, propertyId, _ = getBestDecision(outputs)
-	property := state.Properties[propertyId]
 	if !decision {
 		if p.log != nil {
 			p.log.Info("→ result", "decision", "NO", "needMoney", needMoney)
 		}
 		return decision, propertyId, 0, needMoney
 	}
-	price = p.findMaxBuyPrice(state, playerId, propertyId, property.Price/2, -1, false)
+	// opening offer: the highest price the network accepts (it accepted the minimum price above)
+	minPrice := state.Properties[propertyId].Price / 2
+	sensors := sensorsOf[propertyId]
+	accept := p.priceAcceptor(sensors, sensors.LoadBuyPriceInput, OUT_BUY_PROPERTY)
+	price, _ = highestAcceptedPrice(minPrice, min(cfg.MAX_MONEY, money), func(price int) bool {
+		return price == minPrice || accept(price)
+	})
 	if p.log != nil {
 		p.log.Info("→ result", "decision", "YES", "propertyId", propertyId, "price", price)
 	}
 	return decision, propertyId, price, needMoney
 }
 
-func (p *NEATMonopolyPlayer) findMaxBuyPrice(state monopoly.GameState, playerId int, propertyId int, minPrice int, sellerOffer int, isLastTry bool) int {
-	price := minPrice
-	decision := p.getBuyFromPlayerDecision(playerId, state, propertyId, price, sellerOffer, isLastTry)
-	maxPrice := cfg.MAX_MONEY
-	if sellerOffer > 0 {
-		maxPrice = sellerOffer
-	}
-	for decision {
-		price += 10
-		if price >= maxPrice {
-			return maxPrice
-		}
-		if price >= state.Players[playerId].Money {
-			return state.Players[playerId].Money
-		}
-		decision = p.getBuyFromPlayerDecision(playerId, state, propertyId, price, sellerOffer, isLastTry)
-	}
-	return price - 10
-}
-
-func (p *NEATMonopolyPlayer) getBuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, price int, sellerOffer int, isLastTry bool) bool {
+// buyFromPlayerSensors loads the inputs for buying propertyId from its owner, without the price.
+// The price is set by the caller, so one set of sensors serves a whole price search.
+func (p *NEATMonopolyPlayer) buyFromPlayerSensors(player int, state monopoly.GameState, propertyId int, sellerOffer int, isLastTry bool) MonopolySensors {
 	property := state.Properties[propertyId]
-	setCount, ownedByPlayer, ownedByOthers := getSetDetails(state, property.SetIndex, player)
-	enemy := state.Players[property.Owner.ID]
-
 	sensors := NewMonopolySensors()
 	sensors.LoadState(state, player, propertyId)
-	sensors.LoadBuyPriceInput(price)
 	sensors.LoadEnemyInputs(state, property.Owner.ID, propertyId)
 	if sellerOffer > 0 {
 		sensors.LoadBuyCounterofferInputs(sellerOffer, isLastTry)
@@ -551,34 +632,41 @@ func (p *NEATMonopolyPlayer) getBuyFromPlayerDecision(player int, state monopoly
 
 	if p.log != nil {
 		pl := state.Players[player]
-		availableProps := countAvailableProperties(state)
+		enemy := state.Players[property.Owner.ID]
+		setCount, ownedByPlayer, ownedByOthers := getSetDetails(state, property.SetIndex, player)
 		_, enemyOwned, _ := getSetDetails(state, property.SetIndex, property.Owner.ID)
-		p.log.Info("  getBuyFromPlayerDecision", "propertyId", propertyId, "price", price, "sellerOffer", sellerOffer, "isLastTry", isLastTry)
-		p.log.Debug("game state",
+		p.log.Debug("game state (buy from player)",
 			"round", state.Round,
 			"player_jailed", pl.IsJailed,
 			"player_position", pl.CurrentPosition,
 			"player_money", pl.Money,
 			"property", property.Name,
 			"property_price", property.Price,
-			"buy_price", price,
 			"seller_offer", sellerOffer,
 			"is_last_try", isLastTry,
 			"set_id", property.SetIndex,
 			"set_needed", setCount-ownedByPlayer,
 			"set_occupied", ownedByOthers,
-			"available_properties", availableProps,
+			"available_properties", countAvailableProperties(state),
 			"enemy_money", enemy.Money,
 			"enemy_set_needed", setCount-enemyOwned,
 		)
-		p.log.Info("  network inputs", "values", formatFloatSlice(sensors))
 	}
-	outputList := p.GetDecision(sensors)
-	if p.log != nil {
-		p.log.Info("  network outputs", "values", formatFloatSlice(outputList))
-		p.log.Info("  OUT_BUY_PROPERTY", "value", fmt.Sprintf("%.4f", outputList[OUT_BUY_PROPERTY]), "decision", boolToYesNo(outputList[OUT_BUY_PROPERTY] > 0.5))
+	return sensors
+}
+
+// priceAcceptor returns a function that loads a price into sensors with loadPrice, activates the network
+// and tells whether the output is above 0.5. Only the price input changes between calls.
+func (p *NEATMonopolyPlayer) priceAcceptor(sensors MonopolySensors, loadPrice func(int), output OutputID) func(price int) bool {
+	return func(price int) bool {
+		loadPrice(price)
+		outputList := p.GetDecision(sensors)
+		if p.log != nil {
+			p.log.Info("  price query", "price", price, "inputs", formatFloatSlice(sensors), "outputs", formatFloatSlice(outputList),
+				"decision", boolToYesNo(outputList[output] > 0.5))
+		}
+		return outputList[output] > 0.5
 	}
-	return outputList[OUT_BUY_PROPERTY] > 0.5
 }
 
 func (p *NEATMonopolyPlayer) GetJailAction(player int, state monopoly.GameState, available []monopoly.JailAction) monopoly.JailAction {
@@ -655,58 +743,74 @@ func (p *NEATMonopolyPlayer) BiddingDecision(player int, state monopoly.GameStat
 	if p.log != nil {
 		p.log.Warn("▶ BiddingDecision", "propertyId", propertyId, "name", property.Name, "currentPrice", currentPrice, "currentWinner", currentWinner)
 	}
-	setCount, ownedByPlayer, ownedByOthers := getSetDetails(state, property.SetIndex, player)
-
-	sensors := NewMonopolySensors()
-	sensors.LoadState(state, player, propertyId)
-	if currentWinner >= 0 {
-		sensors.LoadEnemyInputs(state, currentWinner, propertyId)
+	bid := currentPrice + cfg.PRICE_STEP
+	if currentWinner < 0 {
+		bid = currentPrice // nobody has bid yet, so the starting price is a valid bid
 	}
-	bid := currentPrice + 10
-	sensors.LoadBuyPriceInput(bid)
-
-	if p.log != nil {
-		pl := state.Players[player]
-		availableProps := countAvailableProperties(state)
-		enemyMoney := 0
-		enemySetNeeded := 0
-		if currentWinner >= 0 {
-			enemyMoney = state.Players[currentWinner].Money
-			_, enemyOwned, _ := getSetDetails(state, property.SetIndex, currentWinner)
-			enemySetNeeded = setCount - enemyOwned
-		}
-		p.log.Debug("game state",
-			"round", state.Round,
-			"player_jailed", pl.IsJailed,
-			"player_position", pl.CurrentPosition,
-			"player_money", pl.Money,
-			"property", property.Name,
-			"property_price", property.Price,
-			"bid", bid,
-			"current_winner", currentWinner,
-			"set_id", property.SetIndex,
-			"set_needed", setCount-ownedByPlayer,
-			"set_occupied", ownedByOthers,
-			"available_properties", availableProps,
-			"enemy_money", enemyMoney,
-			"enemy_set_needed", enemySetNeeded,
-		)
-		p.log.Info("network inputs", "values", formatFloatSlice(sensors))
-	}
-	outputList := p.GetDecision(sensors)
-	if p.log != nil {
-		p.log.Info("network outputs", "values", formatFloatSlice(outputList))
-	}
-	if outputList[OUT_BUY_PROPERTY] <= 0.5 {
+	if bid > state.Players[player].Money || !p.acceptsBid(player, state, propertyId, bid, currentWinner) {
 		if p.log != nil {
-			p.log.Error("→ result", "OUT_BUY_PROPERTY", fmt.Sprintf("%.4f", outputList[OUT_BUY_PROPERTY]), "decision", "PASS (bid=0)")
+			p.log.Error("→ result", "bid", bid, "decision", "PASS (bid=0)")
 		}
 		return 0
 	}
 	if p.log != nil {
-		p.log.Error("→ result", "OUT_BUY_PROPERTY", fmt.Sprintf("%.4f", outputList[OUT_BUY_PROPERTY]), "bid", bid)
+		p.log.Error("→ result", "bid", bid)
 	}
 	return bid
+}
+
+// acceptsBid tells whether the network wants to pay bid in the auction in progress. Within one auction it reuses
+// the earlier answers, and each query asks about a price ahead of the bid (1, 2, 4, ... steps after accepted
+// queries), so the bot's first bid costs one activation, as before, and a bidding war of d steps O(log d)
+// activations instead of d. With a monotonic answer the decisions are the same as asking at every bid.
+// The inputs are loaded at the bot's first bid in the auction, so a later change of the leading bidder is not seen.
+// Without an auction id (a caller other than the engine's auction) every call activates the network.
+func (p *NEATMonopolyPlayer) acceptsBid(player int, state monopoly.GameState, propertyId int, bid int, currentWinner int) bool {
+	a := &p.auction
+	if state.AuctionId == 0 || a.auctionId != state.AuctionId || a.propertyId != propertyId || a.round != state.Round {
+		sensors := NewMonopolySensors()
+		sensors.LoadState(state, player, propertyId)
+		if currentWinner >= 0 {
+			sensors.LoadEnemyInputs(state, currentWinner, propertyId)
+		}
+		*a = auctionBids{
+			auctionId:    state.AuctionId,
+			propertyId:   propertyId,
+			round:        state.Round,
+			sensors:      sensors,
+			acceptedUpTo: -1,
+			rejectedFrom: cfg.MAX_MONEY + 1,
+			lookahead:    1,
+		}
+	}
+	accept := p.priceAcceptor(a.sensors, a.sensors.LoadBuyPriceInput, OUT_BUY_PROPERTY)
+	return a.accepts(bid, min(cfg.MAX_MONEY, state.Players[player].Money), accept)
+}
+
+// accepts answers from the remembered answers or asks accept at a price between bid and maxPrice (bid <= maxPrice).
+func (a *auctionBids) accepts(bid int, maxPrice int, accept func(price int) bool) bool {
+	for {
+		if bid <= a.acceptedUpTo {
+			return true
+		}
+		if bid >= a.rejectedFrom {
+			return false
+		}
+		var probe int
+		if a.rejectedFrom > maxPrice {
+			// no rejected price yet: look further ahead after every accepted probe
+			probe = min(bid+(a.lookahead-1)*cfg.PRICE_STEP, maxPrice)
+		} else {
+			// the answer changes between bid and the lowest rejected price: probe the middle
+			probe = bid + (a.rejectedFrom-bid)/cfg.PRICE_STEP/2*cfg.PRICE_STEP
+		}
+		if accept(probe) {
+			a.acceptedUpTo = probe
+			a.lookahead *= 2
+		} else {
+			a.rejectedFrom = probe
+		}
+	}
 }
 
 func (p *NEATMonopolyPlayer) BuyFromPlayerDecision(player int, state monopoly.GameState, propertyId int, sellerOffer int, tradingPartnerId int) (bool, int) {
@@ -714,18 +818,26 @@ func (p *NEATMonopolyPlayer) BuyFromPlayerDecision(player int, state monopoly.Ga
 	if p.log != nil {
 		p.log.Warn("▶ BuyFromPlayerDecision", "propertyId", propertyId, "name", property.Name, "sellerOffer", sellerOffer, "tradingPartnerId", tradingPartnerId)
 	}
-	isLastTry := state.NegotiationRound >= cfg.MAX_TRADE_ROUNDS || state.SellerImpasse
-	price := p.findMaxBuyPrice(state, player, propertyId, property.Price/2, sellerOffer, isLastTry)
-	if price < sellerOffer {
+	if sellerOffer > state.Players[player].Money {
 		if p.log != nil {
-			p.log.Error("→ result", "decision", "NO", "maxPrice", price, "sellerOffer", sellerOffer)
+			p.log.Error("→ result", "decision", "NO (cannot afford)", "sellerOffer", sellerOffer)
+		}
+		return false, 0
+	}
+	// The bot either accepts the counteroffer or withdraws. With a monotonic answer the highest acceptable price
+	// reaches sellerOffer exactly when sellerOffer itself is accepted, so a single activation decides.
+	isLastTry := state.NegotiationRound >= cfg.MAX_TRADE_ROUNDS || state.SellerImpasse
+	sensors := p.buyFromPlayerSensors(player, state, propertyId, sellerOffer, isLastTry)
+	if !p.priceAcceptor(sensors, sensors.LoadBuyPriceInput, OUT_BUY_PROPERTY)(sellerOffer) {
+		if p.log != nil {
+			p.log.Error("→ result", "decision", "NO", "sellerOffer", sellerOffer)
 		}
 		return false, 0
 	}
 	if p.log != nil {
-		p.log.Error("→ result", "decision", "YES", "price", price)
+		p.log.Error("→ result", "decision", "YES", "price", sellerOffer)
 	}
-	return true, price
+	return true, sellerOffer
 }
 
 func (p *NEATMonopolyPlayer) SellToPlayerDecision(player int, state monopoly.GameState, propertyId int, buyerOffer int, tradingPartnerId int) (bool, int) {
@@ -734,69 +846,50 @@ func (p *NEATMonopolyPlayer) SellToPlayerDecision(player int, state monopoly.Gam
 		p.log.Warn("▶ SellToPlayerDecision", "propertyId", propertyId, "name", property.Name, "buyerOffer", buyerOffer, "tradingPartnerId", tradingPartnerId)
 	}
 	isLastTry := state.NegotiationRound >= cfg.MAX_TRADE_ROUNDS || state.BuyerImpasse
-	sell, price := p.findMinSellPrice(state, player, propertyId, buyerOffer, buyerOffer, tradingPartnerId, isLastTry)
+	sensors := p.sellToPlayerSensors(player, state, propertyId, tradingPartnerId, buyerOffer, isLastTry)
+	accept := p.priceAcceptor(sensors, sensors.LoadSellPriceInput, OUT_SELL_PROPERTY)
+	// the lowest acceptable price: buyerOffer accepts the offer, a higher price is a counteroffer
+	price, sell := lowestAcceptedPrice(buyerOffer, max(buyerOffer, cfg.MAX_MONEY-cfg.PRICE_STEP), accept)
 	if p.log != nil {
 		p.log.Error("→ result", "decision", boolToYesNo(sell), "price", price)
 	}
 	return sell, price
 }
 
-func (p *NEATMonopolyPlayer) findMinSellPrice(state monopoly.GameState, playerId int, propertyId int, minPrice int, counteroffer int, buyerId int, isLastTry bool) (bool, int) {
-	price := minPrice
-	decision := p.getSellDecision(playerId, state, propertyId, price, counteroffer, buyerId, isLastTry)
-	for !decision {
-		price += 10
-		if price >= cfg.MAX_MONEY {
-			return false, 0
-		}
-		decision = p.getSellDecision(playerId, state, propertyId, price, counteroffer, buyerId, isLastTry)
-	}
-	return true, price
-}
-
-func (p *NEATMonopolyPlayer) getSellDecision(playerId int, state monopoly.GameState, propertyId int, price int, counteroffer int, buyerId int, isLastTry bool) bool {
-	property := state.Properties[propertyId]
-	setCount, ownedByPlayer, ownedByOthers := getSetDetails(state, property.SetIndex, playerId)
-	buyer := state.Players[buyerId]
-
+// sellToPlayerSensors loads the inputs for selling propertyId to buyerId, without the price.
+// counteroffer is the buyer's offer in a negotiation, 0 when there is none.
+func (p *NEATMonopolyPlayer) sellToPlayerSensors(playerId int, state monopoly.GameState, propertyId int, buyerId int, counteroffer int, isLastTry bool) MonopolySensors {
 	sensors := NewMonopolySensors()
 	sensors.LoadState(state, playerId, propertyId)
-	sensors.LoadSellPriceInput(price)
 	sensors.LoadEnemyInputs(state, buyerId, propertyId)
 	if counteroffer > 0 {
 		sensors.LoadSellCounterofferInputs(counteroffer, isLastTry)
 	}
 
 	if p.log != nil {
+		property := state.Properties[propertyId]
 		pl := state.Players[playerId]
-		availableProps := countAvailableProperties(state)
+		buyer := state.Players[buyerId]
+		setCount, ownedByPlayer, ownedByOthers := getSetDetails(state, property.SetIndex, playerId)
 		_, buyerOwned, _ := getSetDetails(state, property.SetIndex, buyerId)
-		p.log.Info("  getSellDecision", "propertyId", propertyId, "price", price, "counteroffer", counteroffer, "isLastTry", isLastTry)
-		p.log.Debug("game state",
+		p.log.Debug("game state (sell to player)",
 			"round", state.Round,
 			"player_jailed", pl.IsJailed,
 			"player_position", pl.CurrentPosition,
 			"player_money", pl.Money,
 			"property", property.Name,
 			"property_price", property.Price,
-			"sell_price", price,
 			"buyer_offer", counteroffer,
 			"is_last_try", isLastTry,
 			"set_id", property.SetIndex,
 			"set_needed", setCount-ownedByPlayer,
 			"set_occupied", ownedByOthers,
-			"available_properties", availableProps,
+			"available_properties", countAvailableProperties(state),
 			"enemy_money", buyer.Money,
 			"enemy_set_needed", setCount-buyerOwned,
 		)
-		p.log.Info("  network inputs", "values", formatFloatSlice(sensors))
 	}
-	outputList := p.GetDecision(sensors)
-	if p.log != nil {
-		p.log.Info("  network outputs", "values", formatFloatSlice(outputList))
-		p.log.Info("  OUT_SELL_PROPERTY", "value", fmt.Sprintf("%.4f", outputList[OUT_SELL_PROPERTY]), "decision", boolToYesNo(outputList[OUT_SELL_PROPERTY] > 0.5))
-	}
-	return outputList[OUT_SELL_PROPERTY] > 0.5
+	return sensors
 }
 
 func (p *NEATMonopolyPlayer) AddScore(points int) {

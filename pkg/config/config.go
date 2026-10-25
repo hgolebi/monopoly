@@ -12,6 +12,7 @@ const (
 	MAX_PLAYERS      = 4
 	MAX_STD_ACTIONS  = 5
 	MAX_TRADE_ROUNDS = 10
+	PRICE_STEP       = 10 // granularity of prices searched by the bot and of its bids
 
 	// game settings used for normalization of NEAT input/outputs
 	LAST_FIELD_ID    = 39

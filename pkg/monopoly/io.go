@@ -53,6 +53,8 @@ type GameState struct {
 	NegotiationSellerOffer int // Current seller's counteroffer
 	SellerImpasse          bool
 	BuyerImpasse           bool
+	// AuctionId identifies the auction in progress (unique within a game), 0 outside of an auction
+	AuctionId int
 }
 
 func formatStr(str string, length int) string {

@@ -1,6 +1,7 @@
 package monopoly
 
 import (
+	"container/list"
 	"context"
 	"math/rand"
 	"testing"
@@ -1244,6 +1245,30 @@ func TestSendSellOffer(t *testing.T) {
 			io.AssertCalled(t, "BiddingDecision", targetId, mock.Anything, test.propertyId, test.price, -1)
 		}
 	}
+}
+
+// TestAuctionId — every auction (bank auction and sell offer) gets its own id, seen by the bidders,
+// and the id is 0 once the bidding is over.
+func TestAuctionId(t *testing.T) {
+	game, io := newTestGame(t, 42)
+	var seen []int
+	io.On("BiddingDecision", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) { seen = append(seen, args.Get(1).(GameState).AuctionId) }).
+		Return(0)
+
+	assert.Equal(t, 0, game.getState().AuctionId)
+	queue := list.New()
+	queue.PushBack(1)
+	game.auction(game.properties[3], queue, 10)
+	assert.Equal(t, 0, game.getState().AuctionId)
+
+	seller := game.players[0]
+	seller.Properties = []int{5}
+	game.properties[5].Owner = seller
+	game.sendSellOffer(0, []int{1, 2}, 5, 100)
+	assert.Equal(t, 0, game.getState().AuctionId)
+
+	assert.Equal(t, []int{1, 2, 2}, seen)
 }
 
 func TestSendBuyOffer(t *testing.T) {
