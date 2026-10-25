@@ -110,7 +110,14 @@ func (p *NEATMonopolyPlayer) GetOrganism() *genetics.Organism {
 	return p.organism
 }
 
+// decisionHook is called on every network activation. It is nil outside of the performance tests,
+// which set it while no game is running to count activations per decision path.
+var decisionHook func()
+
 func (p *NEATMonopolyPlayer) GetDecision(input []float64) []float64 {
+	if decisionHook != nil {
+		decisionHook()
+	}
 	err := p.network.LoadSensors(input)
 	if err != nil {
 		panic("Error loading sensors: " + err.Error())
