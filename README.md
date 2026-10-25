@@ -65,18 +65,19 @@ With `-humans 0` only bots play, and the course of the game is shown in the serv
 ### Training: `train`
 
 ```bash
-go run . train -seed 42
+go run . train            # random seed
+go run . train -seed 42   # custom seed
 ```
 
 | Flag          | Default             | Description |
 |---------------|---------------------|-------------|
-| `-seed`       | `1`                 | seed of the whole run |
+| `-seed`       | `0` (random)        | seed of the whole run. Without the flag a random seed is drawn. |
 | `-options`    | `neat_options.yaml` | NEAT options file |
 | `-out`        | `output/seed<seed>` | output directory |
 | `-genome`     | (none)              | starting genome from a file. Without this flag the starting genome is built from `INPUT_COUNT`/`OUTPUT_COUNT`. |
 | `-all-to-all` | `true`              | built starting genome: every input and the bias connected to every output (`false`: no connections) |
 
-- **Reproducibility:** the seed determines the whole run (group draws, dice rolls, mutations, crossovers). The same seed and the same options give the same result. Use a different seed for each independent run and record the seed together with the results. The default output directory includes the seed, so consecutive runs do not overwrite each other.
+- **Reproducibility:** the seed determines the whole run (group draws, dice rolls, mutations, crossovers). The same seed and the same options give the same result. The seed, drawn or given, is printed at the start (and by goNEAT at the end) and saved to `run_info.txt` in the output directory, together with the command that reproduces the run and a copy of the options (`options_used.yaml`). The default output directory includes the seed, so consecutive runs do not overwrite each other.
 - **NEAT options** live in `neat_options.yaml`, among others `pop_size` (population size) and `num_generations` (number of epochs). `pop_size` must be a multiple of 4 (games have 4 players); otherwise training stops immediately with an error message.
 - **Training constants** live in `pkg/config/config.go`, among others `GAMES_PER_EPOCH` (games each organism plays per epoch), scoring and `PRINT_EVERY`.
 - **Stopping:** `Ctrl+C` stops training. Results saved up to that point are kept.
@@ -85,6 +86,8 @@ Contents of the output directory:
 
 | File / directory | Description |
 |------------------|-------------|
+| `run_info.txt` | seed, start time, options file, starting genome and the command that reproduces the run |
+| `options_used.yaml` | copy of the NEAT options the run was started with |
 | `champions.txt` | the champion of every epoch: fitness, wins, draws |
 | `gen_<N>_champion` | genome of the champion of epoch `N` (to play with it: `-genome`, `-genomes`) |
 | population | the whole population every `PRINT_EVERY` (20) epochs and in the last epoch |
@@ -101,7 +104,7 @@ go run . match -genomes "output/seed42/gen_299_champion,output/seed42/gen_100_ch
 | Flag       | Default                     | Description |
 |------------|-----------------------------|-------------|
 | `-genomes` | the 4 `genomes/bestForNow*` genomes | genomes of the bots, a multiple of 4 |
-| `-seed`    | `0` (from the clock)        | seed of the group draws and the games. It is printed at the end, so the match can be repeated. |
+| `-seed`    | `0` (random)                | seed of the group draws and the games. It is printed at the end, so the match can be repeated. |
 | `-options` | `neat_options.yaml`         | NEAT options file |
 | `-out`     | `experiment`                | directory for game logs |
 

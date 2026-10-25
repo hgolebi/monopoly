@@ -4,7 +4,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"math"
 	"math/rand"
+	randv2 "math/rand/v2"
 	"monopoly/pkg/config"
 	"monopoly/pkg/consoleCLI"
 	"monopoly/pkg/monopoly"
@@ -14,7 +16,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/yaricom/goNEAT/v4/neat"
 	"github.com/yaricom/goNEAT/v4/neat/genetics"
@@ -135,14 +136,18 @@ func runClient(args []string) error {
 func runTrain(args []string) error {
 	fs := newFlagSet("train", "Runs a NEAT experiment from scratch (or from a starting genome).\n"+
 		"The seed determines the whole run (group draws, dice, mutations, crossovers): the same seed and options\n"+
-		"reproduce the same result. Use a different seed for each independent run and record it with the results.")
-	seed := fs.Int64("seed", 1, "seed of the training run")
+		"reproduce the same result. Without -seed a random seed is drawn. The seed is printed and saved\n"+
+		"to run_info.txt in the output directory.")
+	seed := fs.Int64("seed", 0, "seed of the training run (0: random)")
 	options := fs.String("options", "neat_options.yaml", "NEAT options file")
 	out := fs.String("out", "", "output directory (default: output/seed<seed>)")
 	genome := fs.String("genome", "", "starting genome file (default: built from INPUT_COUNT/OUTPUT_COUNT)")
 	allToAll := fs.Bool("all-to-all", true, "built starting genome: connect every input and the bias to every output")
 	_ = fs.Parse(args)
 
+	if *seed == 0 {
+		*seed = randomSeed()
+	}
 	if *out == "" {
 		*out = filepath.Join("output", fmt.Sprintf("seed%d", *seed))
 	}
@@ -154,7 +159,7 @@ func runTrain(args []string) error {
 func runMatch(args []string) error {
 	fs := newFlagSet("match", "Bots play GAMES_PER_EPOCH games in random groups of 4, like one training epoch.")
 	genomes := fs.String("genomes", defaultGenomes, "comma-separated genome files (a multiple of 4)")
-	seed := fs.Int64("seed", 0, "seed of the group draws and games (0: from the clock)")
+	seed := fs.Int64("seed", 0, "seed of the group draws and games (0: random)")
 	options := fs.String("options", "neat_options.yaml", "NEAT options file")
 	out := fs.String("out", "experiment", "output directory for game logs")
 	_ = fs.Parse(args)
@@ -164,7 +169,7 @@ func runMatch(args []string) error {
 		return err
 	}
 	if *seed == 0 {
-		*seed = time.Now().UnixNano()
+		*seed = randomSeed()
 	}
 	neatOptions, err := neat.ReadNeatOptionsFromFile(*options)
 	if err != nil {
@@ -212,6 +217,11 @@ func runDebug(args []string) error {
 		bot.SetDecisionLogger(decisionLog)
 	}
 	return neatnetwork.RunDebugGame(context.Background(), players, *logDir)
+}
+
+// randomSeed draws a seed for a run started without -seed. It is never 0, which means "draw a seed".
+func randomSeed() int64 {
+	return randv2.Int64N(math.MaxInt64) + 1
 }
 
 func splitList(s string) []string {
