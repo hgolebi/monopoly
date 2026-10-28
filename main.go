@@ -14,6 +14,7 @@ import (
 	"monopoly/pkg/server"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -175,6 +176,8 @@ func runMatch(args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to load NEAT options: %w", err)
 	}
+	// PlayRound shuffles the slice it gets, so the results are read from a copy in the order of -genomes
+	scored := slices.Clone(players)
 	e := neatnetwork.NewMonopolyEvaluator(*out, config.GROUP_SIZE, rand.New(rand.NewSource(*seed)))
 	if err := e.PlayRound(neat.NewContext(context.Background(), neatOptions), players, -1); err != nil {
 		return err
@@ -182,7 +185,7 @@ func runMatch(args []string) error {
 
 	fmt.Printf("Seed: %d, games per bot: %d\n", *seed, config.GAMES_PER_EPOCH)
 	for i, path := range splitList(*genomes) {
-		p := players[i]
+		p := scored[i]
 		fmt.Printf("%-30s AvgScore=%6.1f Wins=%d Draws=%d\n", path,
 			float64(p.GetScore())/config.GAMES_PER_EPOCH, p.GetWins(), p.GetDraws())
 	}

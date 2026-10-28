@@ -32,6 +32,18 @@ const (
 	GROUP_SIZE      = 4    // number of players in each game
 	MAX_THREADS     = 100  // maximum number of threads used to evaluate organisms
 	PRINT_EVERY     = 20   // saves logs and population to files every N epochs
+
+	// compat_threshold from the NEAT options is the starting value; after every epoch it moves towards TARGET_SPECIES
+	// species: up by COMPAT_THRESHOLD_STEP_UP, down by the smaller COMPAT_THRESHOLD_STEP_DOWN, because new species
+	// appear a few epochs after the threshold drops and a fast drop creates too many at once.
+	// (goNEAT keeps the threshold fixed, and then the number of species grows with the genome distances.)
+	// A higher threshold only stops new species: goNEAT never merges species, extra ones disappear when they die out
+	// (dropoff_age), so the threshold is capped at COMPAT_THRESHOLD_MAX instead of growing while they do.
+	TARGET_SPECIES             = 10
+	COMPAT_THRESHOLD_STEP_UP   = 0.3
+	COMPAT_THRESHOLD_STEP_DOWN = 0.1
+	COMPAT_THRESHOLD_MIN       = 0.3
+	COMPAT_THRESHOLD_MAX       = 15.0
 )
 
 type GameSettings struct {

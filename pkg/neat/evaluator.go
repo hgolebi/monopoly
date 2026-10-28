@@ -68,8 +68,16 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 	bestPlayer := findBestPlayer(players)
 	bestOrg := bestPlayer.GetOrganism()
 
+	// Disable goNEAT's delta coding: when the population's fitness record has not been beaten for dropoff_age+5 epochs,
+	// it gives the whole next generation to the two best species. Fitness is measured against the evolving population,
+	// so an early record (e.g. a random network among random ones in epoch 0) is never beaten and delta coding would
+	// wipe out the diversity every dropoff_age+5 epochs. dropoff_age still removes stagnating species.
+	pop.EpochsHighestLastChanged = 0
+
 	// log info
-	neat.InfoLog(fmt.Sprintf("Species count: %d\n", numberOfSpecies))
+	compatThreshold := options.CompatThreshold
+	adjustCompatThreshold(options, numberOfSpecies)
+	neat.InfoLog(fmt.Sprintf("Species count: %d, compat threshold: %.2f -> %.2f\n", numberOfSpecies, compatThreshold, options.CompatThreshold))
 	neat.InfoLog(fmt.Sprintf("Champion of epoch %d is organism %d\n with fitness: %f (wins: %d, draws: %d)", epoch.Id, bestOrg.Genotype.Id, bestOrg.Fitness, bestPlayer.GetWins(), bestPlayer.GetDraws()))
 	neat.InfoLog(fmt.Sprintf("Number of nodes: %d, number of connections: %d\n", len(bestOrg.Genotype.Nodes), len(bestOrg.Genotype.Genes)))
 
@@ -89,7 +97,7 @@ func (e *MonopolyEvaluator) GenerationEvaluate(ctx context.Context, pop *genetic
 	}
 
 	// add line to champions.txt with champion info
-	if err := appendChampionInfo(e.outputDir, bestPlayer, epoch.Id); err != nil {
+	if err := appendChampionInfo(e.outputDir, bestPlayer, epoch.Id, numberOfSpecies, compatThreshold); err != nil {
 		neat.ErrorLog(fmt.Sprintf("Failed to append champion info, reason: %s\n", err))
 		return err
 	}
@@ -268,7 +276,18 @@ func (e *MonopolyEvaluator) createPlayersFromPopulation(pop *genetics.Population
 	return players, nil
 }
 
-func appendChampionInfo(outputDir string, champion MonopolyPlayer, epoch int) error {
+// adjustCompatThreshold moves the compatibility threshold towards TARGET_SPECIES species for the next speciation:
+// up when there are too many species (a new species then needs a bigger difference), down when there are too few.
+// The options are shared through the context, so goNEAT's speciation of the next generation uses the new value.
+func adjustCompatThreshold(options *neat.Options, species int) {
+	if species > cfg.TARGET_SPECIES {
+		options.CompatThreshold = min(cfg.COMPAT_THRESHOLD_MAX, options.CompatThreshold+cfg.COMPAT_THRESHOLD_STEP_UP)
+	} else if species < cfg.TARGET_SPECIES {
+		options.CompatThreshold = max(cfg.COMPAT_THRESHOLD_MIN, options.CompatThreshold-cfg.COMPAT_THRESHOLD_STEP_DOWN)
+	}
+}
+
+func appendChampionInfo(outputDir string, champion MonopolyPlayer, epoch int, species int, compatThreshold float64) error {
 	filePath := fmt.Sprintf("%s/champions.txt", outputDir)
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -277,7 +296,8 @@ func appendChampionInfo(outputDir string, champion MonopolyPlayer, epoch int) er
 	defer file.Close()
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 	org := champion.GetOrganism()
-	line := fmt.Sprintf("%s EPOCH %d, Organism ID: %d, Fitness: %f (wins: %d, draws: %d)\n", timestamp, epoch, org.Genotype.Id, org.Fitness, champion.GetWins(), champion.GetDraws())
+	line := fmt.Sprintf("%s EPOCH %d, Organism ID: %d, Fitness: %f (wins: %d, draws: %d), species: %d, compat threshold: %.2f\n",
+		timestamp, epoch, org.Genotype.Id, org.Fitness, champion.GetWins(), champion.GetDraws(), species, compatThreshold)
 	if _, err := file.WriteString(line); err != nil {
 		return fmt.Errorf("failed to write to champions file: %v", err)
 	}

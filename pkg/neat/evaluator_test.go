@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 
+	cfg "monopoly/pkg/config"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/yaricom/goNEAT/v4/neat"
@@ -202,4 +204,25 @@ func TestPlayRound_RejectsIncompleteGroups(t *testing.T) {
 	for _, player := range players {
 		assert.Zero(t, player.GetScore(), "no game was played")
 	}
+}
+
+func TestAdjustCompatThreshold(t *testing.T) {
+	options := &neat.Options{CompatThreshold: 5}
+	adjustCompatThreshold(options, cfg.TARGET_SPECIES+5)
+	assert.InDelta(t, 5+cfg.COMPAT_THRESHOLD_STEP_UP, options.CompatThreshold, 1e-9, "too many species: higher threshold")
+
+	options.CompatThreshold = 5
+	adjustCompatThreshold(options, cfg.TARGET_SPECIES)
+	assert.Equal(t, 5.0, options.CompatThreshold, "target reached: unchanged")
+
+	adjustCompatThreshold(options, cfg.TARGET_SPECIES-3)
+	assert.InDelta(t, 5-cfg.COMPAT_THRESHOLD_STEP_DOWN, options.CompatThreshold, 1e-9, "too few species: lower threshold")
+
+	options.CompatThreshold = cfg.COMPAT_THRESHOLD_MIN
+	adjustCompatThreshold(options, 1)
+	assert.Equal(t, cfg.COMPAT_THRESHOLD_MIN, options.CompatThreshold, "never below the minimum (0 means no speciation in goNEAT)")
+
+	options.CompatThreshold = cfg.COMPAT_THRESHOLD_MAX
+	adjustCompatThreshold(options, cfg.TARGET_SPECIES+20)
+	assert.Equal(t, cfg.COMPAT_THRESHOLD_MAX, options.CompatThreshold, "never above the maximum")
 }
